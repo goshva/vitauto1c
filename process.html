@@ -1,0 +1,1194 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Интерактивный процесс Витавто — ТЗ × схема × матрица × код · v19</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --border:#dbe0e6; --text:#1f2937; --muted:#6b7280;
+    --accent:#2563eb; --accent-dark:#1d4ed8;
+    --ok-bg:#d9f2df; --ok-bd:#8fd6a4;
+    --part-bg:#fdf3d0; --part-bd:#e6c766;
+    --no-bg:#fde8e6; --no-bd:#f0a8a0;
+    --dim:0.22;
+    --client:#dae8fc; --client-bd:#6c8ebf;
+    --manager:#ffe6cc; --manager-bd:#d79b00;
+    --admin:#e1d5e7; --admin-bd:#9673a6;
+    --supplier:#d5e8d4; --supplier-bd:#82b366;
+    --store:#fff2cc; --store-bd:#d6b656;
+    --mech:#f8cecc; --mech-bd:#b85450;
+    --warn-bg:#fff7ed; --warn-bd:#fed7aa;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif;font-size:13px;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  header.app{position:sticky;top:0;z-index:40;background:var(--panel);border-bottom:1px solid var(--border);padding:10px 16px;}
+  h1{font-size:16px;margin:0 0 2px;}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:8px;line-height:1.45;}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .toolbar .grow{flex:1 1 auto;}
+  button,.btn{cursor:pointer;border:1px solid var(--border);background:var(--panel);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);font-family:inherit;}
+  button:hover{background:#eef1f5;}
+  button.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;}
+  button.primary:hover{background:var(--accent-dark);}
+  button.toggle.active, .seg button.active{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
+  .seg{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .seg button{border:none;border-radius:0;}
+  select{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:#fff;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:11px;padding:8px 16px 0;}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid rgba(0,0,0,.15);}
+  .sw.ok{background:var(--ok-bg);border-color:var(--ok-bd);}
+  .sw.part{background:var(--part-bg);border-color:var(--part-bd);}
+  .sw.no{background:var(--no-bg);border-color:var(--no-bd);}
+  .badge{display:inline-block;background:#eef1f6;border-radius:4px;padding:2px 6px;font-size:11px;color:var(--muted);}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;min-height:calc(100vh - 140px);}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr;}}
+
+  .main{padding:12px 16px 40px;overflow:auto;}
+  .side{border-left:1px solid var(--border);background:var(--panel);padding:14px 16px 30px;position:sticky;top:120px;align-self:start;max-height:calc(100vh - 120px);overflow:auto;}
+  @media (max-width:1100px){.side{position:static;max-height:none;border-left:none;border-top:1px solid var(--border);}}
+
+  .player{display:flex;flex-direction:column;gap:10px;background:#f0f4fa;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;}
+  .player-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .player .step-meta{flex:1 1 220px;min-width:180px;}
+  .player .step-title{font-weight:600;font-size:13px;}
+  .player .step-note{color:var(--muted);font-size:11px;margin-top:2px;line-height:1.4;}
+  .progress{height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:8px;}
+  .progress > i{display:block;height:100%;background:var(--accent);width:0%;transition:width .25s ease;}
+  .scenario-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .scenario-head strong{font-size:12px;}
+  .scenario-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .scenario-filters button{font-size:11px;padding:5px 9px;}
+  .scenario-filters button.active{background:var(--accent);border-color:var(--accent-dark);color:#fff;}
+  .scenario-sections{display:flex;flex-direction:column;gap:12px;}
+  .scenario-section h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;}
+  .scenario-grid button{text-align:left;padding:7px 9px;font-size:11.5px;line-height:1.35;border-radius:7px;}
+  .scenario-grid button.active{background:var(--accent);border-color:var(--accent-dark);color:#fff;}
+  .scenario-grid button .sid{display:block;font-size:10px;opacity:.75;font-family:Consolas,monospace;margin-bottom:1px;}
+  #scenarioSelect{min-width:300px;max-width:min(560px,90vw);}
+
+  .view-panel[hidden]{display:none !important;}
+
+  .lanes{display:flex;flex-direction:column;gap:10px;}
+  .lane{display:grid;grid-template-columns:132px minmax(0,1fr);border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel);transition:opacity .2s,filter .2s;}
+  .lane.dim{opacity:var(--dim);filter:grayscale(.35);}
+  .lane-label{display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:12px;padding:10px 8px;border-right:1px solid var(--border);line-height:1.3;}
+  .lane-nodes{display:flex;flex-wrap:wrap;gap:8px;padding:10px;align-items:stretch;min-height:88px;}
+  .lane.client .lane-label{background:var(--client);color:#1e3a5f;}
+  .lane.manager .lane-label{background:var(--manager);color:#7a4e00;}
+  .lane.admin .lane-label{background:var(--admin);color:#5b3d6e;}
+  .lane.supplier .lane-label{background:var(--supplier);color:#2f5a2f;}
+  .lane.storekeeper .lane-label{background:var(--store);color:#6a5600;}
+  .lane.chief_mechanic .lane-label{background:var(--mech);color:#7a2d2a;}
+
+  .node{
+    width:168px;min-height:78px;border:1.5px solid var(--border);border-radius:10px;padding:8px 9px;
+    background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:transform .12s,box-shadow .12s,outline .12s,opacity .2s;
+    position:relative;
+  }
+  .node:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(15,23,42,.08);}
+  .node.selected{outline:2px solid var(--accent);outline-offset:1px;box-shadow:0 0 0 4px rgba(37,99,235,.15);}
+  .node.play-active{outline:2px solid #7c3aed;outline-offset:1px;box-shadow:0 0 0 4px rgba(124,58,237,.18);}
+  .node.dim{opacity:var(--dim);pointer-events:none;}
+  .node.decision{border-radius:18px 18px 18px 18px;border-style:dashed;}
+  .node .nid{font-size:10px;font-family:Consolas,monospace;color:var(--muted);}
+  .node .ntitle{font-size:11.5px;font-weight:600;line-height:1.35;flex:1;}
+  .node .nmeta{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;}
+  .pill{font-size:10px;border-radius:4px;padding:1px 5px;border:1px solid transparent;white-space:nowrap;}
+  .pill.ok{background:var(--ok-bg);border-color:var(--ok-bd);color:#166534;}
+  .pill.part{background:var(--part-bg);border-color:var(--part-bd);color:#854d0e;}
+  .pill.no{background:var(--no-bg);border-color:var(--no-bd);color:#991b1b;}
+  .node.cov-ok{border-color:var(--ok-bd);background:linear-gradient(#fff,#f3fbf5);}
+  .node.cov-part{border-color:var(--part-bd);background:linear-gradient(#fff,#fffbeb);}
+  .node.cov-no{border-color:var(--no-bd);background:linear-gradient(#fff,#fff5f5);}
+  .body.coverage-off .node.cov-ok,
+  .body.coverage-off .node.cov-part,
+  .body.coverage-off .node.cov-no{border-color:var(--border);background:#fff;}
+  .body.coverage-off .pill.cov{display:none;}
+
+  .edges-hint{color:var(--muted);font-size:11px;margin:4px 0 12px;line-height:1.4;}
+
+  .zones{display:flex;flex-wrap:wrap;gap:10px;}
+  .zone{
+    width:min(200px,100%);min-height:90px;border:1.5px solid var(--border);border-radius:10px;padding:10px;
+    background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:6px;
+  }
+  .zone.selected{outline:2px solid var(--accent);outline-offset:1px;}
+  .zone .zt{font-weight:600;font-size:12px;}
+  .zone .zd{color:var(--muted);font-size:11px;line-height:1.35;}
+
+  .side h2{margin:0 0 6px;font-size:14px;}
+  .side .empty{color:var(--muted);font-size:12px;line-height:1.45;padding:8px 0;}
+  .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 8px;font-size:12px;margin:10px 0;}
+  .kv .k{color:var(--muted);}
+  .kv .v{line-height:1.4;}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 10px;}
+  .chip{background:#eef1f6;border-radius:999px;padding:3px 8px;font-size:11px;color:#374151;}
+  .block{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+  .block h3{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;}
+  .block p,.block li{font-size:12px;line-height:1.45;margin:0 0 6px;}
+  .block ul{margin:0;padding-left:16px;}
+  .conflict{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.4;color:#9a3412;}
+  .nexts{display:flex;flex-direction:column;gap:6px;}
+  .nexts button{text-align:left;}
+
+  footer.app{padding:8px 16px 24px;color:var(--muted);font-size:11px;}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:88px;}
+  .stat b{display:block;font-size:16px;}
+  .stat span{color:var(--muted);font-size:10px;}
+  .stat.accent{border-color:#93c5fd;background:linear-gradient(#fff,#eff6ff);}
+  .stat.warn{border-color:var(--part-bd);background:linear-gradient(#fff,var(--part-bg));}
+  .stat.ok-s{border-color:var(--ok-bd);background:linear-gradient(#fff,var(--ok-bg));}
+
+  .scenario-toggle{
+    display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;
+    padding:0;cursor:pointer;font:inherit;color:inherit;text-align:left;
+  }
+  .scenario-toggle:hover{color:var(--accent);}
+  .scenario-toggle .chev{display:inline-block;width:12px;font-size:10px;color:var(--muted);transition:transform .15s;}
+  .scenario-toggle[aria-expanded="true"] .chev{transform:rotate(90deg);}
+  .scenario-body[hidden]{display:none !important;}
+
+  .body.view-estimate .layout{grid-template-columns:1fr;}
+  .body.view-estimate #sidePanel,
+  .body.view-estimate .legend,
+  .body.view-estimate #playerBar,
+  .body.view-estimate #statsRow,
+  .body.view-estimate .process-chrome{display:none !important;}
+
+  .est-callout{
+    background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:8px;
+    padding:10px 12px;margin-bottom:14px;line-height:1.45;font-size:12px;color:#9a3412;
+  }
+  .est-callout strong{color:#7c2d12;}
+  .est-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  @media (max-width:800px){.est-modes{grid-template-columns:1fr;}}
+  .est-mode{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .est-mode.pick{border-color:#93c5fd;box-shadow:inset 0 0 0 1px #93c5fd;}
+  .est-mode .tag{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;}
+  .est-mode h3{margin:4px 0 6px;font-size:13px;}
+  .est-mode .big{font-size:22px;font-weight:700;margin:0 0 8px;font-variant-numeric:tabular-nums;}
+  .est-mode ul{margin:0;padding-left:16px;font-size:12px;line-height:1.45;color:var(--muted);}
+  .est-mode li{margin-bottom:4px;}
+  .est h2{font-size:14px;margin:18px 0 8px;}
+  .est .hint{color:var(--muted);font-size:11px;margin:0 0 10px;line-height:1.4;}
+  .est table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px;margin-bottom:8px;}
+  .est th,.est td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top;line-height:1.4;}
+  .est th{background:#eef1f6;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;}
+  .est tr:last-child td{border-bottom:none;}
+  .est tr.alt td{background:#fafafa;}
+  .est tr.tot td{font-weight:700;background:#eef1f6;}
+  .est tr.excl td{color:var(--muted);font-style:italic;}
+  .est .num{white-space:nowrap;font-variant-numeric:tabular-nums;font-family:Consolas,monospace;font-size:11.5px;}
+  .est ul.audit{margin:0;padding-left:18px;font-size:12px;line-height:1.5;}
+  .est ul.audit li{margin-bottom:6px;}
+</style>
+</head>
+<body class="body">
+
+<header class="app">
+  <h1>Интерактивный процесс Витавто — роли, статусы, покрытие кода</h1>
+  <div class="sub">
+    B5: схема-дорожки + плеер сценария + слой «есть / частично / нет» в расширении АРМ.
+    Канон: ТЗ + блок-схема + <a href="index.html">матрица прав</a> + <code>src/</code>. Не подключено к 1С.
+  </div>
+  <div class="toolbar">
+    <div class="seg" id="viewSeg">
+      <button data-view="process" class="active">Процесс заявки</button>
+      <button data-view="zones">Складские зоны</button>
+      <button data-view="estimate">Оценка ТЗ</button>
+    </div>
+    <label class="badge process-chrome">Сценарий
+      <select id="scenarioSelect" style="margin-left:6px" size="1"></select>
+    </label>
+    <button id="btnPrev" class="process-chrome" title="Предыдущий шаг">◀</button>
+    <button id="btnPlay" class="primary process-chrome">▶ Плей</button>
+    <button id="btnNext" class="process-chrome" title="Следующий шаг">▶</button>
+    <button id="btnStop" class="process-chrome">Сброс плеера</button>
+    <div class="grow"></div>
+    <button id="btnCoverage" class="toggle active process-chrome" title="Подсветка покрытия кода">Покрытие кода</button>
+    <button id="btnGapsOnly" class="toggle process-chrome" title="Показать только разрывы">Только разрывы</button>
+    <select id="roleFilter" class="process-chrome" title="Фильтр роли">
+      <option value="">Все роли</option>
+    </select>
+    <a class="btn" href="index.html">← Матрица прав</a>
+    <a class="btn" href="br-fr-analysis.html">Разбор БТ/ФТ</a>
+    <a class="btn" href="bt.html">БТ</a>
+    <a class="btn" href="ft.html">ФТ</a>
+    <a class="btn" href="approve.html">Протокол апрувов</a>
+    <a class="btn" href="protocol-map.html">Карта протокола</a>
+  </div>
+</header>
+
+<div class="legend">
+  <span><span class="sw ok"></span>есть в коде АРМ</span>
+  <span><span class="sw part"></span>частично</span>
+  <span><span class="sw no"></span>нет / разрыв</span>
+  <span class="badge">клик по узлу — детали ТЗ / матрица / код</span>
+  <span class="badge" id="statusLine"></span>
+</div>
+
+<div class="layout">
+  <div class="main">
+    <div class="player" id="playerBar">
+      <div class="scenario-head">
+        <button type="button" class="scenario-toggle" id="btnScenariosToggle" aria-expanded="false" title="Развернуть / свернуть список сценариев">
+          <span class="chev" aria-hidden="true">▶</span>
+          <strong>Сценарии плеера — <span id="scenarioCount">0</span></strong>
+        </button>
+        <span class="badge" id="scenariosCollapsedHint">свёрнуто · кликните заголовок</span>
+      </div>
+      <div class="scenario-body" id="scenarioBody" hidden>
+        <div class="scenario-filters" id="scenarioFilters"></div>
+        <div class="scenario-sections" id="scenarioGrid"></div>
+      </div>
+      <div class="player-top">
+        <div class="step-meta">
+          <div class="step-title" id="playerTitle">Выберите сценарий и нажмите «Плей» или кликните узел</div>
+          <div class="step-note" id="playerNote">Плеер подсвечивает путь заявки по блок-схеме и синхронизирует панель справа.</div>
+          <div class="progress"><i id="playerProgress"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="statsRow"></div>
+
+    <div class="view-panel" id="processView">
+      <div class="edges-hint">Дорожки = роли со схемы. Стрелки сценария видны в панели «Переходы» справа. Пунктир на схеме = согласование / обратный поток.</div>
+      <div class="lanes" id="lanes"></div>
+    </div>
+
+    <div class="view-panel" id="zonesView" hidden>
+      <div class="edges-hint">Вторая страница блок-схемы: физическое движение деталей по зонам склада.</div>
+      <div class="zones" id="zones"></div>
+    </div>
+
+    <div class="view-panel est" id="estimateView" hidden>
+      <div id="estimateRoot"></div>
+    </div>
+  </div>
+
+  <aside class="side" id="sidePanel">
+    <div class="empty" id="sideEmpty">Кликните узел на схеме или запустите плеер — здесь появятся ТЗ, статусы матрицы, колонки и факт в коде.</div>
+    <div id="sideContent" hidden></div>
+  </aside>
+</div>
+
+<footer class="app">
+  Источники: ТЗ Витавто, <code>витвто.drawio</code>, матрица колонок, gap-анализ <code>src/</code> (АС_АРМ2).
+  Покрытие — экспертная оценка по распакованному расширению. Вкладка «Оценка ТЗ» — остаток часов на код (комфорт ×1,4), не КП.
+  Обновление плеера 19.09.2026: A–C + E механик; без D (НСИ).
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  var COV = {ok:'есть', part:'частично', no:'нет'};
+
+  var ROLES = [
+    {id:'client', title:'Клиент'},
+    {id:'manager', title:'Менеджер'},
+    {id:'admin', title:'Администратор'},
+    {id:'supplier', title:'Поставщик\n(внешний портал)'},
+    {id:'storekeeper', title:'Кладовщик /\nСборщик'},
+    {id:'chief_mechanic', title:'Главный\nмеханик'}
+  ];
+
+  var NODES = [
+    {id:'N1', role:'client', title:'Заявка: Excel / фото', full:'Заявка от клиента: Excel по шаблону или фото — артикул, наименование, кол-во, гос.номер авто. При разном способе вывоза (такси / наша машина) — две отдельные заявки, способ в комментарии. Также вход в ремонт (G1).', shape:'rect', cov:'part', status:['new'], cols:['article_fact','name_fact','qty_fact','vehicle_plate_fact','comment'], tz:'Входные данные заявки (§3.1). OCR 09.2026: разъезд → две заявки.', code:'Контрагент заказа; отдельного клиентского UI нет.', next:[{to:'M1', label:'заявка в 1С'}, {to:'G1', label:'машина в ремонт', dashed:true}]},
+    {id:'N2a', role:'client', title:'Получение товара', full:'Физическая отгрузка / выдача товара клиенту. Контроль документов — у менеджера (M15), не на клиенте.', shape:'rect', cov:'part', status:['shipped'], cols:['shipment_date','shipment_number'], tz:'OCR: N2 режется — сначала товар.', code:'Дата/номер отгрузки и РН; клиентского кабинета нет.', next:[{to:'M15', label:'контроль документов (менеджер)'}]},
+    {id:'N3', role:'client', title:'Возврат товара', full:'Возврат товара (при необходимости)', shape:'rect', cov:'no', status:['return'], cols:['line_status','comment'], tz:'Возврат после отгрузки (§5, процессы возврата).', code:'Статуса/форм возврата в АРМ нет.', next:[{to:'K6', label:'инициирован возврат'}]},
+    {id:'N4', role:'client', title:'Самовывоз у внешнего поставщика', full:'Клиент забирает товар у внешнего поставщика. Дальше уведомление о самовывозе — менеджер M17 и кладовщик K9 одновременно.', shape:'rect', cov:'no', status:['shipped'], cols:['comment','shipment_date'], tz:'Клиентский блок + сценарий.', code:'Нет.', next:[{to:'M17', label:'уведомление о самовывозе ∥ K9'}]},
+    {id:'M1', role:'manager', title:'Загрузка заявки в 1С', full:'Загрузка заявки в 1С: Excel-парсер / ручной ввод по фото', shape:'rect', cov:'part', status:['new'], cols:['order_header','fact'], tz:'Excel-парсер или ручной ввод (§3.1).', code:'ФормаЗагрузкиДанных — табличный ввод, не парсер Excel; номенклатура не матчится.', next:[{to:'M2', label:'поиск / решение'}]},
+    {id:'M2', role:'manager', title:'Поиск + подбор номенклатуры', full:'Один блок (M2+D1): поиск и аналог по кроссу; подбор номенклатуры — если есть в справочнике, менеджер сопоставил/выбрал; если нет — создание номенклатуры (M2a) → админ A2. Также: неопознанные A1, резерв / закуп / вирт. права.', shape:'rect', cov:'no', status:['new'], cols:['article','name','code_aa','nomenclature','comment'], tz:'Слиты M2+D1 (+ранее M6).', code:'Автопоиска нет; справочника аналогов нет; ветвление UI не реализовано.', next:[{to:'M3', label:'есть → резерв'}, {to:'M4', label:'есть, остатка нет → закуп'}, {to:'M2a', label:'нет → создание номенклатуры'}, {to:'A1', label:'неопознанные (модерация админ)', dashed:true}, {to:'M13', label:'вирт. / нехватка прав'}]},
+    {id:'M2a', role:'manager', title:'Создание номенклатуры', full:'Менеджер создаёт карточку номенклатуры (черновик). Дальше админ: создание / подтверждение / изменение позиции (A2).', shape:'rect', cov:'no', status:['new'], cols:['article','name','code_aa','nomenclature','comment'], tz:'D: M2→M2a→A2.', code:'Нет отдельного UI создания.', next:[{to:'A2', label:'к админу'}]},
+    {id:'M3', role:'manager', title:'Резервирование на складе', full:'Резервирование товара под заказ (остаток есть на складе)', shape:'rect', cov:'part', status:['reserve'], cols:['stock_qty','reserve_qty','batch_fifo'], tz:'Резерв при наличии (§3.1).', code:'Остатки в РС; отдельного статуса «Резервирование» нет.', next:[{to:'M9', label:'задание на комплектацию'}, {to:'M4', label:'часть без остатка → закуп', dashed:true}, {to:'K3', label:'сразу в сборку'}]},
+    {id:'M4', role:'manager', title:'Заказ поставщику', full:'Оформление «Заказ поставщику». Дальше всегда обработка у поставщика (P1), затем контроль оплаты (M7).', shape:'rect', cov:'ok', status:['ordered'], cols:['supplier','price','qty','line_status','comment'], tz:'Сценарий А закупки. Порядок: M4→P1→M7.', code:'АС_АРМ2: создание ЗаказПоставщику.', next:[{to:'P1', label:'к поставщику'}, {to:'M13', label:'вирт. контур → права', dashed:true}]},
+    {id:'M7', role:'manager', title:'Контроль оплаты', full:'После обработки заказа поставщиком (P1): контроль оплаты → «Оплачено».', shape:'rect', cov:'ok', status:['paid'], cols:['paid_status','payment_form','price'], tz:'Статус Оплачено. Порядок: после P1.', code:'Статус Оплачено в Арм_СтатусыАРМ / снабжение.', next:[{to:'P2', label:'в путь'}]},
+    {id:'M8', role:'manager', title:'Уведомление о приходе', full:'Всегда сразу после размещения (K2). Приехавшее повторно не заказываем.', shape:'rect', cov:'part', status:['acceptance'], cols:['line_status'], tz:'K2→M8 всегда.', code:'Статусы прихода видны; отдельного notify нет.', next:[{to:'M9', label:'создать комплектацию'}]},
+    {id:'M9', role:'manager', title:'Задание на комплектацию', full:'Менеджер выбирает позиции «на складе» и создаёт задание на комплектацию. В вирт. закупе здесь развилка на сценарий дефекта (B3).', shape:'rect', cov:'part', status:['assembly'], cols:['line_status','stock'], tz:'Связка склад → комплектация.', code:'Статусы Комплектуется/Собран; отдельного «задания» нет.', next:[{to:'K3', label:'в сборку'}, {to:'K3', label:'вирт. → ветка дефекта (B3)', dashed:true}]},
+    {id:'M10', role:'manager', title:'Контроль комплектации', full:'Только ветка отклонения (B2 / defect): подтверждение или отклонение комплектации. В A1/A2/A3 (happy/stock/mixed) шага нет — после K3 сразу M11. Ок → M11. Отклонение: менеджер → M9 (задание), кладовщик одновременно → K8 (розыск позиции).', shape:'rect', cov:'part', status:['assembly','ready_to_ship'], cols:['line_status','comment'], tz:'Happy-путь без M10. Отклонение: M10→M9∥K8 (B2).', code:'Частично через статусы.', next:[{to:'M11', label:'ок → готовность'}, {to:'M9', label:'отклонение → M9 ∥ K8', dashed:true}, {to:'K8', label:'кладовщик: розыск', dashed:true}]},
+    {id:'M11', role:'manager', title:'Уведомление о готовности', full:'После комплектации (K3): заказ укомплектован / готов к отгрузке. Дальше отгрузочная ведомость (M12). При отказе прав — M13. В ремонте — к выдаче в зону (G3). Контроль комплектации (M10) — только ветка отклонения.', shape:'rect', cov:'no', status:['ready_to_ship'], cols:['line_status','shipment_number'], tz:'K3→M11→M12 (A1–A3); ремонт: M11→G3.', code:'Отдельного notify нет.', next:[{to:'M12', label:'ведомость'}, {to:'G3', label:'в ремонт (G3)', dashed:true}, {to:'M13', label:'менеджер без прав', dashed:true}]},
+    {id:'M12', role:'manager', title:'Отгрузочная ведомость', full:'Формирование отгрузочной ведомости — менеджер. Перед этим M11 (готовность); если прав нет — через M13.', shape:'rect', cov:'no', status:['ready_to_ship'], cols:['shipment_date','shipment_number'], tz:'ПФ отгрузочная ведомость. A1–A4: K3→M11→M12 (или M11→M13→M12).', code:'Печатных форм в расширении нет.', next:[{to:'K5', label:'документы готовы'}]},
+    {id:'M13', role:'manager', title:'Недостаточно прав, обратись к админу', full:'Единый блок отказа прав: вирт. закуп / подтверждение чека и попытка сформировать отгрузочную ведомость. Текст менеджеру — обратиться к админу.', shape:'rect', cov:'no', status:['ordered','new','ready_to_ship'], cols:['comment'], tz:'Слиты бывшие M14+M15.', code:'Нет.', next:[{to:'A3', label:'админ: подтверждение чека'}, {to:'M12', label:'ведомость'}]},
+    {id:'M15', role:'manager', title:'Контроль документов', full:'Перенесено с клиента (бывш. N2b): физ. подпись на отгрузочном и отметка, что оригинал получен (колонка doc_signed_original: галка true → строка не защищена). Видно одновременно с K7 (кладовщик) — не последовательный handoff. Перед заявкой на возврат поставщику (M16). Зеркало у механика — G7.', shape:'rect', cov:'no', status:['closed','shipped','return'], cols:['doc_signed_original','shipment_date','shipment_number','comment'], tz:'Бывш. N2b → менеджер M15; параллельно K7.', code:'Отдельных полей подписи/оригинала в АРМ нет.', next:[{to:'M16', label:'если возврат поставщику', dashed:true}]},
+    {id:'M16', role:'manager', title:'Заявка на возврат поставщику', full:'Оформление заявки на возврат поставщику (ошибочный заказ / брак). Перед отправкой товар передаётся кладовщику (K6) → поставщик (P3). В C2 после P3 — контроль документов M15∥K7.', shape:'rect', cov:'no', status:['return'], cols:['supplier','comment'], tz:'C2: M16→K6→P3→M15∥K7.', code:'Нет.', next:[{to:'K6', label:'передать кладовщику'}, {to:'P3', label:'уже со склада → поставщик'}]},
+    {id:'M17', role:'manager', title:'Уведомление о самовывозе', full:'После самовывоза у внешнего поставщика (N4): менеджер фиксирует уведомление. Видно одновременно с K9 (кладовщик). Дальше складской контур A4: K1→K2→M8→M9→K3→M11→M12→M15∥K7.', shape:'rect', cov:'no', status:['shipped'], cols:['comment','shipment_date','shipment_number'], tz:'N4→M17∥K9 → K1…', code:'Нет.', next:[{to:'K1', label:'A4: приёмка по УПД'}]},
+    {id:'M18', role:'manager', title:'Неопознанная позиция', full:'Уведомление: позиция не опознана. Видно одновременно с главным механиком (G8). В D1 — после розыска (K8) и размещения (K2).', shape:'rect', cov:'no', status:['new','acceptance'], cols:['name_fact','article_fact','comment'], tz:'D1: K8→K2→M18∥G8.', code:'Нет.', next:[{to:'A1', label:'к админу: неопознанные', dashed:true}]},
+    {id:'M19', role:'manager', title:'Отгрузочная ведомость (корректировка)', full:'Корректировка отгрузочной ведомости при возврате от клиента (C1). После приёмки возврата на складе (K6), вместо обычного контроля документов M15 на этом шаге.', shape:'rect', cov:'no', status:['return'], cols:['shipment_number','shipment_date','comment'], tz:'C1: N3→K6→M19→…', code:'Нет.', next:[{to:'M16', label:'заявка на возврат поставщику'}]},
+    {id:'A1', role:'admin', title:'Неопознанные + фото', full:'Создание позиции в папке «Не опознанные», фотофиксация', shape:'rect', cov:'no', status:['new'], cols:['name','article','comment'], tz:'НСИ: неопознанные (§2.1).', code:'Папки/фотофиксации в АРМ нет.', next:[{to:'A2', label:'карточка заполнена'}]},
+    {id:'A2', role:'admin', title:'Создание номенклатуры/подтверждение/изменение позиции', full:'Админ: создание номенклатуры, подтверждение или изменение позиции (артикул, кроссы, перенос в основную номенклатуру). Вход из M2a или после A1.', shape:'rect', cov:'no', status:['new'], cols:['article','code_aa','name','nomenclature'], tz:'Доводка НСИ админом; D: M2→M2a→A2.', code:'Нет.', next:[{to:'M2', label:'обратно в поиск', dashed:true}]},
+    {id:'A3', role:'admin', title:'Подтверждение чека админом', full:'Новый блок вирт. закупа: админ подтверждает чек / проводит. Менеджер доходит сюда через «Обратись к админу».', shape:'rect', cov:'no', status:['ordered','paid'], cols:['comment','price','supplier'], tz:'Вирт. закуп: после M13.', code:'Нет.', next:[{to:'K1', label:'к приёмке (как A4 до M9)'}]},
+    {id:'A5', role:'admin', title:'Приход с разбора / ЗН', full:'Приходование деталей с разбора / заказ-наряда: источник, дата, описание агрегата', shape:'rect', cov:'no', status:[], cols:[], tz:'Черновик на схеме (!!!!!!!).', code:'Нет.', conflict:'Узел на схеме помечен как незавершённый.', next:[{to:'K2', label:'оприходовано'}]},
+    {id:'A0', role:'admin', title:'НСИ: РРЦ / НМЦК / права', full:'Вне заявки: РРЦ, расчёт НМЦК = РРЦ × 1,5; настройка прав и статусов', shape:'rect', cov:'no', status:[], cols:['rrc','coefficient'], tz:'§3.3 и note схемы.', code:'Цена = коэффициент × себестоимость; матрица прав не в 1С.', conflict:'Схема/матрица vs ТЗ §3.3 vs код — три разные модели цены.', next:[]},
+    {id:'P1', role:'supplier', title:'Обработка заказа', full:'Обработка заказа, подтверждение наличия и остатка. После P1 всегда контроль оплаты (M7).', shape:'rect', cov:'no', status:['ordered'], cols:['supplier','qty'], tz:'Порядок: M4→P1→M7.', code:'Ручной контур; интеграции нет.', next:[{to:'M7', label:'к контролю оплаты'}]},
+    {id:'P2', role:'supplier', title:'Отгрузка → В пути', full:'Статус «В пути». Способ доставки — только ручной комментарий (ветку своя/чужая машина не делаем).', shape:'rect', cov:'part', status:['in_transit'], cols:['line_status','ordered_in_transit_qty','comment'], tz:'Комментарий вместо машин.', code:'Есть ТоварВПути.', next:[{to:'K1', label:'доставлен'}]},
+    {id:'P3', role:'supplier', title:'Приём возврата', full:'Приём возврата товара от Витавто. В C2 после P3 — контроль документов M15∥K7.', shape:'rect', cov:'no', status:['return'], cols:['supplier'], tz:'C2: …→P3→M15∥K7.', code:'Нет.', next:[{to:'M15', label:'C2: контроль документов ∥ K7', dashed:true}]},
+    {id:'K1', role:'storekeeper', title:'Приёмка (УПД)', full:'Приёмка по УПД. Дальше обязательно K2.', shape:'rect', cov:'part', status:['acceptance'], cols:['receipt','upd_date','upd_number','supplier'], tz:'K1→K2 обязательно.', code:'Статусы Приходуется/НаСкладе.', conflict:'В коде роль «Снабжение», в ТЗ — Кладовщик.', next:[{to:'K2', label:'→ размещение'}]},
+    {id:'K2', role:'storekeeper', title:'Размещение по складам', full:'После K1 всегда. Сразу затем M8 (уведомление о приходе). В D1 после розыска (K8) — уведомление «Неопознанная позиция» (M18∥G8).', shape:'rect', cov:'no', status:['acceptance','reserve'], cols:['stock_qty'], tz:'K2→M8 всегда; D1: K2→M18∥G8.', code:'Зоны АРМ не сделаны.', next:[{to:'M8', label:'уведомление о приходе'}, {to:'M18', label:'неопознанная позиция ∥ G8', dashed:true}, {to:'G3', label:'в ремонт', dashed:true}]},
+    {id:'K3', role:'storekeeper', title:'Комплектация + сборочный лист', full:'Комплектация: печать сборочного листа, отметка дефектов/недостач. В A1/A2/A3 сразу уведомление о готовности (M11). Контроль комплектации (M10) — только ветка отклонения (B2).', shape:'rect', cov:'part', status:['assembly'], cols:['line_status','name_fact','article_fact'], tz:'A1–A3: K3→M11; отклонение: K3→M10 (B2).', code:'Статусы Комплектуется/Собран; печати нет.', next:[{to:'M11', label:'сборка завершена → готовность'}, {to:'M10', label:'отклонение → контроль (B2)', dashed:true}, {to:'M4', label:'дефект → дозаказ', dashed:true}]},
+    {id:'K5', role:'storekeeper', title:'Отгрузка клиенту / ТК', full:'Формирование отгрузки → «Отгружено». Клиент — N2a (товар); контроль документов — M15 и K7 одновременно.', shape:'rect', cov:'part', status:['shipped'], cols:['shipment_date','shipment_number'], tz:'Отгрузка (§5). OCR: split N2.', code:'Дата/номер + РасходнаяНакладная.', next:[{to:'N2a', label:'клиент получил товар'}, {to:'K7', label:'контроль документов ∥ M15'}]},
+    {id:'K6', role:'storekeeper', title:'Приёмка / подготовка возврата', full:'Входы: (1) возврат от клиента (C1) → M19 корректировка ведомости; (2) от менеджера (M16) → P3. Также путь к K7.', shape:'rect', cov:'no', status:['return'], cols:['comment','line_status','supplier'], tz:'C1: N3→K6→M19; C2: M16→K6→P3.', code:'Нет.', next:[{to:'M19', label:'C1: корректировка ведомости'}, {to:'P3', label:'отгрузка возврата поставщику'}, {to:'M16', label:'согласование (от клиента)', dashed:true}, {to:'K7', label:'контроль документов', dashed:true}]},
+    {id:'K7', role:'storekeeper', title:'Контроль документов', full:'Тот же контроль документов (подпись / оригинал, колонка doc_signed_original), что у менеджера M15 — видно одновременно с M15, не после handoff.', shape:'rect', cov:'no', status:['closed','shipped','return'], cols:['doc_signed_original','shipment_date','shipment_number','comment'], tz:'Зеркало M15 для склада; параллельно M15.', code:'Нет.', next:[]},
+    {id:'K8', role:'storekeeper', title:'Розыск позиции', full:'Кладовщик ищет позицию (в т.ч. после отклонения M10). В D1 дальше — размещение (K2), затем уведомление «Неопознанная позиция» менеджеру и механику.', shape:'rect', cov:'no', status:['assembly','acceptance','new'], cols:['line_status','name_fact','article_fact','comment'], tz:'M10→K8∥M9 (B2); D1: K8→K2.', code:'Нет.', next:[{to:'K2', label:'к размещению (D1)', dashed:true}]},
+    {id:'K9', role:'storekeeper', title:'Уведомление о самовывозе', full:'Зеркало M17: уведомление о самовывозе у внешнего поставщика — видно одновременно с менеджером. Дальше складской контур A4 ведёт менеджер (M17→K1…).', shape:'rect', cov:'no', status:['shipped'], cols:['comment','shipment_date','shipment_number'], tz:'Зеркало M17; параллельно M17.', code:'Нет.', next:[{to:'K1', label:'A4: приёмка (зеркало M17)', dashed:true}]},
+    {id:'G1', role:'chief_mechanic', title:'Открытие заказ-наряда', full:'Открытие заказ-наряда (аналогично заявке менеджера). В сценарии поступления машины — дальше поиск номенклатуры (M2).', shape:'rect', cov:'no', status:['new'], cols:['order_header','fact'], tz:'§4.3 Главный механик; E: N1→G1→M2.', code:'Нет объектов заказ-наряда.', next:[{to:'G2', label:'заказ запчастей'}, {to:'M2', label:'поиск номенклатуры', dashed:true}]},
+    {id:'G2', role:'chief_mechanic', title:'Заказ для ремонта', full:'Заказ товаров/услуг для ремонта (интерфейс как у менеджера)', shape:'rect', cov:'no', status:['ordered'], cols:['nomenclature'], tz:'Механик ≈ менеджер в матрице.', code:'Нет. В матрице chief_mechanic = manager.', next:[{to:'M2', label:'в общий поиск', dashed:true}]},
+    {id:'G3', role:'chief_mechanic', title:'Выдача в ремонтную зону', full:'Выдача запчастей в Ремонтную зону, списание по заказ-наряду. Дальше нормо-часы и ЗФ (G4∥G5).', shape:'rect', cov:'no', status:['assembly'], cols:['stock'], tz:'Ремонтная зона (§2.4).', code:'Нет.', next:[{to:'G4', label:'нормо-часы ∥ ЗФ'}]},
+    {id:'G4', role:'chief_mechanic', title:'Нормо-часы', full:'Расчёт нормо-часов (стоимость часа — по типу техники). В ремонте светится одновременно с G5.', shape:'rect', cov:'no', status:[], cols:[], tz:'Нормо-часы по типу техники; ∥ G5.', code:'Нет.', next:[{to:'G5', label:'часы рассчитаны'}, {to:'G9', label:'печать и выдача авто', dashed:true}]},
+    {id:'G5', role:'chief_mechanic', title:'Зарплатный фонд', full:'Формирование зарплатного фонда механиков. В ремонте одновременно с G4, затем G9.', shape:'rect', cov:'no', status:[], cols:[], tz:'ЗФ механиков; ∥ G4.', code:'Нет.', next:[{to:'G9', label:'печать и выдача авто'}, {to:'G7', label:'контроль документов', dashed:true}]},
+    {id:'G7', role:'chief_mechanic', title:'Контроль документов', full:'Тот же контроль документов (подпись / оригинал), что у менеджера M15 — в конце дорожки главного механика.', shape:'rect', cov:'no', status:['closed','shipped'], cols:['comment','shipment_date','shipment_number'], tz:'Зеркало M15 для механика.', code:'Нет.', next:[]},
+    {id:'G8', role:'chief_mechanic', title:'Неопознанная позиция', full:'Уведомление: позиция не опознана. Зеркало M18 — видно одновременно с менеджером, не после handoff.', shape:'rect', cov:'no', status:['new','acceptance'], cols:['name_fact','article_fact','comment'], tz:'Зеркало M18; параллельно M18 (D1).', code:'Нет.', next:[]},
+    {id:'G9', role:'chief_mechanic', title:'Печать комплекта документов и выдача авто', full:'Печать комплекта документов по заказ-наряду и выдача автомобиля клиенту после ремонта.', shape:'rect', cov:'no', status:['closed','shipped'], cols:['comment','shipment_date','shipment_number','vehicle_plate_fact'], tz:'E: G4∥G5→G9.', code:'Нет.', next:[]}
+  ];
+
+  var ZONES = [
+    {id:'Z0', title:'Поставщик (Авто-Альянс)', desc:'Внешний источник поставки', cov:'no', role:'supplier'},
+    {id:'Z1', title:'Зона приёмки', desc:'Кладовщик, УПД, факт прихода', cov:'part', role:'storekeeper'},
+    {id:'Z2', title:'Позиция опознана?', desc:'Ветвление на склады / неопознанные', cov:'no', role:'storekeeper'},
+    {id:'Z3', title:'Малый склад', desc:'Мелкие детали', cov:'no', role:'storekeeper'},
+    {id:'Z4', title:'Большой склад', desc:'Крупногабарит, жидкости', cov:'no', role:'storekeeper'},
+    {id:'Z8', title:'Резерв / Комплектация', desc:'Сборка под заказ', cov:'part', role:'storekeeper'},
+    {id:'Z9', title:'Зона укомплектованных', desc:'Готово к отгрузке', cov:'part', role:'storekeeper'},
+    {id:'Z10', title:'Отгрузка клиенту / ТК', desc:'Физический выход товара', cov:'part', role:'manager'},
+    {id:'Z5', title:'Неопознанные и возвраты', desc:'Брак, возврат, неопознание', cov:'no', role:'storekeeper'},
+    {id:'Z6', title:'Админ: опознание', desc:'Фото, артикул, кросс', cov:'no', role:'admin'},
+    {id:'Z14', title:'Возврат поставщику', desc:'Брак / ошибка заказа', cov:'no', role:'supplier'},
+    {id:'Z7', title:'Ремонтная зона', desc:'Заказ-наряды, механик', cov:'no', role:'chief_mechanic'},
+    {id:'Z12', title:'Списание по ЗН', desc:'Расход в ремонт', cov:'no', role:'chief_mechanic'}
+  ];
+
+  var SCENARIO_GROUPS = [
+    {id:'main', title:'A. Основные потоки заявки'},
+    {id:'purchase', title:'B. Закупка и поставка (исключения)'},
+    {id:'returns', title:'C. Возвраты'},
+    {id:'mechanic', title:'E. Главный механик'}
+  ];
+
+  var SCENARIOS = [
+    {
+      id:'happy', group:'main',
+      title:'Основной: закупка → отгрузка',
+      steps:[
+        {node:'N1', note:'Клиент передаёт заявку (Excel/фото).', status:'new'},
+        {node:'M1', note:'Менеджер загружает заявку в 1С.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры: остатка нет → закуп.', status:'new'},
+        {node:'M4', note:'Заказ поставщику.', status:'ordered'},
+        {node:'P1', note:'Поставщик обработал заказ.', status:'ordered'},
+        {node:'M7', note:'Контроль оплаты (после P1).', status:'paid'},
+        {node:'P2', note:'Товар в пути; доставка — в комментарии.', status:'in_transit'},
+        {node:'K1', note:'Приёмка по УПД.', status:'acceptance'},
+        {node:'K2', note:'Размещение.', status:'acceptance'},
+        {node:'M8', note:'Уведомление о приходе (всегда после K2).', status:'acceptance'},
+        {node:'M9', note:'Задание на комплектацию.', status:'assembly'},
+        {node:'K3', note:'Сборка (без контроля комплектации M10).', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности (после K3).', status:'ready_to_ship'},
+        {node:'M12', note:'Менеджер: отгрузочная ведомость.', status:'ready_to_ship'},
+        {node:'K5', note:'Отгрузка.', status:'shipped'},
+        {node:'N2a', note:'Товар у клиента.', status:'shipped'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'stock', group:'main',
+      title:'Со склада (резерв)',
+      steps:[
+        {node:'N1', note:'Заявка клиента.', status:'new'},
+        {node:'M1', note:'Загрузка.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры: остаток есть.', status:'new'},
+        {node:'M3', note:'Резерв.', status:'reserve'},
+        {node:'M9', note:'Задание на комплектацию.', status:'assembly'},
+        {node:'K3', note:'Комплектация (без контроля M10).', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности.', status:'ready_to_ship'},
+        {node:'M12', note:'Менеджер: ведомость.', status:'ready_to_ship'},
+        {node:'K5', note:'Отгрузка.', status:'shipped'},
+        {node:'N2a', note:'Товар.', status:'shipped'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'mixed_order', group:'main',
+      title:'Смешанный заказ (склад + закупка)',
+      steps:[
+        {node:'N1', note:'Заявка на несколько позиций.', status:'new'},
+        {node:'M1', note:'Загрузка.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры по строкам.', status:'new'},
+        {node:'M3', note:'Строки со склада — резерв.', status:'reserve'},
+        {node:'M4', note:'Строки без остатка — заказ поставщику.', status:'ordered'},
+        {node:'P1', note:'Поставщик обработал закупочную часть.', status:'ordered'},
+        {node:'M7', note:'Оплата после P1.', status:'paid'},
+        {node:'P2', note:'Закупка в пути.', status:'in_transit'},
+        {node:'K1', note:'Приход закупочной части.', status:'acceptance'},
+        {node:'K2', note:'Размещение.', status:'acceptance'},
+        {node:'M8', note:'Уведомление о приходе.', status:'acceptance'},
+        {node:'M9', note:'Общее задание на комплектацию.', status:'assembly'},
+        {node:'K3', note:'Сборка смешанного заказа (без контроля M10).', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности.', status:'ready_to_ship'},
+        {node:'M12', note:'Менеджер: ведомость.', status:'ready_to_ship'},
+        {node:'K5', note:'Отгрузка.', status:'shipped'},
+        {node:'N2a', note:'Товар.', status:'shipped'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'delivery_split', group:'main',
+      title:'Самовывоз у внешнего поставщика клиентом',
+      steps:[
+        {node:'N1', note:'Заявка: клиент заберёт у внешнего поставщика.', status:'new'},
+        {node:'M1', note:'Загрузка заявки.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры → закуп.', status:'new'},
+        {node:'M4', note:'Заказ поставщику.', status:'ordered'},
+        {node:'P1', note:'Поставщик.', status:'ordered'},
+        {node:'M7', note:'Оплата.', status:'paid'},
+        {node:'N4', note:'Самовывоз у внешнего поставщика.', status:'shipped'},
+        {nodes:['M17','K9'], node:'M17', note:'Уведомление о самовывозе — менеджер (M17) и кладовщик (K9).', status:'shipped'},
+        {node:'K1', note:'Приёмка по УПД (продолжение A4 после M17).', status:'acceptance'},
+        {node:'K2', note:'Размещение.', status:'acceptance'},
+        {node:'M8', note:'Уведомление о приходе.', status:'acceptance'},
+        {node:'M9', note:'Задание на комплектацию.', status:'assembly'},
+        {node:'K3', note:'Комплектация (без контроля M10).', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности.', status:'ready_to_ship'},
+        {node:'M12', note:'Отгрузочная ведомость.', status:'ready_to_ship'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'virtual_buy', group:'purchase',
+      title:'Виртуальный закуп (менеджер → админ)',
+      steps:[
+        {node:'N1', note:'Срочная заявка, документов поставщика нет.', status:'new'},
+        {node:'M1', note:'Менеджер загружает.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры; Развилка: вирт. контур / права.', status:'new'},
+        {node:'M13', note:'Недостаточно прав, обратись к админу.', status:'ordered'},
+        {node:'A3', note:'Админ: подтверждение чека — конец сценария B1.', status:'paid'}
+      ]
+    },
+    {
+      id:'defect', group:'purchase',
+      title:'Контроль комплектации → снова задание (продолжение A)',
+      steps:[
+        {node:'K3', note:'Продолжение A1/A2/A3: комплектация + сборочный лист.', status:'assembly'},
+        {node:'M10', note:'Контроль комплектации — отклонение.', status:'assembly'},
+        {nodes:['M9','K8'], node:'M9', note:'Менеджер → M9; кладовщик → розыск (K8) одновременно.', status:'assembly'},
+        {node:'K3', note:'Повторная комплектация.', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности.', status:'ready_to_ship'},
+        {node:'M12', note:'Отгрузочная ведомость.', status:'ready_to_ship'},
+        {node:'K5', note:'Отгрузка клиенту / ТК.', status:'shipped'},
+        {node:'N2a', note:'Получение товара клиентом.', status:'shipped'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'cancel_supplier', group:'purchase',
+      title:'Отмена заказа у поставщика',
+      steps:[
+        {node:'N1', note:'Заявка клиента.', status:'new'},
+        {node:'M1', note:'Загрузка.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры.', status:'new'},
+        {node:'M4', note:'Заказ поставщику.', status:'ordered'},
+        {node:'P1', note:'Поставщик ещё в работе.', status:'ordered'},
+        {node:'M7', note:'Оплачено или нет — после P1.', status:'paid'},
+        {node:'M15', note:'Контроль документов перед возвратом поставщику.', status:'return'},
+        {node:'M16', note:'Отмена / возврат-отказ до прихода.', status:'return'},
+        {node:'P3', note:'Поставщик закрыл заказ (без K6).', status:'return'}
+      ]
+    },
+    {
+      id:'return', group:'returns',
+      title:'Возврат от клиента',
+      steps:[
+        {node:'N3', note:'Клиент инициирует возврат.', status:'return'},
+        {node:'K6', note:'Приёмка возврата на складе.', status:'return'},
+        {node:'M19', note:'Отгрузочная ведомость (корректировка) — вместо M15.', status:'return'},
+        {node:'M16', note:'Менеджер: заявка на возврат поставщику.', status:'return'},
+        {node:'K6', note:'Кладовщик готовит товар к возврату поставщику.', status:'return'},
+        {node:'P3', note:'Поставщик принимает возврат.', status:'return'}
+      ]
+    },
+    {
+      id:'return_mgr', group:'returns',
+      title:'Возврат поставщику (от менеджера)',
+      steps:[
+        {node:'M16', note:'Менеджер: заявка на возврат поставщику.', status:'return'},
+        {node:'K6', note:'Передача кладовщику.', status:'return'},
+        {node:'P3', note:'Отгрузка / приём возврата поставщиком.', status:'return'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'return_internal', group:'returns',
+      title:'Отказ клиента при получении товара',
+      steps:[
+        {node:'N2a', note:'Продолжение A1/A2/A3: клиент при получении отказывается от товара.', status:'shipped'},
+        {node:'N3', note:'Оформление отказа / возврата.', status:'return'},
+        {node:'K6', note:'Приёмка / подготовка возврата на складе.', status:'return'},
+        {node:'M10', note:'Контроль комплектации.', status:'assembly'},
+        {node:'M9', note:'Задание на комплектацию.', status:'assembly'},
+        {node:'K3', note:'Комплектация + сборочный лист.', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности.', status:'ready_to_ship'},
+        {node:'M12', note:'Отгрузочная ведомость.', status:'ready_to_ship'},
+        {nodes:['M15','K7'], node:'M15', note:'Контроль документов — менеджер и кладовщик одновременно.', status:'closed'}
+      ]
+    },
+    {
+      id:'car_repair_in', group:'mechanic',
+      title:'Поступление машины в ремонт',
+      steps:[
+        {node:'N1', note:'Заявка: машина в ремонт.', status:'new'},
+        {node:'G1', note:'Открытие заказ-наряда.', status:'new'},
+        {node:'M2', note:'Поиск + подбор номенклатуры.', status:'new'},
+        {node:'M3', note:'Резерв на складе.', status:'reserve'},
+        {node:'M4', note:'Заказ поставщику (запчасти).', status:'ordered'},
+        {node:'P1', note:'Поставщик: обработка заказа.', status:'ordered'},
+        {node:'M7', note:'Контроль оплаты.', status:'paid'},
+        {node:'P2', note:'Поставщик: в пути на склад.', status:'in_transit'},
+        {node:'K1', note:'Приёмка (УПД).', status:'acceptance'},
+        {node:'K2', note:'Размещение.', status:'acceptance'},
+        {node:'M8', note:'Уведомление о приходе.', status:'acceptance'},
+        {node:'M9', note:'Задание на комплектацию.', status:'assembly'},
+        {node:'K3', note:'Комплектация + сборочный лист.', status:'assembly'},
+        {node:'M11', note:'Уведомление о готовности.', status:'ready_to_ship'},
+        {node:'G3', note:'Выдача в ремонтную зону.', status:'assembly'},
+        {nodes:['G4','G5'], node:'G4', note:'Нормо-часы и зарплатный фонд одновременно.', status:null},
+        {node:'G9', note:'Печать комплекта документов и выдача авто.', status:'closed'}
+      ]
+    }
+  ];
+
+  var STATUS_TITLE = {
+    new:'Новый', ordered:'Заказано у поставщика', paid:'Оплачено', in_transit:'В пути',
+    awaiting_receipt:'Ожидаем поступление', acceptance:'Приёмка', reserve:'Резервирование',
+    assembly:'Комплектация', ready_to_ship:'Готово к отгрузке', shipped:'Отгружено',
+    return:'Возврат', closed:'Закрыт'
+  };
+
+  var COL_TITLE = {
+    order_header:'Шапка заказа', fact:'Факт клиента', nomenclature:'Номенклатура',
+    stock:'Остатки / резерв', receipt:'Приёмка / УПД', article_fact:'Артикул (факт)',
+    name_fact:'Наименование (факт)', qty_fact:'Кол-во (факт)', vehicle_plate_fact:'ГРЗ',
+    article:'Артикул', name:'Наименование', code_aa:'Код А-А', supplier:'Поставщик',
+    price:'Цена', qty:'Кол-во', line_status:'Статус', paid_status:'Оплачено',
+    payment_form:'Форма оплаты', stock_qty:'На складе', reserve_qty:'В резерве',
+    batch_fifo:'Партия ФИФО', ordered_in_transit_qty:'В пути', shipment_date:'Дата отгрузки',
+    shipment_number:'№ отгрузки', upd_date:'Дата УПД', upd_number:'№ УПД', comment:'Комментарий',
+    rrc:'РРЦ (рекомендованная розничная цена)', coefficient:'Коэффициент'
+  };
+
+  var state = {
+    view:'process',
+    coverage:true,
+    gapsOnly:false,
+    roleFilter:'',
+    groupFilter:'',
+    scenariosOpen:false,
+    selected:null,
+    scenarioId:'happy',
+    step: -1,
+    playing:false,
+    playTimer:null
+  };
+
+  /** Остаток работ 1С: аврал = чистый код; комфорт = ×1,4. Обучение отдельно. */
+  var TZ_ESTIMATE = {
+    comfortCode:'430–620',
+    crunchCode:'310–440',
+    trainComfort:'24–40',
+    trainCrunch:'16–32',
+    packComfort:'455–660',
+    packCrunch:'326–472',
+    calendar:'3,5–5 мес',
+    layers:[
+      {name:'Согласования (РРЦ — рекомендованная розничная цена, статусы, роли)', hours:'30–50', why:'Без решений бизнеса этапы цены и прав встают'},
+      {name:'Показы заказчику, проверка кода, правки', hours:'40–60', why:'Обычный цикл работы, не «сдал и бежим»'},
+      {name:'Отладка в УНФ 1.6 и соседних документах', hours:'25–40', why:'Не входит в «идеальное» чистое кодирование'},
+      {name:'Небольшие переделки по ходу', hours:'25–40', why:'Запас без паники; не полный буфер ТЗ 20–30%'}
+    ],
+    stages:[
+      {id:1, name:'НСИ', tz:'24–32', done:15, crunch:'20–27', comfort:'28–38', note:'Бренды, зоны, фото, статус поиска'},
+      {id:2, name:'Партии / РРЦ', tz:'40–56', done:20, crunch:'32–45', comfort:'45–63', note:'РРЦ = рекомендованная розничная цена; ждёт решение по формуле'},
+      {id:3, name:'Документы', tz:'80–120', done:25, crunch:'60–90', comfort:'84–126', note:'Самый тяжёлый блок'},
+      {id:4, name:'Роли / права', tz:'40–56', done:20, crunch:'32–45', comfort:'45–63', note:'Матрица колонок в 1С'},
+      {id:5, name:'Печать', tz:'40–56', done:0, crunch:'40–56', comfort:'56–78', note:'5+ форм + шаблоны КА'},
+      {id:6, name:'Интеграция', tz:'24–40', done:0, crunch:'24–40', comfort:'34–56', note:'Базовый вариант (кнопка / фиксация)'},
+      {id:7, name:'Статусы', tz:'32–48', done:35, crunch:'21–31', comfort:'29–43', note:'FSM + блокировки'},
+      {id:8, name:'АРМ по ролям', tz:'40–56', done:30, crunch:'28–39', comfort:'39–55', note:'Кладовщик 4 вкладки + механик'},
+      {id:9, name:'Кроссы', tz:'24–32', done:0, crunch:'24–32', comfort:'34–45', note:'Связь артикул↔артикул'},
+      {id:10, name:'QA кода', tz:'24–32', done:5, crunch:'23–30', comfort:'32–42', note:'Прогон сценариев плеера (OCR-фиксы 09.2026)', qa:true},
+      {id:'10b', name:'Обучение', tz:'16–32', done:0, crunch:'16–32', comfort:'24–40', note:'Не код', train:true}
+    ]
+  };
+
+  var byId = {};
+  NODES.forEach(function(n){ byId[n.id] = n; });
+
+  var elLanes = document.getElementById('lanes');
+  var elZones = document.getElementById('zones');
+  var elSideEmpty = document.getElementById('sideEmpty');
+  var elSideContent = document.getElementById('sideContent');
+  var elScenario = document.getElementById('scenarioSelect');
+  var elScenarioGrid = document.getElementById('scenarioGrid');
+  var elScenarioFilters = document.getElementById('scenarioFilters');
+  var elScenarioCount = document.getElementById('scenarioCount');
+  var elScenarioBody = document.getElementById('scenarioBody');
+  var elScenariosToggle = document.getElementById('btnScenariosToggle');
+  var elScenariosHint = document.getElementById('scenariosCollapsedHint');
+  var elEstimateRoot = document.getElementById('estimateRoot');
+  var elRoleFilter = document.getElementById('roleFilter');
+  var elPlayerTitle = document.getElementById('playerTitle');
+  var elPlayerNote = document.getElementById('playerNote');
+  var elPlayerProgress = document.getElementById('playerProgress');
+  var elStatusLine = document.getElementById('statusLine');
+  var elStats = document.getElementById('statsRow');
+  var elBody = document.body;
+
+  function covLabel(c){ return COV[c] || c; }
+
+  function setScenariosOpen(open){
+    state.scenariosOpen = !!open;
+    elScenarioBody.hidden = !state.scenariosOpen;
+    elScenariosToggle.setAttribute('aria-expanded', state.scenariosOpen ? 'true' : 'false');
+    elScenariosHint.textContent = state.scenariosOpen
+      ? 'группы + фильтр; карточка или список'
+      : 'свёрнуто · кликните заголовок';
+  }
+
+  function pillDone(pct){
+    var cls = pct<=0 ? 'no' : (pct<50 ? 'part' : 'ok');
+    return '<span class="pill '+cls+'">'+pct+'%</span>';
+  }
+
+  function renderEstimate(){
+    var E = TZ_ESTIMATE;
+    var cov = countCov();
+    var layerRows = E.layers.map(function(L,i){
+      return '<tr class="'+(i%2?'alt':'')+'"><td>'+L.name+'</td><td class="num">'+L.hours+'</td><td>'+L.why+'</td></tr>';
+    }).join('');
+    var stageRows = E.stages.map(function(s,i){
+      var cls = s.train ? 'excl' : (i%2 ? 'alt' : '');
+      return '<tr class="'+cls+'"><td>'+s.id+'. '+s.name+'</td><td class="num">'+s.tz+'</td><td>'+pillDone(s.done)+'</td><td class="num">'+s.crunch+'</td><td class="num">'+s.comfort+'</td><td>'+s.note+'</td></tr>';
+    }).join('');
+    elEstimateRoot.innerHTML =
+      '<div class="est-callout"><strong>В план закладывайте комфорт: '+E.comfortCode+' ч</strong> (около '+E.calendar+
+      ' одного специалиста). Это не «только набор кода», а работа с запасом на согласования и правки. '+
+      'Аврал '+E.crunchCode+' ч — нижняя граница, если писать без остановок и всё уже решено. '+
+      'РРЦ здесь = <strong>рекомендованная розничная цена</strong> (как в ТЗ).</div>'+
+      '<div class="est-modes">'+
+        '<div class="est-mode"><div class="tag">Аврал</div><h3>Только написание кода</h3><div class="big">'+E.crunchCode+' ч</div>'+
+        '<ul>'+
+          '<li>Считаем часы, будто разработчик только пишет в 1С: без встреч, показов и переделок.</li>'+
+          '<li>При полной загрузке (~160 ч в месяц) это примерно 2–3 месяца.</li>'+
+          '<li>Если по РРЦ (рекомендованной розничной цене) ещё нет решения — в этой оценке запаса нет, срок легко сдвинется.</li>'+
+        '</ul></div>'+
+        '<div class="est-mode pick"><div class="tag">Комфорт — брать в план</div><h3>Реальная работа с запасом</h3><div class="big">'+E.comfortCode+' ч</div>'+
+        '<ul>'+
+          '<li>Те же задачи, плюс время на согласования, показы, правки и отладку (~в 1,4 раза больше чистого кода).</li>'+
+          '<li>Спокойный темп (~120–130 ч в месяц): около '+E.calendar+'.</li>'+
+          '<li>Плюс обучение пользователей '+E.trainComfort+' ч → всего <strong>'+E.packComfort+'</strong>, если нужно «как этап 10 в ТЗ».</li>'+
+        '</ul></div>'+
+      '</div>'+
+      '<div class="stats">'+
+        '<div class="stat accent"><b>'+E.comfortCode+'</b><span>комфорт, ч кода</span></div>'+
+        '<div class="stat"><b>'+E.crunchCode+'</b><span>аврал, только код</span></div>'+
+        '<div class="stat warn"><b>'+E.trainComfort+'</b><span>обучение</span></div>'+
+        '<div class="stat ok-s"><b>'+E.calendar+'</b><span>1 спец., спокойный темп</span></div>'+
+        '<div class="stat"><b>'+cov.ok+' / '+(cov.ok+cov.part+cov.no)+'</b><span>узлов уже «есть»</span></div>'+
+      '</div>'+
+      '<h2>Из чего складывается запас комфорта</h2>'+
+      '<p class="hint">Добавка к чистому коду '+E.crunchCode+' ч. Буфер из ТЗ 20–30% сверху ещё раз не накручиваем.</p>'+
+      '<table><thead><tr><th>Что входит</th><th>Часы</th><th>Зачем</th></tr></thead><tbody>'+layerRows+
+      '<tr class="tot"><td>Сумма запаса</td><td class="num">120–190</td><td>вместе с кодом → комфорт '+E.comfortCode+'</td></tr></tbody></table>'+
+      '<h2>Блоки ТЗ: аврал и комфорт</h2>'+
+      '<p class="hint">«Готово» — оценка по текущему коду АРМ. Аврал = остаток по ТЗ. Комфорт = аврал × 1,4.</p>'+
+      '<table><thead><tr><th>Этап ТЗ</th><th>ТЗ, ч</th><th>Готово</th><th>Аврал</th><th>Комфорт</th><th>Комментарий</th></tr></thead><tbody>'+
+      stageRows+
+      '<tr class="tot"><td>Итого код</td><td class="num">—</td><td></td><td class="num">'+E.crunchCode+'</td><td class="num">'+E.comfortCode+'</td><td>В план — колонка «Комфорт»</td></tr>'+
+      '<tr class="tot"><td>Код + обучение</td><td class="num">—</td><td></td><td class="num">'+E.packCrunch+'</td><td class="num">'+E.packComfort+'</td><td>Если нужно обучение из этапа 10 ТЗ</td></tr>'+
+      '</tbody></table>';
+  }
+
+  function groupTitle(id){
+    var g = SCENARIO_GROUPS.filter(function(x){return x.id===id;})[0];
+    return g ? g.title : id;
+  }
+
+  function scenariosForFilter(){
+    if (!state.groupFilter) return SCENARIOS.slice();
+    return SCENARIOS.filter(function(s){ return s.group === state.groupFilter; });
+  }
+
+  function countCov(){
+    var t = {ok:0, part:0, no:0};
+    NODES.forEach(function(n){ t[n.cov] = (t[n.cov]||0)+1; });
+    return t;
+  }
+
+  function renderStats(){
+    var t = countCov();
+    elStats.innerHTML =
+      '<div class="stat"><b>'+NODES.length+'</b><span>узлов процесса</span></div>'+
+      '<div class="stat"><b>'+t.ok+'</b><span>есть в коде</span></div>'+
+      '<div class="stat"><b>'+t.part+'</b><span>частично</span></div>'+
+      '<div class="stat"><b>'+t.no+'</b><span>разрывов</span></div>'+
+      '<div class="stat"><b>'+SCENARIOS.length+'</b><span>сценариев</span></div>'+
+      '<div class="stat"><b>'+SCENARIO_GROUPS.length+'</b><span>групп</span></div>';
+  }
+
+  function fillSelectors(){
+    ROLES.forEach(function(r){
+      var o = document.createElement('option');
+      o.value = r.id; o.textContent = r.title.replace(/\n/g,' ');
+      elRoleFilter.appendChild(o);
+    });
+    renderScenarioFilters();
+    renderScenarioPickers();
+  }
+
+  function renderScenarioFilters(){
+    elScenarioFilters.innerHTML = '';
+    var allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    allBtn.textContent = 'Все ('+SCENARIOS.length+')';
+    allBtn.className = state.groupFilter ? '' : 'active';
+    allBtn.addEventListener('click', function(){ state.groupFilter=''; renderScenarioFilters(); renderScenarioPickers(); });
+    elScenarioFilters.appendChild(allBtn);
+    SCENARIO_GROUPS.forEach(function(g){
+      var n = SCENARIOS.filter(function(s){return s.group===g.id;}).length;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = g.title.replace(/^[A-G]\.\s*/, '') + ' ('+n+')';
+      b.title = g.title;
+      if (state.groupFilter === g.id) b.classList.add('active');
+      b.addEventListener('click', function(){
+        state.groupFilter = g.id;
+        renderScenarioFilters();
+        renderScenarioPickers();
+      });
+      elScenarioFilters.appendChild(b);
+    });
+  }
+
+  function renderScenarioPickers(){
+    var list = scenariosForFilter();
+    elScenarioCount.textContent = String(list.length) + (state.groupFilter ? ' / '+SCENARIOS.length : '');
+    elScenario.innerHTML = '';
+    elScenarioGrid.innerHTML = '';
+
+    var byGroup = {};
+    SCENARIO_GROUPS.forEach(function(g){ byGroup[g.id] = []; });
+    list.forEach(function(s){
+      if (!byGroup[s.group]) byGroup[s.group] = [];
+      byGroup[s.group].push(s);
+    });
+
+    var globalIdx = 0;
+    SCENARIO_GROUPS.forEach(function(g){
+      var items = byGroup[g.id] || [];
+      if (!items.length) return;
+
+      var og = document.createElement('optgroup');
+      og.label = g.title;
+      items.forEach(function(s, i){
+        globalIdx++;
+        var o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = (i+1) + '. ' + s.title + ' (' + s.steps.length + ' ш.)';
+        og.appendChild(o);
+      });
+      elScenario.appendChild(og);
+
+      var sec = document.createElement('div');
+      sec.className = 'scenario-section';
+      var h = document.createElement('h4');
+      h.textContent = g.title + ' · ' + items.length;
+      sec.appendChild(h);
+      var grid = document.createElement('div');
+      grid.className = 'scenario-grid';
+      items.forEach(function(s, i){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.scenario = s.id;
+        b.innerHTML = '<span class="sid">'+g.id.toUpperCase()+(i+1)+' / '+s.id+' · '+s.steps.length+' шагов</span>'+escapeHtml(s.title);
+        if (s.id === state.scenarioId) b.classList.add('active');
+        b.addEventListener('click', function(){ pickScenario(s.id); });
+        grid.appendChild(b);
+      });
+      sec.appendChild(grid);
+      elScenarioGrid.appendChild(sec);
+    });
+
+    if (!list.some(function(s){return s.id===state.scenarioId;})) {
+      // keep selection even if filtered out of grid; select may still need value
+    }
+    elScenario.value = state.scenarioId;
+    if (elScenario.value !== state.scenarioId) {
+      // selected scenario not in current filter options — add hidden option
+      var o = document.createElement('option');
+      o.value = state.scenarioId;
+      var cur = currentScenario();
+      o.textContent = cur ? cur.title : state.scenarioId;
+      elScenario.appendChild(o);
+      elScenario.value = state.scenarioId;
+    }
+  }
+
+  function syncUrlFromState(){
+    try {
+      var q = new URLSearchParams();
+      if (state.view && state.view !== 'process') q.set('view', state.view);
+      if (state.scenarioId) q.set('scenario', state.scenarioId);
+      if (state.selected) q.set('node', state.selected);
+      var qs = q.toString();
+      history.replaceState(null, '', qs ? ('?' + qs) : location.pathname);
+    } catch (e) {}
+  }
+
+  function pickScenario(id){
+    if (!SCENARIOS.some(function(s){return s.id===id;})) return;
+    stopPlay(true);
+    state.scenarioId = id;
+    state.selected = null;
+    elScenario.value = id;
+    syncScenarioButtons();
+    updatePlayerUI();
+    renderLanes();
+    syncUrlFromState();
+    elStatusLine.textContent = 'Сценарий: ' + (currentScenario().title || id);
+  }
+
+  function syncScenarioButtons(){
+    elScenarioGrid.querySelectorAll('button[data-scenario]').forEach(function(b){
+      b.classList.toggle('active', b.dataset.scenario === state.scenarioId);
+    });
+  }
+
+  function stepNodes(st){
+    if (!st) return [];
+    if (st.nodes && st.nodes.length) return st.nodes.slice();
+    return st.node ? [st.node] : [];
+  }
+  function stepPrimary(st){
+    var ids = stepNodes(st);
+    return ids.length ? ids[0] : null;
+  }
+
+  function currentScenario(){
+    return SCENARIOS.filter(function(s){return s.id===state.scenarioId;})[0] || SCENARIOS[0];
+  }
+
+  function playPathIds(){
+    if (state.step < 0) return [];
+    var sc = currentScenario();
+    var out = [];
+    sc.steps.slice(0, state.step+1).forEach(function(s){
+      stepNodes(s).forEach(function(id){ if (out.indexOf(id) < 0) out.push(id); });
+    });
+    return out;
+  }
+
+  function nodeVisible(n){
+    if (state.gapsOnly && n.cov === 'ok') return false;
+    if (state.roleFilter && n.role !== state.roleFilter) return false;
+    return true;
+  }
+
+  function renderLanes(){
+    var path = playPathIds();
+    var pathSet = {};
+    path.forEach(function(id){ pathSet[id]=true; });
+    var activeSet = {};
+    if (state.step >= 0) {
+      stepNodes(currentScenario().steps[state.step]).forEach(function(id){ activeSet[id] = true; });
+    }
+
+    elLanes.innerHTML = '';
+    ROLES.forEach(function(role){
+      var nodes = NODES.filter(function(n){ return n.role === role.id; });
+      var lane = document.createElement('div');
+      lane.className = 'lane ' + role.id;
+      if (state.roleFilter && state.roleFilter !== role.id) lane.classList.add('dim');
+
+      var label = document.createElement('div');
+      label.className = 'lane-label';
+      label.innerHTML = role.title.replace(/\n/g,'<br>');
+      lane.appendChild(label);
+
+      var wrap = document.createElement('div');
+      wrap.className = 'lane-nodes';
+      nodes.forEach(function(n){
+        if (state.gapsOnly && n.cov === 'ok') return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'node cov-'+n.cov + (n.shape==='decision'?' decision':'');
+        if (state.selected === n.id) btn.classList.add('selected');
+        if (activeSet[n.id]) btn.classList.add('play-active');
+        if (state.step >= 0 && !pathSet[n.id] && state.roleFilter==='' && !state.gapsOnly) {
+          // soft dim nodes not yet reached in player
+          if (path.length) btn.style.opacity = pathSet[n.id] ? '1' : '0.45';
+        }
+        if (state.roleFilter && n.role !== state.roleFilter) btn.classList.add('dim');
+        btn.dataset.id = n.id;
+        btn.innerHTML =
+          '<span class="nid">'+n.id+'</span>'+
+          '<span class="ntitle">'+escapeHtml(n.title)+'</span>'+
+          '<span class="nmeta"><span class="pill cov '+n.cov+'">'+covLabel(n.cov)+'</span></span>';
+        btn.addEventListener('click', function(){ selectNode(n.id, true); });
+        wrap.appendChild(btn);
+      });
+      if (!wrap.children.length){
+        var empty = document.createElement('div');
+        empty.style.cssText='color:var(--muted);font-size:11px;padding:8px;';
+        empty.textContent = state.gapsOnly ? 'Нет разрывов в этой дорожке' : 'Нет узлов';
+        wrap.appendChild(empty);
+      }
+      lane.appendChild(wrap);
+      elLanes.appendChild(lane);
+    });
+  }
+
+  function renderZones(){
+    elZones.innerHTML = '';
+    ZONES.forEach(function(z){
+      if (state.gapsOnly && z.cov === 'ok') return;
+      if (state.roleFilter && z.role !== state.roleFilter) return;
+      var b = document.createElement('button');
+      b.type='button';
+      b.className = 'zone cov-'+z.cov + (state.selected===z.id?' selected':'');
+      b.innerHTML = '<div class="zt">'+escapeHtml(z.title)+'</div>'+
+        '<div class="zd">'+escapeHtml(z.desc)+'</div>'+
+        '<span class="pill '+z.cov+'">'+covLabel(z.cov)+'</span>';
+      b.addEventListener('click', function(){ selectZone(z.id); });
+      elZones.appendChild(b);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function selectZone(id){
+    state.selected = id;
+    var z = ZONES.filter(function(x){return x.id===id;})[0];
+    renderZones();
+    elSideEmpty.hidden = true;
+    elSideContent.hidden = false;
+    elSideContent.innerHTML =
+      '<h2>'+escapeHtml(z.title)+'</h2>'+
+      '<div class="kv">'+
+        '<div class="k">ID</div><div class="v"><code>'+z.id+'</code></div>'+
+        '<div class="k">Роль</div><div class="v">'+roleTitle(z.role)+'</div>'+
+        '<div class="k">Покрытие</div><div class="v"><span class="pill '+z.cov+'">'+covLabel(z.cov)+'</span></div>'+
+      '</div>'+
+      '<div class="block"><h3>Описание</h3><p>'+escapeHtml(z.desc)+'</p></div>'+
+      '<div class="block"><h3>Связь</h3><p>Зона со 2-й страницы блок-схемы. Физический контур склада; в АРМ зоны как объекты не выделены.</p></div>';
+  }
+
+  function roleTitle(id){
+    var r = ROLES.filter(function(x){return x.id===id;})[0];
+    return r ? r.title.replace(/\n/g,' ') : id;
+  }
+
+  function selectNode(id, fromClick){
+    var n = byId[id];
+    if (!n) return;
+    state.selected = id;
+    if (fromClick) stopPlay(false);
+    renderLanes();
+    showNodeSide(n);
+    syncUrlFromState();
+    elStatusLine.textContent = n.id + ' · ' + roleTitle(n.role) + ' · ' + covLabel(n.cov);
+  }
+
+  function showNodeSide(n){
+    elSideEmpty.hidden = true;
+    elSideContent.hidden = false;
+    var statuses = (n.status||[]).map(function(s){
+      return '<span class="chip">'+(STATUS_TITLE[s]||s)+'</span>';
+    }).join('') || '<span class="chip">—</span>';
+    var cols = (n.cols||[]).map(function(c){
+      return '<span class="chip">'+(COL_TITLE[c]||c)+'</span>';
+    }).join('') || '<span class="chip">—</span>';
+
+    var nextHtml = '';
+    if (n.next && n.next.length){
+      nextHtml = '<div class="block"><h3>Переходы</h3><div class="nexts">'+
+        n.next.map(function(x){
+          var t = byId[x.to];
+          var label = (x.dashed?'⋯ ':'→ ')+(x.label||'')+' → '+(t?t.title:x.to);
+          return '<button type="button" data-goto="'+x.to+'">'+escapeHtml(label)+'</button>';
+        }).join('')+
+      '</div></div>';
+    }
+
+    var conflict = n.conflict ? '<div class="conflict" style="margin-top:10px">'+escapeHtml(n.conflict)+'</div>' : '';
+
+    elSideContent.innerHTML =
+      '<h2>'+escapeHtml(n.title)+'</h2>'+
+      '<div class="kv">'+
+        '<div class="k">Узел</div><div class="v"><code>'+n.id+'</code>'+(n.shape==='decision'?' · решение':'')+'</div>'+
+        '<div class="k">Роль</div><div class="v">'+roleTitle(n.role)+'</div>'+
+        '<div class="k">Покрытие</div><div class="v"><span class="pill '+n.cov+'">'+covLabel(n.cov)+'</span></div>'+
+      '</div>'+
+      '<div class="block"><h3>Со схемы</h3><p>'+escapeHtml(n.full)+'</p></div>'+
+      '<div class="block"><h3>ТЗ</h3><p>'+escapeHtml(n.tz)+'</p></div>'+
+      '<div class="block"><h3>Статусы матрицы</h3><div class="chips">'+statuses+'</div></div>'+
+      '<div class="block"><h3>Колонки матрицы</h3><div class="chips">'+cols+'</div>'+
+        '<p style="margin-top:6px"><a href="index.html">Открыть матрицу прав →</a></p></div>'+
+      '<div class="block"><h3>Код АРМ (src)</h3><p>'+escapeHtml(n.code)+'</p></div>'+
+      conflict + nextHtml;
+
+    elSideContent.querySelectorAll('[data-goto]').forEach(function(btn){
+      btn.addEventListener('click', function(){ selectNode(btn.getAttribute('data-goto'), true); });
+    });
+  }
+
+  function updatePlayerUI(){
+    var sc = currentScenario();
+    var g = groupTitle(sc.group);
+    if (state.step < 0){
+      elPlayerTitle.textContent = g + ' · ' + sc.title;
+      elPlayerNote.textContent = 'Нажмите «Плей» или ◀/▶. Шагов: '+sc.steps.length+'.';
+      elPlayerProgress.style.width = '0%';
+      return;
+    }
+    var st = sc.steps[state.step];
+    var ids = stepNodes(st);
+    var titles = ids.map(function(id){ var n = byId[id]; return n ? n.title : id; }).join(' ∥ ');
+    elPlayerTitle.textContent = (state.step+1)+'/'+sc.steps.length+' · '+titles;
+    elPlayerNote.textContent = st.note + (st.status ? ' · статус матрицы: '+(STATUS_TITLE[st.status]||st.status) : '');
+    elPlayerProgress.style.width = Math.round(((state.step+1)/sc.steps.length)*100) + '%';
+  }
+
+  function goStep(i){
+    var sc = currentScenario();
+    if (i < 0 || i >= sc.steps.length) { stopPlay(true); return; }
+    state.step = i;
+    var st = sc.steps[i];
+    var primary = stepPrimary(st);
+    state.selected = primary;
+    updatePlayerUI();
+    renderLanes();
+    if (primary && byId[primary]) showNodeSide(byId[primary]);
+    elStatusLine.textContent = 'Сценарий: '+sc.title+' · шаг '+(i+1)+'/'+sc.steps.length;
+  }
+
+  function stopPlay(resetStep){
+    state.playing = false;
+    if (state.playTimer){ clearInterval(state.playTimer); state.playTimer=null; }
+    document.getElementById('btnPlay').textContent = '▶ Плей';
+    if (resetStep){
+      state.step = -1;
+      updatePlayerUI();
+      renderLanes();
+    }
+  }
+
+  function togglePlay(){
+    if (state.playing){ stopPlay(false); return; }
+    state.playing = true;
+    document.getElementById('btnPlay').textContent = '❚❚ Пауза';
+    if (state.step < 0) goStep(0);
+    state.playTimer = setInterval(function(){
+      var sc = currentScenario();
+      if (state.step >= sc.steps.length-1){ stopPlay(false); return; }
+      goStep(state.step+1);
+    }, 1600);
+  }
+
+  function setView(v){
+    state.view = v;
+    elBody.classList.toggle('view-estimate', v==='estimate');
+    document.getElementById('processView').hidden = v!=='process';
+    document.getElementById('zonesView').hidden = v!=='zones';
+    document.getElementById('estimateView').hidden = v!=='estimate';
+    document.querySelectorAll('#viewSeg button').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-view')===v);
+    });
+    if (v==='estimate'){
+      stopPlay(false);
+      renderEstimate();
+    } else if (v==='zones') {
+      renderZones();
+    } else {
+      renderLanes();
+    }
+    try {
+      syncUrlFromState();
+    } catch(e){}
+  }
+
+  function applyChrome(){
+    elBody.classList.toggle('coverage-off', !state.coverage);
+    document.getElementById('btnCoverage').classList.toggle('active', state.coverage);
+    document.getElementById('btnGapsOnly').classList.toggle('active', state.gapsOnly);
+    if (state.view==='process') renderLanes();
+    else if (state.view==='zones') renderZones();
+  }
+
+  function bootFromQuery(){
+    var q = new URLSearchParams(location.search);
+    var view = q.get('view');
+    var node = q.get('node');
+    var sc = q.get('scenario');
+    if (sc && SCENARIOS.some(function(s){return s.id===sc;})) {
+      state.scenarioId = sc;
+      elScenario.value = sc;
+      syncScenarioButtons();
+      updatePlayerUI();
+    }
+    if (view==='zones' || view==='estimate') setView(view);
+    if (node && byId[node] && state.view!=='estimate') selectNode(node, true);
+    else syncUrlFromState();
+  }
+
+  // events
+  document.getElementById('viewSeg').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-view]'); if(!b) return;
+    setView(b.getAttribute('data-view'));
+  });
+  elScenariosToggle.addEventListener('click', function(){
+    setScenariosOpen(!state.scenariosOpen);
+  });
+  document.getElementById('btnCoverage').addEventListener('click', function(){
+    state.coverage = !state.coverage; applyChrome();
+  });
+  document.getElementById('btnGapsOnly').addEventListener('click', function(){
+    state.gapsOnly = !state.gapsOnly; applyChrome();
+  });
+  elRoleFilter.addEventListener('change', function(){
+    state.roleFilter = elRoleFilter.value; applyChrome();
+  });
+  elScenario.addEventListener('change', function(){
+    pickScenario(elScenario.value);
+  });
+  document.getElementById('btnPlay').addEventListener('click', togglePlay);
+  document.getElementById('btnPrev').addEventListener('click', function(){
+    stopPlay(false);
+    if (state.step < 0) goStep(0);
+    else if (state.step > 0) goStep(state.step-1);
+  });
+  document.getElementById('btnNext').addEventListener('click', function(){
+    stopPlay(false);
+    var sc = currentScenario();
+    if (state.step < 0) goStep(0);
+    else if (state.step < sc.steps.length-1) goStep(state.step+1);
+  });
+  document.getElementById('btnStop').addEventListener('click', function(){ stopPlay(true); });
+
+  fillSelectors();
+  renderStats();
+  updatePlayerUI();
+  setScenariosOpen(false);
+  renderLanes();
+  bootFromQuery();
+})();
+</script>
+</body>
+</html>
