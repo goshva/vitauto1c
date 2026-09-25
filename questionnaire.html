@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Опросник ролей — Витавто (1С:УНФ)</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --border:#dbe0e6; --text:#1f2937; --muted:#6b7280;
+    --accent:#2563eb; --accent-dark:#1d4ed8; --accent-soft:#e3ecff;
+    --green-bg:#d9f2df; --green-bd:#8fd6a4;
+    --yellow-bg:#fdf3d0; --yellow-bd:#e6c766;
+    --danger:#dc2626;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg);color:var(--text);font-family:Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.35;
+    padding-bottom:calc(84px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent;}
+  button,select,input{font:inherit;color:inherit;}
+  button{cursor:pointer;}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px;}
+
+  /* Шапка с прогрессом */
+  header.top{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);padding:10px 0 10px;}
+  .top-row{display:flex;align-items:center;gap:8px;}
+  .top-row h1{font-size:16px;margin:0;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .icon-btn{border:1px solid var(--border);background:var(--panel);border-radius:10px;min-width:44px;height:40px;padding:0 10px;font-size:14px;}
+  .icon-btn:active{background:#eef1f5;}
+  .level-toggle{display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;}
+  .level-toggle button{flex:1;border:none;background:var(--panel);padding:8px 6px;font-size:13px;min-height:38px;}
+  .level-toggle button.active{background:var(--accent);color:#fff;}
+  .progress{margin-top:8px;}
+  .progress-bar{height:8px;background:#e6e9ee;border-radius:4px;overflow:hidden;position:relative;}
+  .progress-bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px;transition:width .2s;}
+  .progress-bar .tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.7);}
+  .progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px;}
+
+  /* Карточка вопроса */
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px;}
+  .crumbs{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef1f6;font-size:12px;color:var(--muted);}
+  .pill.ok{background:var(--green-bg);color:#166534;}
+  .pill.draft{background:var(--yellow-bg);color:#854d0e;}
+  .col-title{font-size:20px;font-weight:600;margin:10px 0 2px;}
+  .col-id{font-family:Consolas,monospace;font-size:12px;color:var(--muted);}
+  .status-line{margin-top:10px;font-size:15px;}
+  .status-line b{color:var(--accent-dark);}
+  .q{font-weight:600;margin:18px 0 8px;font-size:15px;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
+
+  .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .chip{display:flex;align-items:center;gap:8px;text-align:left;border:1.5px solid var(--border);background:var(--panel);
+    border-radius:12px;padding:10px 10px;min-height:48px;font-size:14px;min-width:0;overflow-wrap:anywhere;}
+  .chip::before{content:'';flex:0 0 18px;height:18px;border-radius:5px;border:1.5px solid #9aa3af;background:#fff;}
+  .chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);}
+  .chip[aria-pressed="true"]::before{background:var(--accent);border-color:var(--accent);
+    box-shadow:inset 0 0 0 3px #fff;}
+  .chip.none{grid-column:1 / -1;}
+  .chip.none[aria-pressed="true"]{border-color:var(--yellow-bd);background:var(--yellow-bg);}
+  .chip.none[aria-pressed="true"]::before{background:#b45309;border-color:#b45309;}
+
+  .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;min-height:48px;}
+  .switch-row.disabled{opacity:.5;}
+  .switch{position:relative;width:46px;height:28px;flex:0 0 46px;}
+  .switch input{opacity:0;width:0;height:0;position:absolute;}
+  .switch span{position:absolute;inset:0;background:#cfd5dd;border-radius:14px;transition:background .15s;}
+  .switch span::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .switch input:checked + span{background:var(--danger);}
+  .switch input:checked + span::after{transform:translateX(18px);}
+  select.type{width:100%;min-height:46px;border:1.5px solid var(--border);border-radius:12px;padding:8px 10px;background:var(--panel);}
+
+  .quick{display:flex;flex-direction:column;gap:8px;margin-top:18px;}
+  .quick button{border:1px dashed var(--border);background:#fafbfc;border-radius:12px;padding:10px 12px;min-height:44px;text-align:left;font-size:14px;}
+  .quick button:disabled{opacity:.45;cursor:default;}
+
+  /* Нижняя навигация */
+  nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--panel);border-top:1px solid var(--border);
+    padding:10px 0 calc(10px + env(safe-area-inset-bottom));}
+  nav.bottom .wrap{display:flex;gap:8px;}
+  nav.bottom button{min-height:52px;border-radius:12px;border:1px solid var(--border);background:var(--panel);font-size:15px;}
+  #btnBack{flex:0 0 64px;}
+  #btnSkip{flex:0 0 auto;padding:0 14px;color:var(--muted);}
+  #btnNext{flex:1 1 auto;background:var(--accent);border-color:var(--accent-dark);color:#fff;font-weight:600;}
+  nav.bottom button:disabled{opacity:.45;}
+
+  /* Выдвижные панели */
+  .sheet-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
+  .sheet-overlay[hidden]{display:none;}
+  .sheet{background:var(--panel);width:100%;max-width:640px;max-height:88vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;
+    padding-bottom:env(safe-area-inset-bottom);}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);}
+  .sheet-head h2{margin:0;font-size:16px;}
+  .sheet-body{overflow:auto;padding:8px 16px 16px;}
+  .menu-list{display:flex;flex-direction:column;gap:8px;padding-top:8px;}
+  .menu-list button{min-height:48px;border:1px solid var(--border);background:var(--panel);border-radius:12px;text-align:left;padding:10px 14px;font-size:15px;}
+  .menu-list button.danger{color:var(--danger);border-color:#f3b4ae;}
+  .menu-list .note{font-size:12px;color:var(--muted);}
+  .nav-col{padding:10px 0;border-bottom:1px solid var(--border);}
+  .nav-col-title{font-size:14px;display:flex;justify-content:space-between;gap:8px;}
+  .nav-col-title span{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .dots{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .dot{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:11px;color:var(--muted);padding:0;}
+  .dot.ok{background:var(--green-bg);border-color:var(--green-bd);color:#166534;}
+  .dot.cur{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;background:#111827;color:#fff;
+    padding:10px 14px;border-radius:10px;font-size:13px;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgba(0,0,0,.25);}
+  .toast[hidden]{display:none;}
+  .done-big{font-size:40px;text-align:center;margin:8px 0;}
+  .done-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .done-actions button{min-height:48px;border-radius:12px;border:1px solid var(--border);background:var(--panel);font-size:15px;}
+  .done-actions button.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;font-weight:600;}
+  #importFile{display:none;}
+  a{color:var(--accent-dark);}
+
+  @media (min-width:700px){
+    body{font-size:14px;}
+    .chips{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .sheet-overlay{align-items:center;}
+    .sheet{border-radius:16px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <a class="icon-btn" href="index.html" title="К матрице" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit;">←</a>
+      <h1>Опросник: кто редактирует</h1>
+      <button class="icon-btn" id="btnNav" title="Список вопросов">☰</button>
+      <button class="icon-btn" id="btnMenu" title="Меню">⋯</button>
+    </div>
+    <div class="level-toggle" id="levelToggle">
+      <button data-level="order">Статус заказа</button>
+      <button data-level="line">Статус детали (строки)</button>
+    </div>
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"><i id="progressFill"></i></div>
+      <div class="progress-meta"><span id="progressText"></span><span id="exportText"></span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<nav class="bottom">
+  <div class="wrap">
+    <button id="btnBack" title="Предыдущий вопрос">←</button>
+    <button id="btnSkip" title="Пропустить без ответа">Пропустить</button>
+    <button id="btnNext">Сохранить и далее →</button>
+  </div>
+</nav>
+
+<div class="sheet-overlay" id="navOverlay" hidden>
+  <div class="sheet" role="dialog" aria-label="Список вопросов">
+    <div class="sheet-head"><h2>Вопросы</h2><button class="icon-btn" data-close>✕</button></div>
+    <div class="sheet-body">
+      <div class="menu-list" style="padding-top:4px;"><button id="btnFirstOpen">→ К первому неотвеченному</button></div>
+      <div id="navList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="menuOverlay" hidden>
+  <div class="sheet" role="dialog" aria-label="Меню">
+    <div class="sheet-head"><h2>Меню</h2><button class="icon-btn" data-close>✕</button></div>
+    <div class="sheet-body">
+      <div class="menu-list">
+        <button id="btnExport">⬇ Экспорт JSON сейчас</button>
+        <div class="note">Файл совместим с «Импорт JSON» в матрице. Автоэкспорт срабатывает на каждые 10% заполнения.</div>
+        <button id="btnApply">↪ Применить ответы в матрицу (этот браузер)</button>
+        <button id="btnImport">⬆ Продолжить из файла JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json">
+        <button id="btnReset" class="danger">Сбросить ответы</button>
+        <div class="note">Ответы хранятся в localStorage этого браузера (ключ <code>vitaauto_questionnaire_v1</code>).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // Справочники — те же, что в index.html (матрица). При изменении матрицы синхронизировать.
+  var MATRIX_KEY = 'vitaauto_column_matrix_v1';
+  var Q_KEY = 'vitaauto_questionnaire_v1';
+  var SCHEMA_VERSION = 1;
+  var LEVELS = ['order','line'];
+  var LEVEL_TITLES = {order:'Заказ', line:'Деталь'};
+
+  var ROLES = [
+    {id:'manager', title:'Менеджер'},
+    {id:'storekeeper', title:'Кладовщик / Сборщик'},
+    {id:'chief_mechanic', title:'Главный механик'},
+    {id:'admin', title:'Администратор'},
+    {id:'supplier', title:'Поставщик'},
+    {id:'client', title:'Клиент'}
+  ];
+
+  var STATUSES = [
+    {id:'new', title:'Новый'},
+    {id:'ordered', title:'Заказано у поставщика'},
+    {id:'paid', title:'Оплачено'},
+    {id:'in_transit', title:'В пути'},
+    {id:'awaiting_receipt', title:'Ожидаем поступление'},
+    {id:'acceptance', title:'Приемка'},
+    {id:'reserve', title:'Резервирование'},
+    {id:'assembly', title:'Комплектация'},
+    {id:'ready_to_ship', title:'Готово к отгрузке'},
+    {id:'shipped', title:'Отгружено'},
+    {id:'return', title:'Возврат'},
+    {id:'closed', title:'Закрыт'}
+  ];
+
+  var COLUMNS = [
+    {id:'cell_select', title:'поле выбора ячеек', group:'system'},
+    {id:'row_number', title:'№ п/п', group:'system'},
+    {id:'doc_signed_original', title:'Документ подписан оригинал', group:'doc_flag', type:'bool'},
+    {id:'shipment_date', title:'Дата отгрузки', group:'auto'},
+    {id:'shipment_number', title:'Номер отгрузки', group:'auto'},
+    {id:'order_date', title:'Дата заказа', group:'auto'},
+    {id:'order_internal_number', title:'№ заказ внутренний наш', group:'auto'},
+    {id:'order_client_number', title:'№ заказ клиент', group:'order_header'},
+    {id:'customer', title:'Заказчик', group:'order_header'},
+    {id:'contract', title:'Договор с заказчиком', group:'order_header'},
+    {id:'service_type', title:'Вид услуги', group:'order_header'},
+    {id:'brand_fact', title:'Марка', group:'fact'},
+    {id:'model_fact', title:'Модель', group:'fact'},
+    {id:'gosnomer_fact', title:'Госномер', group:'fact'},
+    {id:'grz_fact', title:'№ Шасии', group:'fact'},
+    {id:'vin_fact', title:'VIN (ХТС)', group:'fact'},
+    {id:'engine_fact', title:'Двигатель', group:'fact'},
+    {id:'urgency_fact', title:'Срочность (ФАКТ) / комментарий заказчика', group:'fact'},
+    {id:'vehicle_plate_fact', title:'Машина ГРЗ (ФАКТ)', group:'fact'},
+    {id:'territory_fact', title:'Территория (ФАКТ)', group:'fact'},
+    {id:'name_fact', title:'Наименование (ФАКТ)', group:'fact_editable'},
+    {id:'article_fact', title:'Артикул (ФАКТ)', group:'fact_editable'},
+    {id:'qty_fact', title:'Кол-во (ФАКТ)', group:'fact'},
+    {id:'unit_fact', title:'Ед. изм. (ФАКТ)', group:'fact'},
+    {id:'name', title:'Наименование', group:'nomenclature'},
+    {id:'article', title:'Артикул', group:'nomenclature'},
+    {id:'code_aa', title:'Код А-А / код поставщика', group:'nomenclature'},
+    {id:'unit', title:'Ед. изм.', group:'nomenclature'},
+    {id:'qty', title:'Кол-во', group:'nomenclature', type:'decimal'},
+    {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
+    {id:'stock_qty', title:'Кол-во в наличии на складе', group:'stock', type:'decimal'},
+    {id:'reserve_qty', title:'Кол-во в резерве', group:'stock', type:'decimal'},
+    {id:'ordered_in_transit_qty', title:'Кол-во заказанного в пути / свободное', group:'stock'},
+    {id:'batch_fifo', title:'№ партии ФИФО / выбор партии', group:'stock'},
+    {id:'line_status', title:'Статус заявки', group:'status'},
+    {id:'price', title:'Цена (себес.)', group:'pricing', type:'decimal'},
+    {id:'sum', title:'Сумма (себес.)', group:'pricing', type:'decimal'},
+    {id:'payment_form', title:'Форма оплаты', group:'payment'},
+    {id:'rrc', title:'РРЦ', group:'margin_locked'},
+    {id:'paid_status', title:'Оплачено (счёт, оплата, постоплата)', group:'payment'},
+    {id:'coefficient', title:'Коэфф', group:'margin_open'},
+    {id:'extra_field_1', title:'Цена продажи', group:'pricing', type:'decimal'},
+    {id:'extra_field_2', title:'Сумма продажи', group:'pricing', type:'decimal'},
+    {id:'supplier', title:'Поставщик', group:'receipt'},
+    {id:'receipt_date', title:'Дата получения', group:'receipt'},
+    {id:'upd_date', title:'Дата УПД', group:'receipt'},
+    {id:'upd_number', title:'№ УПД', group:'receipt'},
+    {id:'supplier_ship_territory', title:'Территория отгрузки поставщиком', group:'receipt'},
+    {id:'comment', title:'Комментарий', group:'comment'}
+  ];
+
+  var DATA_TYPE_LABELS = {
+    select:'Выпадающий список', date:'Дата', text:'Текст', number:'Число', checkbox:'Чекбокс', matrix:'Матрица'
+  };
+  var DATA_TYPE_VALUES = ['select','date','text','number','checkbox','matrix'];
+  var DEFAULT_DATA_TYPES = {
+    cell_select:'checkbox', doc_signed_original:'checkbox',
+    row_number:'number', qty_fact:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
+    shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date',
+    customer:'select', contract:'select', service_type:'select', territory_fact:'select', unit_fact:'select', unit:'select',
+    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select',
+    supplier_ship_territory:'select'
+  };
+  function defaultDataType(col){
+    if (DEFAULT_DATA_TYPES[col.id]) return DEFAULT_DATA_TYPES[col.id];
+    if (col.type === 'bool') return 'checkbox';
+    if (col.type === 'decimal') return 'number';
+    return 'text';
+  }
+
+  var ROLE_IDS = ROLES.map(function(r){ return r.id; });
+  var S = STATUSES.length, C = COLUMNS.length, TOTAL = S * C;
+
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+  }
+  function roleTitle(id){ var r = ROLES.filter(function(x){ return x.id === id; })[0]; return r ? r.title : id; }
+
+  // ---------------- Состояние опросника ----------------
+  // answers[level][colId][statusId] = {roles:[...], required:bool}; наличие ключа = вопрос отвечен
+  function blankQ(){
+    return {version:1, level:'order', pos:{order:0, line:0}, answers:{order:{}, line:{}},
+      columnTypes:{}, exported:{order:0, line:0}};
+  }
+  function normalizeQ(q){
+    var b = blankQ();
+    if (!q || typeof q !== 'object') return b;
+    b.level = q.level === 'line' ? 'line' : 'order';
+    LEVELS.forEach(function(l){
+      b.pos[l] = Math.max(0, Math.min(TOTAL, (q.pos && +q.pos[l]) || 0));
+      b.exported[l] = Math.max(0, Math.min(10, (q.exported && +q.exported[l]) || 0));
+      var src = (q.answers && q.answers[l]) || {};
+      COLUMNS.forEach(function(c){
+        STATUSES.forEach(function(s){
+          var a = src[c.id] && src[c.id][s.id];
+          if (!a || !Array.isArray(a.roles)) return;
+          setAnswer(b, l, c.id, s.id, a.roles, !!a.required);
+        });
+      });
+    });
+    if (q.columnTypes) COLUMNS.forEach(function(c){
+      if (DATA_TYPE_VALUES.indexOf(q.columnTypes[c.id]) !== -1) b.columnTypes[c.id] = q.columnTypes[c.id];
+    });
+    return b;
+  }
+  function setAnswer(q, level, colId, statusId, roles, required){
+    roles = ROLE_IDS.filter(function(id){ return roles.indexOf(id) !== -1; });
+    if (!q.answers[level][colId]) q.answers[level][colId] = {};
+    q.answers[level][colId][statusId] = {roles:roles, required: !!required && roles.length > 0};
+  }
+  function getAnswer(level, colId, statusId){
+    var c = qs.answers[level][colId];
+    return c && c[statusId] ? c[statusId] : null;
+  }
+
+  function loadQ(){
+    try{ return normalizeQ(JSON.parse(localStorage.getItem(Q_KEY) || 'null')); }catch(e){ return blankQ(); }
+  }
+  function saveQ(){
+    try{ localStorage.setItem(Q_KEY, JSON.stringify(qs)); }catch(e){}
+  }
+
+  // Сохранённая матрица из index.html (если есть) — источник подсказок и основа экспорта
+  function loadMatrix(){
+    try{
+      var m = JSON.parse(localStorage.getItem(MATRIX_KEY) || 'null');
+      return m && m.matrix && m.matrix.order && m.matrix.line ? m : null;
+    }catch(e){ return null; }
+  }
+
+  function canRoleEdit(cell, roleId){
+    if (!cell || cell.editable === 'none') return false;
+    if (cell.editable === 'all') return true;
+    if (cell.editable === 'admin') return roleId === 'admin';
+    if (cell.editable === 'role'){
+      var list = Array.isArray(cell.editableRoles) ? cell.editableRoles : (cell.editableRole ? [cell.editableRole] : []);
+      return list.indexOf(roleId) !== -1;
+    }
+    return false;
+  }
+
+  function suggestion(level, colId, statusId){
+    if (!baseMatrix) return null;
+    var lvl = baseMatrix.matrix[level], roles = [], required = false, found = false;
+    ROLE_IDS.forEach(function(r){
+      var cell = lvl[r] && lvl[r][statusId] && lvl[r][statusId][colId];
+      if (!cell) return;
+      found = true;
+      if (canRoleEdit(cell, r)) roles.push(r);
+      if (cell.required) required = true;
+    });
+    return found ? {roles:roles, required:required && roles.length > 0} : null;
+  }
+
+  function dataTypeOf(colId){
+    if (qs.columnTypes[colId]) return qs.columnTypes[colId];
+    if (baseMatrix && baseMatrix.columnTypes && DATA_TYPE_VALUES.indexOf(baseMatrix.columnTypes[colId]) !== -1) return baseMatrix.columnTypes[colId];
+    return defaultDataType({id:colId, type:(COLUMNS.filter(function(c){ return c.id === colId; })[0] || {}).type});
+  }
+
+  function answeredCount(level){
+    var n = 0, a = qs.answers[level];
+    for (var c in a) for (var s in a[c]) n++;
+    return n;
+  }
+  function percent(level){ return Math.floor(answeredCount(level) * 100 / TOTAL); }
+
+  // ---------------- Экспорт ----------------
+  function blankMatrixState(){
+    var matrix = {};
+    LEVELS.forEach(function(l){
+      matrix[l] = {};
+      ROLES.forEach(function(r){
+        matrix[l][r.id] = {};
+        STATUSES.forEach(function(s){ matrix[l][r.id][s.id] = {}; });
+      });
+    });
+    return {version:SCHEMA_VERSION, settings:{statusLevel:'order', activeRole:'manager', statusViewMode:'all', currentStatusIndex:0}, matrix:matrix};
+  }
+
+  // Полное состояние в формате матрицы (index.html → «Импорт JSON»).
+  // Неотвеченные ячейки берутся из сохранённой матрицы, если она есть.
+  function buildExport(){
+    var base = loadMatrix();
+    var st = base ? JSON.parse(JSON.stringify(base)) : blankMatrixState();
+    st.version = SCHEMA_VERSION;
+    st.roles = ROLE_IDS.slice();
+    st.statuses = STATUSES.map(function(s){ return {id:s.id, title:s.title}; });
+    st.columnTypes = {};
+    COLUMNS.forEach(function(c){ st.columnTypes[c.id] = dataTypeOf(c.id); });
+    st.columns = COLUMNS.map(function(c){
+      return {id:c.id, title:c.title, group:c.group, type:c.type || null, dataType:st.columnTypes[c.id]};
+    });
+    LEVELS.forEach(function(l){
+      if (!st.matrix[l]) st.matrix[l] = {};
+      ROLES.forEach(function(r){
+        if (!st.matrix[l][r.id]) st.matrix[l][r.id] = {};
+        STATUSES.forEach(function(s){
+          if (!st.matrix[l][r.id][s.id]) st.matrix[l][r.id][s.id] = {};
+          COLUMNS.forEach(function(c){
+            var a = getAnswer(l, c.id, s.id);
+            var cur = st.matrix[l][r.id][s.id][c.id];
+            if (a){
+              st.matrix[l][r.id][s.id][c.id] = {
+                visible:true, editable: a.roles.length ? 'role' : 'none',
+                editableRoles: a.roles.slice(), required: a.required
+              };
+            } else if (!cur){
+              st.matrix[l][r.id][s.id][c.id] = {visible:true, editable:'none', editableRoles:[], required:false};
+            }
+          });
+        });
+      });
+    });
+    st.updatedAt = new Date().toISOString();
+    st.questionnaire = {
+      answers: qs.answers, columnTypes: qs.columnTypes,
+      progress: {order: percent('order'), line: percent('line')}, total: TOTAL
+    };
+    return st;
+  }
+
+  function downloadJson(obj, name){
+    var blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function exportName(suffix){
+    var d = new Date(), p = function(n){ return (n < 10 ? '0' : '') + n; };
+    return 'vitauto-roles-' + qs.level + '-' + suffix + '-' + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.json';
+  }
+
+  // Автоэкспорт на каждом пройденном пороге 10%, 20%, … 100% (по текущему уровню статуса)
+  function maybeAutoExport(){
+    var decile = Math.floor(percent(qs.level) / 10);
+    if (decile > qs.exported[qs.level]){
+      qs.exported[qs.level] = decile;
+      saveQ();
+      downloadJson(buildExport(), exportName((decile * 10) + 'pct'));
+      toast('Заполнено ' + (decile * 10) + '% — JSON сохранён в загрузки');
+    }
+  }
+
+  // ---------------- UI ----------------
+  var qs = loadQ();
+  var baseMatrix = loadMatrix();
+  var draft = null; // {roles, required} текущей карточки до нажатия «Далее»
+
+  var elMain = document.getElementById('main');
+
+  function pos(){ return qs.pos[qs.level]; }
+  function posToCell(p){ return {col: COLUMNS[Math.floor(p / S)], status: STATUSES[p % S], ci: Math.floor(p / S), si: p % S}; }
+
+  function makeDraft(){
+    var p = pos();
+    if (p >= TOTAL){ draft = null; return; }
+    var c = posToCell(p);
+    var a = getAnswer(qs.level, c.col.id, c.status.id);
+    var src = 'answer';
+    if (!a){ a = suggestion(qs.level, c.col.id, c.status.id); src = a ? 'matrix' : 'empty'; }
+    if (!a && c.si > 0){
+      var prev = getAnswer(qs.level, c.col.id, STATUSES[c.si - 1].id);
+      if (prev){ a = prev; src = 'prev'; }
+    }
+    draft = {roles: a ? a.roles.slice() : [], required: a ? !!a.required : false, src: src, touched: false};
+  }
+
+  function renderHeader(){
+    document.querySelectorAll('#levelToggle button').forEach(function(b){
+      b.classList.toggle('active', b.dataset.level === qs.level);
+    });
+    var n = answeredCount(qs.level), pct = percent(qs.level);
+    document.getElementById('progressFill').style.width = (n * 100 / TOTAL) + '%';
+    var bar = document.getElementById('progressBar');
+    if (!bar.querySelector('.tick')){
+      for (var i = 1; i < 10; i++){ var t = document.createElement('span'); t.className = 'tick'; t.style.left = (i * 10) + '%'; bar.appendChild(t); }
+    }
+    document.getElementById('progressText').textContent = pct + '% · ' + n + ' из ' + TOTAL + ' (' + LEVEL_TITLES[qs.level] + ')';
+    var ex = qs.exported[qs.level];
+    document.getElementById('exportText').textContent = ex ? ('автоэкспорт: ' + (ex * 10) + '%') : 'автоэкспорт каждые 10%';
+  }
+
+  function renderCard(){
+    var p = pos();
+    var btnNext = document.getElementById('btnNext'), btnSkip = document.getElementById('btnSkip');
+    document.getElementById('btnBack').disabled = p <= 0;
+    if (p >= TOTAL){ renderDone(); btnNext.disabled = true; btnSkip.disabled = true; return; }
+    btnNext.disabled = false; btnSkip.disabled = false;
+
+    var c = posToCell(p);
+    var answered = !!getAnswer(qs.level, c.col.id, c.status.id);
+    var srcNote = {
+      answer:'', matrix:'Предзаполнено из сохранённой матрицы — проверьте и подтвердите.',
+      prev:'Предзаполнено как на предыдущем статусе — проверьте и подтвердите.', empty:''
+    }[draft.src];
+    var type = dataTypeOf(c.col.id);
+    var prevCol = prevAnsweredColumn(c.ci);
+
+    var chips = ROLES.map(function(r){
+      var on = draft.roles.indexOf(r.id) !== -1;
+      return '<button type="button" class="chip" data-role="'+r.id+'" aria-pressed="'+on+'">'+esc(r.title)+'</button>';
+    }).join('');
+    var none = draft.roles.length === 0;
+
+    elMain.innerHTML =
+      '<section class="card">'
+      + '<div class="crumbs"><span>Колонка '+(c.ci+1)+'/'+C+'</span><span>·</span><span>Статус '+(c.si+1)+'/'+S+'</span>'
+      +   (answered ? '<span class="pill ok">отвечено</span>' : '<span class="pill draft">нет ответа</span>') + '</div>'
+      + '<div class="col-title">'+esc(c.col.title)+'</div>'
+      + '<div class="col-id">'+esc(c.col.id)+'</div>'
+      + '<div class="status-line">Статус '+(qs.level === 'order' ? 'заказа' : 'детали')+': <b>'+esc(c.status.title)+'</b></div>'
+
+      + '<div class="q">Кто может редактировать эту колонку на этом статусе?</div>'
+      + '<div class="chips">' + chips
+      +   '<button type="button" class="chip none" data-none aria-pressed="'+none+'">Никто — только чтение</button>'
+      + '</div>'
+      + (srcNote ? '<div class="hint">'+srcNote+'</div>' : '')
+      + '<div class="hint">Колонка видна всем ролям; здесь отмечаются только те, кто может её менять.</div>'
+
+      + '<div class="q">Обязательно к заполнению?</div>'
+      + '<label class="switch-row'+(none ? ' disabled' : '')+'"><span>Да, поле обязательное</span>'
+      +   '<span class="switch"><input type="checkbox" id="reqToggle" '+(draft.required ? 'checked' : '')+' '+(none ? 'disabled' : '')+'><span></span></span></label>'
+
+      + '<div class="q">Тип данных колонки <span class="pill">для всех статусов</span></div>'
+      + '<select class="type" id="typeSelect">' + DATA_TYPE_VALUES.map(function(v){
+          return '<option value="'+v+'"'+(v === type ? ' selected' : '')+'>'+DATA_TYPE_LABELS[v]+'</option>';
+        }).join('') + '</select>'
+
+      + '<div class="quick">'
+      +   (prevCol
+            ? '<button type="button" id="btnCopyCol">⇇ Настройки как у поля «'+esc(COLUMNS[prevCol.ci].title)+'» — на все статусы ('+prevCol.count+' отв.)</button>'
+            : '<button type="button" disabled>⇇ Настройки как у предыдущего поля — пока нет отвеченных полей</button>')
+      +   '<button type="button" id="btnSamePrev" '+(c.si > 0 && getAnswer(qs.level, c.col.id, STATUSES[c.si-1].id) ? '' : 'disabled')+'>↺ Как на предыдущем статусе</button>'
+      +   '<button type="button" id="btnFillRest">⇉ Этот ответ — на все оставшиеся статусы колонки ('+(S - c.si)+')</button>'
+      + '</div>'
+      + '</section>';
+  }
+
+  function renderDone(){
+    var pct = percent(qs.level);
+    elMain.innerHTML = '<section class="card">'
+      + '<div class="done-big">'+(pct === 100 ? '✓' : '…')+'</div>'
+      + '<div class="col-title" style="text-align:center;">'+(pct === 100 ? 'Все вопросы пройдены' : 'Конец списка')+'</div>'
+      + '<div class="hint" style="text-align:center;">Уровень «'+LEVEL_TITLES[qs.level]+'»: заполнено '+pct+'%.'
+      + (pct < 100 ? ' Пропущенные вопросы можно найти через ☰.' : '') + '</div>'
+      + '<div class="done-actions">'
+      +   (pct < 100 ? '<button class="primary" data-act="first-open">К первому неотвеченному</button>' : '')
+      +   '<button '+(pct === 100 ? 'class="primary" ' : '')+'data-act="export">⬇ Экспорт JSON</button>'
+      +   '<button data-act="apply">↪ Применить в матрицу</button>'
+      +   '<button data-act="other-level">Перейти к уровню «'+LEVEL_TITLES[qs.level === 'order' ? 'line' : 'order']+'»</button>'
+      + '</div></section>';
+  }
+
+  function render(){ renderHeader(); renderCard(); }
+
+  function syncDraftUi(){
+    elMain.querySelectorAll('.chip[data-role]').forEach(function(b){
+      b.setAttribute('aria-pressed', draft.roles.indexOf(b.dataset.role) !== -1);
+    });
+    var none = draft.roles.length === 0;
+    var noneBtn = elMain.querySelector('.chip[data-none]');
+    if (noneBtn) noneBtn.setAttribute('aria-pressed', none);
+    if (none) draft.required = false;
+    var req = document.getElementById('reqToggle');
+    if (req){ req.checked = draft.required; req.disabled = none; req.closest('.switch-row').classList.toggle('disabled', none); }
+  }
+
+  function goTo(p){
+    qs.pos[qs.level] = Math.max(0, Math.min(TOTAL, p));
+    saveQ();
+    makeDraft();
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  // Ближайшее предыдущее поле (колонка), у которого есть хотя бы один ответ
+  function prevAnsweredColumn(ci){
+    for (var i = ci - 1; i >= 0; i--){
+      var a = qs.answers[qs.level][COLUMNS[i].id], n = 0;
+      for (var k in a) n++;
+      if (n) return {ci:i, count:n};
+    }
+    return null;
+  }
+
+  function firstOpen(){
+    for (var p = 0; p < TOTAL; p++){
+      var c = posToCell(p);
+      if (!getAnswer(qs.level, c.col.id, c.status.id)) return p;
+    }
+    return TOTAL;
+  }
+
+  function commitDraft(){
+    var c = posToCell(pos());
+    setAnswer(qs, qs.level, c.col.id, c.status.id, draft.roles, draft.required);
+    saveQ();
+  }
+
+  // ---- События карточки ----
+  elMain.addEventListener('click', function(e){
+    var chip = e.target.closest('.chip');
+    if (chip){
+      if (chip.hasAttribute('data-none')) draft.roles = [];
+      else {
+        var id = chip.dataset.role, i = draft.roles.indexOf(id);
+        if (i === -1) draft.roles.push(id); else draft.roles.splice(i, 1);
+        draft.roles = ROLE_IDS.filter(function(r){ return draft.roles.indexOf(r) !== -1; });
+      }
+      draft.touched = true;
+      syncDraftUi();
+      return;
+    }
+    if (e.target.id === 'btnSamePrev'){
+      var c = posToCell(pos());
+      var prev = getAnswer(qs.level, c.col.id, STATUSES[c.si - 1].id);
+      if (prev){ draft.roles = prev.roles.slice(); draft.required = prev.required; syncDraftUi(); }
+      return;
+    }
+    if (e.target.id === 'btnCopyCol'){
+      var tc = posToCell(pos()), src = prevAnsweredColumn(tc.ci);
+      if (!src) return;
+      var srcCol = COLUMNS[src.ci], srcAns = qs.answers[qs.level][srcCol.id];
+      if (!confirm('Применить настройки поля «' + srcCol.title + '» к полю «' + tc.col.title + '» на всех статусах (' + src.count + ' отв.)? Уже данные ответы этого поля будут перезаписаны.')) return;
+      STATUSES.forEach(function(st){
+        var a = srcAns[st.id];
+        if (a) setAnswer(qs, qs.level, tc.col.id, st.id, a.roles, a.required);
+      });
+      saveQ();
+      maybeAutoExport();
+      toast('Настройки «' + srcCol.title + '» применены к «' + tc.col.title + '»');
+      // дальше — первый неотвеченный статус этого поля, иначе следующее поле
+      var next = (tc.ci + 1) * S;
+      for (var si2 = 0; si2 < S; si2++){ if (!getAnswer(qs.level, tc.col.id, STATUSES[si2].id)){ next = tc.ci * S + si2; break; } }
+      goTo(next);
+      return;
+    }
+    if (e.target.id === 'btnFillRest'){
+      var cc = posToCell(pos());
+      var rest = S - cc.si;
+      if (rest > 1 && !confirm('Записать этот ответ на ' + rest + ' статусов колонки «' + cc.col.title + '» (с «' + cc.status.title + '» до «' + STATUSES[S-1].title + '»)? Уже данные ответы будут перезаписаны.')) return;
+      for (var si = cc.si; si < S; si++) setAnswer(qs, qs.level, cc.col.id, STATUSES[si].id, draft.roles, draft.required);
+      saveQ();
+      maybeAutoExport();
+      goTo((cc.ci + 1) * S);
+      return;
+    }
+    var act = e.target.closest('[data-act]');
+    if (act){
+      var a = act.dataset.act;
+      if (a === 'first-open') goTo(firstOpen());
+      if (a === 'export') doExport();
+      if (a === 'apply') doApply();
+      if (a === 'other-level') switchLevel(qs.level === 'order' ? 'line' : 'order');
+    }
+  });
+
+  elMain.addEventListener('change', function(e){
+    if (e.target.id === 'reqToggle'){ draft.required = e.target.checked; draft.touched = true; }
+    if (e.target.id === 'typeSelect'){
+      var c = posToCell(pos());
+      qs.columnTypes[c.col.id] = e.target.value;
+      saveQ();
+      toast('Тип «' + DATA_TYPE_LABELS[e.target.value] + '» сохранён для колонки');
+    }
+  });
+
+  document.getElementById('btnNext').addEventListener('click', function(){
+    if (pos() >= TOTAL) return;
+    commitDraft();
+    maybeAutoExport();
+    goTo(pos() + 1);
+  });
+  document.getElementById('btnSkip').addEventListener('click', function(){ goTo(pos() + 1); });
+  document.getElementById('btnBack').addEventListener('click', function(){ goTo(pos() - 1); });
+
+  function switchLevel(level){
+    if (level === qs.level) return;
+    qs.level = level;
+    saveQ();
+    makeDraft();
+    render();
+  }
+  document.getElementById('levelToggle').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-level]');
+    if (b) switchLevel(b.dataset.level);
+  });
+
+  // ---- Панели ----
+  function openSheet(id){ document.getElementById(id).hidden = false; document.body.style.overflow = 'hidden'; }
+  function closeSheets(){
+    document.querySelectorAll('.sheet-overlay').forEach(function(o){ o.hidden = true; });
+    document.body.style.overflow = '';
+  }
+  document.querySelectorAll('.sheet-overlay').forEach(function(o){
+    o.addEventListener('click', function(e){ if (e.target === o || e.target.closest('[data-close]')) closeSheets(); });
+  });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSheets(); });
+
+  function renderNav(){
+    var cur = pos();
+    document.getElementById('navList').innerHTML = COLUMNS.map(function(col, ci){
+      var done = 0;
+      var dots = STATUSES.map(function(s, si){
+        var p = ci * S + si, ok = !!getAnswer(qs.level, col.id, s.id);
+        if (ok) done++;
+        return '<button class="dot'+(ok ? ' ok' : '')+(p === cur ? ' cur' : '')+'" data-pos="'+p+'" title="'+esc(s.title)+'">'+(si+1)+'</button>';
+      }).join('');
+      return '<div class="nav-col"><div class="nav-col-title"><b>'+esc(col.title)+'</b><span>'+done+'/'+S+'</span></div><div class="dots">'+dots+'</div></div>';
+    }).join('');
+    var curDot = document.querySelector('#navList .dot.cur');
+    if (curDot) curDot.scrollIntoView({block:'center'});
+  }
+  document.getElementById('btnNav').addEventListener('click', function(){ openSheet('navOverlay'); renderNav(); });
+  document.getElementById('navList').addEventListener('click', function(e){
+    var d = e.target.closest('.dot');
+    if (!d) return;
+    closeSheets();
+    goTo(+d.dataset.pos);
+  });
+  document.getElementById('btnFirstOpen').addEventListener('click', function(){ closeSheets(); goTo(firstOpen()); });
+
+  document.getElementById('btnMenu').addEventListener('click', function(){ openSheet('menuOverlay'); });
+
+  function doExport(){
+    downloadJson(buildExport(), exportName(percent(qs.level) + 'pct-manual'));
+    toast('JSON сохранён в загрузки');
+  }
+  function doApply(){
+    if (!confirm('Записать ответы в матрицу (index.html) в этом браузере? Отвеченные ячейки обеих уровней будут перезаписаны, остальные останутся как есть.')) return;
+    var st = buildExport();
+    delete st.questionnaire;
+    try{
+      localStorage.setItem(MATRIX_KEY, JSON.stringify(st));
+      baseMatrix = loadMatrix();
+      toast('Ответы применены в матрицу');
+    }catch(e){ alert('Не удалось сохранить: ' + e.message); }
+  }
+  document.getElementById('btnExport').addEventListener('click', function(){ closeSheets(); doExport(); });
+  document.getElementById('btnApply').addEventListener('click', function(){ closeSheets(); doApply(); });
+  document.getElementById('btnImport').addEventListener('click', function(){ document.getElementById('importFile').click(); });
+  document.getElementById('importFile').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var obj = JSON.parse(reader.result);
+        if (!obj || !obj.questionnaire || !obj.questionnaire.answers){ alert('В файле нет ответов опросника (поле questionnaire).'); return; }
+        var level = qs.level;
+        qs = normalizeQ({level:level, answers:obj.questionnaire.answers, columnTypes:obj.questionnaire.columnTypes,
+          exported:{order: Math.floor(((obj.questionnaire.progress || {}).order || 0) / 10), line: Math.floor(((obj.questionnaire.progress || {}).line || 0) / 10)}});
+        qs.pos.order = 0; qs.pos.line = 0;
+        qs.pos[level] = firstOpen();
+        saveQ();
+        closeSheets();
+        makeDraft();
+        render();
+        toast('Ответы загружены из ' + file.name);
+      }catch(ex){ alert('Не удалось прочитать JSON: ' + ex.message); }
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+  document.getElementById('btnReset').addEventListener('click', function(){
+    if (!confirm('Удалить все ответы опросника в этом браузере? Матрица не изменится.')) return;
+    qs = blankQ();
+    saveQ();
+    closeSheets();
+    makeDraft();
+    render();
+  });
+
+  var toastTimer = null;
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.hidden = true; }, 2600);
+  }
+
+  // ?level=order|line — открыть сразу нужный уровень
+  try{
+    var lp = new URLSearchParams(location.search).get('level');
+    if (lp === 'order' || lp === 'line') qs.level = lp;
+  }catch(e){}
+
+  makeDraft();
+  render();
+})();
+</script>
+</body>
+</html>
