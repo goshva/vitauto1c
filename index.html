@@ -67,8 +67,18 @@
   .cell-stack .chk-row{display:flex;justify-content:space-between;width:100%;gap:4px;}
   .cell-stack label.chk{display:flex;align-items:center;gap:2px;font-size:10px;color:#374151;white-space:nowrap;}
   .cell-stack input[type=checkbox]{width:13px;height:13px;}
-  select.c-role-for{margin-top:2px;}
-  select.c-role-for[hidden]{display:none;}
+  details.c-roles{width:100%;font-size:10px;border:1px solid rgba(0,0,0,.2);border-radius:4px;background:#fff;}
+  details.c-roles[hidden]{display:none;}
+  details.c-roles summary{cursor:pointer;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;list-style:none;}
+  details.c-roles summary::-webkit-details-marker{display:none;}
+  details.c-roles summary::before{content:'▾ ';color:var(--muted);}
+  details.c-roles[open] summary::before{content:'▴ ';}
+  details.c-roles .roles-list{display:flex;flex-direction:column;gap:1px;padding:2px 4px 4px;border-top:1px solid var(--border);}
+  details.c-roles .roles-list label{display:flex;align-items:center;gap:3px;white-space:nowrap;}
+  select.col-type{margin-top:4px;font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;max-width:100%;}
+  table.preview-table select{width:100%;border:1px solid transparent;background:transparent;font-size:11.5px;padding:2px;border-radius:4px;font-family:inherit;}
+  table.preview-table td.prev-editable select{background:#fff;border-color:var(--green-bd);}
+  table.preview-table .prev-matrix{display:inline-block;font-size:11px;color:var(--muted);border:1px dashed var(--gray-bd);border-radius:4px;padding:2px 6px;white-space:nowrap;}
 
   tr.filtered-out{display:none;}
 
@@ -144,6 +154,7 @@
     </div>
     <input type="text" id="searchInput" placeholder="Поиск колонки по названию или ID…">
     <div class="grow"></div>
+    <button id="btnCopyLink" title="Ссылка откроет матрицу с текущей ролью, уровнем статуса и режимом статусов">Скопировать ссылку</button>
     <button id="btnLog">Журнал изменений<span class="log-badge" id="logBadge" hidden>0</span></button>
     <button id="btnBulk">Массовые операции ▾</button>
     <button id="btnExport">Экспорт JSON</button>
@@ -157,13 +168,8 @@
 
 <div class="bulk-panel" id="bulkPanel">
   <div class="grp">
-    <label>Видимость (для роли, видимых колонок):</label>
-    <button data-op="show-all">Показать все</button>
-    <button data-op="hide-all">Скрыть все</button>
-  </div>
-  <div class="grp">
     <label>Редактирование:</label>
-    <button data-op="edit-all">Разрешить редактирование</button>
+    <button data-op="edit-all" title="Добавляет текущую роль в «Выбранные роли»">Разрешить редактирование роли</button>
     <button data-op="edit-none">Только чтение</button>
   </div>
   <div class="grp">
@@ -186,15 +192,15 @@
 </div>
 
 <div class="legend">
-  <span><span class="sw green"></span>видно + редактируется</span>
-  <span><span class="sw yellow"></span>видно + только чтение</span>
-  <span><span class="sw gray"></span>скрыто</span>
+  <span><span class="sw green"></span>редактируется</span>
+  <span><span class="sw yellow"></span>только чтение (или роль не выбрана в «Выбранные роли»)</span>
+  <span>Все колонки видны всем ролям</span>
   <span class="badge" id="statusLine"></span>
 </div>
 
 <div class="preview-panel" id="previewPanel">
   <h2>Как это увидит роль «<span id="previewRoleName"></span>» — пример строк таблицы (статус: <span id="previewStatusName"></span>)</h2>
-  <div class="preview-sub">Зелёные поля — доступны для редактирования, жёлтые — только для просмотра. Колонки, скрытые для роли на этом статусе, в примере не показываются. Галка «Документ подписан оригинал» (true) снимает защиту строки: поля становятся редактируемыми.</div>
+  <div class="preview-sub">Зелёные поля — доступны для редактирования, жёлтые — только для просмотра. Все колонки видны всем ролям. Галка «Документ подписан оригинал» (true) снимает защиту строки: поля становятся редактируемыми.</div>
   <div class="preview-table-wrap">
     <table class="preview-table" id="previewTable"></table>
   </div>
@@ -360,44 +366,64 @@
   ];
 
   var EDIT_LABELS = {
-    none:'Не редактируется', all:'Все, кому видно', creator:'Только создатель',
-    admin:'Только админ', role:'Выбранная роль'
+    none:'Не редактируется', role:'Выбранные роли', creator:'Только создатель',
+    admin:'Только админ'
   };
-  var EDIT_VALUES = ['none','all','creator','admin','role'];
+  var EDIT_VALUES = ['none','role','creator','admin'];
+
+  // Тип данных колонки (задаётся на колонку, общий для всех ролей и статусов)
+  var DATA_TYPE_LABELS = {
+    select:'Выпадающий список', date:'Дата', text:'Текст', number:'Число', checkbox:'Чекбокс', matrix:'Матрица'
+  };
+  var DATA_TYPE_VALUES = ['select','date','text','number','checkbox','matrix'];
+  var DEFAULT_DATA_TYPES = {
+    cell_select:'checkbox', doc_signed_original:'checkbox',
+    row_number:'number', qty_fact:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
+    shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date',
+    customer:'select', contract:'select', service_type:'select', territory_fact:'select', unit_fact:'select', unit:'select',
+    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select',
+    supplier_ship_territory:'select'
+  };
+  function defaultDataType(col){
+    if (DEFAULT_DATA_TYPES[col.id]) return DEFAULT_DATA_TYPES[col.id];
+    if (col.type === 'bool') return 'checkbox';
+    if (col.type === 'decimal') return 'number';
+    return 'text';
+  }
 
   var EARLY_STATUSES = ['new','ordered','paid','in_transit','awaiting_receipt'];
 
   // ---- Ролевые профили по умолчанию (визуальные группы колонок) ----
   var ROLE_PROFILES = {
     manager: {
-      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'all'}, auto:{visible:true, editable:'none'},
-      order_header:{visible:true, editable:'all'}, fact:{visible:true, editable:'all'},
-      fact_editable:{visible:true, editable:'all'}, nomenclature:{visible:true, editable:'all'},
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'none'},
+      order_header:{visible:true, editable:'role'}, fact:{visible:true, editable:'role'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
       stock:{visible:true, editable:'none'}, status:{visible:true, editable:'none'},
-      pricing:{visible:true, editable:'all'}, payment:{visible:true, editable:'all'},
-      margin_locked:{visible:true, editable:'none'}, margin_open:{visible:true, editable:'all'},
+      pricing:{visible:true, editable:'role'}, payment:{visible:true, editable:'role'},
+      margin_locked:{visible:true, editable:'none'}, margin_open:{visible:true, editable:'role'},
       extra:{visible:false, editable:'none'}, receipt:{visible:true, editable:'none'},
-      comment:{visible:true, editable:'all'}
+      comment:{visible:true, editable:'role'}
     },
     storekeeper: {
-      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'all'}, auto:{visible:true, editable:'none'},
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'none'},
       order_header:{visible:true, editable:'none'}, fact:{visible:true, editable:'none'},
-      fact_editable:{visible:true, editable:'all'}, nomenclature:{visible:true, editable:'all'},
-      stock:{visible:true, editable:'all'}, status:{visible:true, editable:'none'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
+      stock:{visible:true, editable:'role'}, status:{visible:true, editable:'none'},
       pricing:{visible:true, editable:'none'}, payment:{visible:false, editable:'none'},
       margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
-      extra:{visible:false, editable:'none'}, receipt:{visible:true, editable:'all'},
-      comment:{visible:true, editable:'all'}
+      extra:{visible:false, editable:'none'}, receipt:{visible:true, editable:'role'},
+      comment:{visible:true, editable:'role'}
     },
     admin: {
-      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'all'}, auto:{visible:true, editable:'all'},
-      order_header:{visible:true, editable:'all'}, fact:{visible:true, editable:'all'},
-      fact_editable:{visible:true, editable:'all'}, nomenclature:{visible:true, editable:'all'},
-      stock:{visible:true, editable:'all'}, status:{visible:true, editable:'all'},
-      pricing:{visible:true, editable:'all'}, payment:{visible:true, editable:'all'},
-      margin_locked:{visible:true, editable:'all'}, margin_open:{visible:true, editable:'all'},
-      extra:{visible:true, editable:'all'}, receipt:{visible:true, editable:'all'},
-      comment:{visible:true, editable:'all'}
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'role'},
+      order_header:{visible:true, editable:'role'}, fact:{visible:true, editable:'role'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
+      stock:{visible:true, editable:'role'}, status:{visible:true, editable:'role'},
+      pricing:{visible:true, editable:'role'}, payment:{visible:true, editable:'role'},
+      margin_locked:{visible:true, editable:'role'}, margin_open:{visible:true, editable:'role'},
+      extra:{visible:true, editable:'role'}, receipt:{visible:true, editable:'role'},
+      comment:{visible:true, editable:'role'}
     },
     supplier: {
       system:{visible:false, editable:'none'}, doc_flag:{visible:false, editable:'none'}, auto:{visible:false, editable:'none'},
@@ -407,7 +433,7 @@
       pricing:{visible:true, editable:'none'}, payment:{visible:false, editable:'none'},
       margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
       extra:{visible:false, editable:'none'}, receipt:{visible:false, editable:'none'},
-      comment:{visible:true, editable:'all'}
+      comment:{visible:true, editable:'role'}
     },
     client: {
       system:{visible:false, editable:'none'}, doc_flag:{visible:false, editable:'none'}, auto:{visible:true, editable:'none'},
@@ -428,21 +454,30 @@
   var STATUS_IDS = STATUSES.map(function(s){return s.id;});
   var COLUMN_IDS = COLUMNS.map(function(c){return c.id;});
 
-  function enforceConstraints(cell){
-    if (!cell.visible){ cell.editable='none'; cell.required=false; cell.editableRole=null; }
-    if (cell.editable !== 'role') cell.editableRole = null;
-    if (cell.required && cell.editable === 'none') cell.editable = 'all';
-    if (cell.required && !cell.visible) cell.visible = true;
+  // roleId — роль вкладки, которой принадлежит ячейка (подставляется в «Выбранные роли» по умолчанию)
+  function enforceConstraints(cell, roleId){
+    // миграция старого формата: 'all' → своя роль, editableRole → editableRoles[]
+    if (cell.editable === 'all'){ cell.editable = 'role'; cell.editableRoles = roleId ? [roleId] : []; }
+    if (!Array.isArray(cell.editableRoles)) cell.editableRoles = cell.editableRole ? [cell.editableRole] : [];
+    delete cell.editableRole;
+    cell.editableRoles = ROLE_IDS.filter(function(id){ return cell.editableRoles.indexOf(id) !== -1; });
+    if (EDIT_VALUES.indexOf(cell.editable) === -1) cell.editable = 'none';
+
+    cell.visible = true; // всё видно всем: видимость не настраивается
+    if (cell.editable === 'role' && !cell.editableRoles.length) cell.editable = 'none';
+    if (cell.required && cell.editable === 'none' && roleId){ cell.editable = 'role'; cell.editableRoles = [roleId]; }
+    if (cell.editable !== 'role') cell.editableRoles = [];
     return cell;
   }
 
   function computeDefaultCell(roleId, colId, statusId){
     var col = COLUMNS_BY_ID[colId];
     var profile = ROLE_PROFILES[roleId][col.group];
-    var cell = {visible:profile.visible, editable:profile.editable, required:false, editableRole:null};
+    var cell = {visible:profile.visible, editable:profile.editable, required:false,
+      editableRoles: profile.editable === 'role' ? [roleId] : []};
 
     if (roleId === 'storekeeper' && col.group === 'receipt' && EARLY_STATUSES.indexOf(statusId) !== -1){
-      cell.visible = false;
+      cell.editable = 'none';
     }
     if (roleId === 'manager' && statusId === 'new' && (colId==='name'||colId==='article'||colId==='qty')){
       cell.required = true;
@@ -453,7 +488,7 @@
     if (statusId === 'closed' && roleId !== 'admin' && colId !== 'doc_signed_original'){
       cell.editable = 'none';
     }
-    return enforceConstraints(cell);
+    return enforceConstraints(cell, roleId);
   }
 
   function buildDefaultMatrix(){
@@ -473,6 +508,12 @@
     return {order: buildLevel(), line: buildLevel()};
   }
 
+  function buildDefaultColumnTypes(){
+    var t = {};
+    COLUMNS.forEach(function(c){ t[c.id] = defaultDataType(c); });
+    return t;
+  }
+
   function buildDefaultState(){
     return {
       version: SCHEMA_VERSION,
@@ -480,7 +521,8 @@
       settings: {statusLevel:'order', activeRole:'manager', statusViewMode:'all', currentStatusIndex:0},
       roles: ROLE_IDS.slice(),
       statuses: STATUSES.map(function(s){return {id:s.id, title:s.title};}),
-      columns: COLUMNS.map(function(c){return {id:c.id, title:c.title, group:c.group, type:c.type||null};}),
+      columnTypes: buildDefaultColumnTypes(),
+      columns: COLUMNS.map(function(c){return {id:c.id, title:c.title, group:c.group, type:c.type||null, dataType:defaultDataType(c)};}),
       matrix: buildDefaultMatrix()
     };
   }
@@ -488,8 +530,14 @@
   function syncCanonicalColumns(st){
     var prev = {};
     (st.columns || []).forEach(function(c){ if (c && c.id) prev[c.id] = c; });
+    if (!st.columnTypes || typeof st.columnTypes !== 'object') st.columnTypes = {};
+    COLUMNS.forEach(function(c){
+      var fromCols = prev[c.id] && prev[c.id].dataType;
+      if (DATA_TYPE_VALUES.indexOf(st.columnTypes[c.id]) === -1)
+        st.columnTypes[c.id] = DATA_TYPE_VALUES.indexOf(fromCols) !== -1 ? fromCols : defaultDataType(c);
+    });
     st.columns = COLUMNS.map(function(c){
-      return {id:c.id, title:c.title, group:c.group, type:c.type||null};
+      return {id:c.id, title:c.title, group:c.group, type:c.type||null, dataType:st.columnTypes[c.id]};
     });
     ['order','line'].forEach(function(level){
       if (!st.matrix || !st.matrix[level]) return;
@@ -500,6 +548,8 @@
           COLUMNS.forEach(function(c){
             if (!st.matrix[level][r.id][s.id][c.id]) {
               st.matrix[level][r.id][s.id][c.id] = computeDefaultCell(r.id, c.id, s.id);
+            } else {
+              enforceConstraints(st.matrix[level][r.id][s.id][c.id], r.id);
             }
           });
         });
@@ -581,7 +631,8 @@
   function formatFieldValue(field, v){
     if (field === 'visible' || field === 'required') return v ? 'Да' : 'Нет';
     if (field === 'editable') return EDIT_LABELS[v] || v;
-    if (field === 'editableRole') return v ? roleTitle(v) : '—';
+    if (field === 'editableRoles') return v && v.length ? v.map(roleTitle).join(', ') : '—';
+    if (field === 'dataType') return DATA_TYPE_LABELS[v] || v;
     return String(v);
   }
   function esc(s){
@@ -590,10 +641,49 @@
 
   var state = loadState();
   var changeLog = loadLog();
+  // ---- Query-параметры ссылки: ?role=manager&level=order|line&mode=all|single&status=new ----
+  // Имеют приоритет над сохранёнными настройками; адресная строка обновляется при каждом изменении.
+  function applyUrlParams(){
+    var p;
+    try{ p = new URLSearchParams(location.search); }catch(e){ return; }
+    var role = p.get('role'), level = p.get('level'), mode = p.get('mode'), status = p.get('status');
+    if (role && ROLE_IDS.indexOf(role) !== -1) state.settings.activeRole = role;
+    if (level === 'order' || level === 'line') state.settings.statusLevel = level;
+    if (mode === 'all' || mode === 'single') state.settings.statusViewMode = mode;
+    if (status){
+      var idx = STATUS_IDS.indexOf(status);
+      if (idx === -1 && /^\d+$/.test(status)) idx = parseInt(status, 10) - 1; // допускается номер статуса с 1
+      if (idx >= 0 && idx < STATUS_IDS.length){
+        state.settings.currentStatusIndex = idx;
+        if (!mode) state.settings.statusViewMode = 'single';
+      }
+    }
+  }
+
+  function buildShareUrl(){
+    var p = new URLSearchParams(location.search);
+    p.set('role', activeRole);
+    p.set('level', currentLevel());
+    p.set('mode', state.settings.statusViewMode === 'single' ? 'single' : 'all');
+    if (state.settings.statusViewMode === 'single'){
+      var st = getStatuses()[clampStatusIndex(state.settings.currentStatusIndex, getStatuses().length)];
+      if (st) p.set('status', st.id);
+    } else {
+      p.delete('status');
+    }
+    return location.pathname + '?' + p.toString() + location.hash;
+  }
+
+  function syncUrl(){
+    try{ history.replaceState(null, '', buildShareUrl()); }catch(e){}
+  }
+
+  applyUrlParams();
   var activeRole = state.settings.activeRole;
 
   var saveTimer = null;
   function scheduleSave(){
+    syncUrl();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function(){
       state.updatedAt = new Date().toISOString();
@@ -624,13 +714,28 @@
     var m = state.matrix[level];
     if (!m[roleId]) m[roleId] = {};
     if (!m[roleId][statusId]) m[roleId][statusId] = {};
-    if (!m[roleId][statusId][colId]) m[roleId][statusId][colId] = enforceConstraints({visible:true, editable:'none', required:false, editableRole:null});
+    if (!m[roleId][statusId][colId]) m[roleId][statusId][colId] = enforceConstraints({visible:true, editable:'none', required:false, editableRoles:[]}, roleId);
     return m[roleId][statusId][colId];
   }
 
-  function cellClass(cell){
-    if (!cell.visible) return 'cell-gray';
-    if (cell.editable === 'none') return 'cell-yellow';
+  function dataTypeOf(colId){
+    return (state.columnTypes && state.columnTypes[colId]) || defaultDataType(COLUMNS_BY_ID[colId] || {id:colId});
+  }
+
+  // Может ли роль вкладки редактировать ячейку
+  function canRoleEdit(cell, roleId){
+    if (cell.editable === 'none') return false;
+    if (cell.editable === 'role') return cell.editableRoles.indexOf(roleId) !== -1;
+    return true;
+  }
+
+  function editLabel(cell){
+    if (cell.editable === 'role') return 'Роли: ' + cell.editableRoles.map(roleTitle).join(', ');
+    return EDIT_LABELS[cell.editable] || cell.editable;
+  }
+
+  function cellClass(cell, roleId){
+    if (!canRoleEdit(cell, roleId)) return 'cell-yellow';
     return 'cell-green';
   }
 
@@ -700,9 +805,27 @@
 
   function formatDecimal2(v){
     if (v == null || v === '' || v === '—') return '0.00';
-    var n = Number(String(v).replace(/\s/g, '').replace(',', '.'));
+    var n = Number(String(v).replace(/[^\d,.\-]/g, '').replace(',', '.'));
     if (!isFinite(n)) return '0.00';
     return n.toFixed(2);
+  }
+
+  // 'дд.мм.гггг' → 'гггг-мм-дд' для input[type=date]
+  function toIsoDate(v){
+    var m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(v || '').trim());
+    return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+  }
+
+  function sampleOptions(colId, current){
+    var vals = [];
+    SAMPLE_ROWS.forEach(function(r){
+      var v = r.values[colId];
+      if (v != null && v !== '' && v !== '—' && typeof v !== 'boolean' && vals.indexOf(String(v)) === -1) vals.push(String(v));
+    });
+    if (current != null && current !== '' && current !== '—' && vals.indexOf(String(current)) === -1) vals.unshift(String(current));
+    return '<option value="">—</option>' + vals.map(function(v){
+      return '<option'+(String(current)===v?' selected':'')+'>'+esc(v)+'</option>';
+    }).join('');
   }
 
   function renderPreview(){
@@ -715,14 +838,7 @@
     document.getElementById('previewStatusName').textContent = status ? status.title : '—';
     if (!status){ table.innerHTML = ''; return; }
 
-    var columns = getColumns().filter(function(col){
-      return ensureCell(level, activeRole, status.id, col.id).visible;
-    });
-
-    if (!columns.length){
-      table.innerHTML = '<tbody><tr><td class="preview-empty">Роли «'+esc(roleTitle(activeRole))+'» на статусе «'+esc(status.title)+'» не видна ни одна колонка.</td></tr></tbody>';
-      return;
-    }
+    var columns = getColumns();
 
     var headHtml = '<thead><tr><th>Пример</th>' + columns.map(function(col){
       var cell = ensureCell(level, activeRole, status.id, col.id);
@@ -734,26 +850,34 @@
       var row = '<tr data-sample="'+rowIdx+'"><td style="font-weight:600;white-space:nowrap;color:var(--muted);">'+esc(sample.label)+(unlocked?' <span class="badge" title="Галка true: строка не защищена">разблок.</span>':'')+'</td>';
       columns.forEach(function(col){
         var cell = ensureCell(level, activeRole, status.id, col.id);
-        var colMeta = COLUMNS_BY_ID[col.id] || col;
-        var isBool = colMeta.type === 'bool' || col.id === 'doc_signed_original';
-        var isDecimal = colMeta.type === 'decimal';
+        var dtype = dataTypeOf(col.id);
+        var isBool = dtype === 'checkbox';
+        var isDecimal = dtype === 'number';
         var val = sample.values[col.id] != null ? sample.values[col.id] : (isBool ? false : (isDecimal ? '0.00' : '—'));
-        var readonly = cell.editable === 'none';
+        var readonly = !canRoleEdit(cell, activeRole);
         // Галка true → строка не защищена: остальные поля редактируются поверх матрицы
-        if (unlocked && col.id !== 'doc_signed_original' && col.id !== 'row_number' && cell.visible) {
+        if (unlocked && col.id !== 'doc_signed_original' && col.id !== 'row_number') {
           readonly = false;
         }
         var cls = (readonly ? 'prev-readonly' : 'prev-editable') + (cell.required ? ' prev-required' : '');
         var title = isBool
           ? (isTruthyFlag(val) ? 'true: строка не защищена от изменения' : 'false: защита строки по матрице/статусу')
-          : (readonly ? 'Только чтение' : ('Редактируется: ' + EDIT_LABELS[cell.editable]));
-        if (isDecimal) title = 'Число до сотых · ' + title;
+          : (readonly ? 'Только чтение' : ('Редактируется: ' + editLabel(cell)));
+        if (!isBool && col.id === 'doc_signed_original') title = 'Флаг разблокировки строки · ' + title;
+        title = DATA_TYPE_LABELS[dtype] + (isDecimal ? ' (до сотых)' : '') + ' · ' + title;
         if (unlocked && !isBool) title = 'Строка разблокирована галкой «оригинал» · ' + title;
+        var dis = readonly ? 'disabled' : '';
         if (isBool) {
-          var canToggle = cell.editable !== 'none';
-          row += '<td class="'+cls+' prev-bool"><input type="checkbox" class="prev-doc-flag" data-sample="'+rowIdx+'" '+(isTruthyFlag(val)?'checked':'')+' '+(canToggle?'':'disabled')+' title="'+esc(title)+'"></td>';
+          var canToggle = canRoleEdit(cell, activeRole);
+          row += '<td class="'+cls+' prev-bool"><input type="checkbox" class="prev-flag" data-sample="'+rowIdx+'" data-col="'+col.id+'" '+(isTruthyFlag(val)?'checked':'')+' '+(canToggle?'':'disabled')+' title="'+esc(title)+'"></td>';
         } else if (isDecimal) {
-          row += '<td class="'+cls+'"><input type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(formatDecimal2(val))+'" '+(readonly?'disabled':'')+' title="'+esc(title)+'"></td>';
+          row += '<td class="'+cls+'"><input type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(formatDecimal2(val))+'" '+dis+' title="'+esc(title)+'"></td>';
+        } else if (dtype === 'date') {
+          row += '<td class="'+cls+'"><input type="date" value="'+esc(toIsoDate(val))+'" '+dis+' title="'+esc(title)+'"></td>';
+        } else if (dtype === 'select') {
+          row += '<td class="'+cls+'"><select '+dis+' title="'+esc(title)+'">'+sampleOptions(col.id, val)+'</select></td>';
+        } else if (dtype === 'matrix') {
+          row += '<td class="'+cls+'"><span class="prev-matrix" title="'+esc(title)+'">▦ матрица</span></td>';
         } else {
           row += '<td class="'+cls+'"><input type="text" value="'+esc(val)+'" '+(readonly?'disabled':'')+' title="'+esc(title)+'"></td>';
         }
@@ -772,11 +896,34 @@
     return '<select class="c-editable">'+opts+'</select>';
   }
 
-  function roleForSelectHtml(cell){
-    var opts = ROLES.map(function(r){
-      return '<option value="'+r.id+'"'+(cell.editableRole===r.id?' selected':'')+'>'+r.title+'</option>';
+  function rolesPickerHtml(cell, open){
+    var picked = cell.editableRoles;
+    var summary = picked.length ? picked.map(roleTitle).join(', ') : 'Выберите роли';
+    var items = ROLES.map(function(r){
+      return '<label><input type="checkbox" class="c-role-opt" value="'+r.id+'"'+(picked.indexOf(r.id)!==-1?' checked':'')+'>'+r.title+'</label>';
     }).join('');
-    return '<select class="c-role-for"'+(cell.editable==='role'?'':' hidden')+'>'+opts+'</select>';
+    return '<details class="c-roles"'+(cell.editable==='role'?'':' hidden')+(open?' open':'')+'>'
+      + '<summary title="'+esc(summary)+'">'+(picked.length>1?'('+picked.length+') ':'')+esc(summary)+'</summary>'
+      + '<div class="roles-list">'+items+'</div></details>';
+  }
+
+  function cellInnerHtml(cell, rolesOpen){
+    return '<div class="cell-stack">'
+      +   '<div class="chk-row">'
+      +     '<label class="chk"><input type="checkbox" class="c-required" '+(cell.required?'checked':'')+'>Обяз.</label>'
+      +   '</div>'
+      +   editSelectHtml(cell)
+      +   rolesPickerHtml(cell, rolesOpen)
+      + '</div>';
+  }
+
+  function dataTypeSelectHtml(colId){
+    var cur = dataTypeOf(colId);
+    return '<select class="col-type" data-col="'+colId+'" title="Тип данных колонки">'
+      + DATA_TYPE_VALUES.map(function(v){
+          return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+DATA_TYPE_LABELS[v]+'</option>';
+        }).join('')
+      + '</select>';
   }
 
   function renderTable(){
@@ -785,18 +932,11 @@
     var statuses = activeStatuses();
     var rowsHtml = '';
     columns.forEach(function(col){
-      rowsHtml += '<tr data-col="'+col.id+'"><th class="row-head">'+col.title+'<span class="id">'+col.id+'</span></th>';
+      rowsHtml += '<tr data-col="'+col.id+'"><th class="row-head">'+col.title+'<span class="id">'+col.id+'</span>'+dataTypeSelectHtml(col.id)+'</th>';
       statuses.forEach(function(st){
         var cell = ensureCell(level, activeRole, st.id, col.id);
-        rowsHtml += '<td class="matrix-cell '+cellClass(cell)+'" data-status="'+st.id+'" data-col="'+col.id+'">'
-          + '<div class="cell-stack">'
-          +   '<div class="chk-row">'
-          +     '<label class="chk"><input type="checkbox" class="c-visible" '+(cell.visible?'checked':'')+'>Видно</label>'
-          +     '<label class="chk"><input type="checkbox" class="c-required" '+(cell.required?'checked':'')+'>Обяз.</label>'
-          +   '</div>'
-          +   editSelectHtml(cell)
-          +   roleForSelectHtml(cell)
-          + '</div>'
+        rowsHtml += '<td class="matrix-cell '+cellClass(cell, activeRole)+'" data-status="'+st.id+'" data-col="'+col.id+'">'
+          + cellInnerHtml(cell, false)
           + '</td>';
       });
       rowsHtml += '</tr>';
@@ -826,6 +966,7 @@
   }
 
   function renderAll(){
+    syncUrl();
     renderRoleTabs();
     renderLevelToggle();
     renderStatusModeToggle();
@@ -894,11 +1035,12 @@
   elSearch.addEventListener('input', applySearchFilter);
 
   function logCellDiff(level, roleId, statusId, colId, before, after){
-    var fieldNames = {visible:'Видимость', editable:'Редактирование', required:'Обязательность', editableRole:'Роль-редактор'};
+    var fieldNames = {editable:'Редактирование', required:'Обязательность', editableRoles:'Роли-редакторы'};
     var col = COLUMNS_BY_ID[colId] || {title:colId};
     var st = getStatuses().filter(function(s){return s.id===statusId;})[0] || {title:statusId};
-    ['visible','editable','required','editableRole'].forEach(function(f){
-      if (before[f] !== after[f]){
+    ['editable','required','editableRoles'].forEach(function(f){
+      var changed = f === 'editableRoles' ? before[f].join(',') !== after[f].join(',') : before[f] !== after[f];
+      if (changed){
         pushLog({
           action:'Изменение ячейки', role:roleTitle(roleId), level: level==='order'?'Заказ':'Деталь',
           status: st.title, column: col.title, field: fieldNames[f],
@@ -910,29 +1052,43 @@
 
   elBody.addEventListener('change', function(e){
     var el = e.target;
+    if (el.classList.contains('col-type')){
+      var cid = el.dataset.col, prevType = dataTypeOf(cid);
+      state.columnTypes[cid] = el.value;
+      (state.columns || []).forEach(function(c){ if (c.id === cid) c.dataType = el.value; });
+      pushLog({
+        action:'Тип данных колонки', role:'все роли', level:'—', status:'все статусы',
+        column:(COLUMNS_BY_ID[cid] || {title:cid}).title, field:'Тип данных',
+        before: formatFieldValue('dataType', prevType), after: formatFieldValue('dataType', el.value)
+      });
+      scheduleSave();
+      renderPreview();
+      return;
+    }
     var td = el.closest('td.matrix-cell');
     if (!td) return;
     var statusId = td.dataset.status, colId = td.dataset.col;
     var level = currentLevel();
     var cell = ensureCell(level, activeRole, statusId, colId);
-    var before = {visible:cell.visible, editable:cell.editable, required:cell.required, editableRole:cell.editableRole};
+    var before = {editable:cell.editable, required:cell.required, editableRoles:cell.editableRoles.slice()};
+    var rolesOpen = false;
 
-    if (el.classList.contains('c-visible')) cell.visible = el.checked;
-    else if (el.classList.contains('c-required')) cell.required = el.checked;
-    else if (el.classList.contains('c-editable')) cell.editable = el.value;
-    else if (el.classList.contains('c-role-for')) cell.editableRole = el.value;
+    if (el.classList.contains('c-required')) cell.required = el.checked;
+    else if (el.classList.contains('c-editable')){
+      cell.editable = el.value;
+      if (cell.editable === 'role' && !cell.editableRoles.length){ cell.editableRoles = [activeRole]; rolesOpen = true; }
+    }
+    else if (el.classList.contains('c-role-opt')){
+      rolesOpen = true;
+      cell.editableRoles = Array.prototype.map.call(td.querySelectorAll('.c-role-opt:checked'), function(x){ return x.value; });
+    }
 
-    enforceConstraints(cell);
+    enforceConstraints(cell, activeRole);
     logCellDiff(level, activeRole, statusId, colId, before, cell);
 
-    // sync DOM back in case constraints altered other fields
-    td.className = 'matrix-cell ' + cellClass(cell);
-    td.querySelector('.c-visible').checked = cell.visible;
-    td.querySelector('.c-required').checked = cell.required;
-    td.querySelector('.c-editable').value = cell.editable;
-    var roleSel = td.querySelector('.c-role-for');
-    roleSel.hidden = cell.editable !== 'role';
-    if (cell.editable === 'role' && cell.editableRole) roleSel.value = cell.editableRole;
+    // перерисовать ячейку: ограничения могли изменить другие поля
+    td.className = 'matrix-cell ' + cellClass(cell, activeRole);
+    td.innerHTML = cellInnerHtml(cell, rolesOpen && cell.editable === 'role');
 
     scheduleSave();
     renderPreview();
@@ -941,10 +1097,10 @@
   // Bulk operations
   document.getElementById('previewTable').addEventListener('change', function(e){
     var el = e.target;
-    if (!el.classList.contains('prev-doc-flag')) return;
+    if (!el.classList.contains('prev-flag')) return;
     var idx = Number(el.getAttribute('data-sample'));
     if (!SAMPLE_ROWS[idx]) return;
-    SAMPLE_ROWS[idx].values.doc_signed_original = !!el.checked;
+    SAMPLE_ROWS[idx].values[el.getAttribute('data-col')] = !!el.checked;
     renderPreview();
   });
 
@@ -960,13 +1116,13 @@
       cols.forEach(function(colId){
         var cell = ensureCell(level, activeRole, st.id, colId);
         fn(cell);
+        enforceConstraints(cell, activeRole);
       });
     });
     return {colsCount: cols.length, statusesCount: statuses.length};
   }
 
   var BULK_OP_LABELS = {
-    'show-all':'Массово: показать все', 'hide-all':'Массово: скрыть все',
     'edit-all':'Массово: разрешить редактирование', 'edit-none':'Массово: только чтение',
     'req-on':'Массово: сделать обязательным', 'req-off':'Массово: снять обязательность'
   };
@@ -976,18 +1132,20 @@
     if (!btn) return;
     var op = btn.dataset.op;
     var scope;
-    if (op==='show-all') scope = forEachTargetCell(function(c){ c.visible=true; enforceConstraints(c); });
-    if (op==='hide-all') scope = forEachTargetCell(function(c){ c.visible=false; enforceConstraints(c); });
-    if (op==='edit-all') scope = forEachTargetCell(function(c){ c.visible=true; c.editable='all'; enforceConstraints(c); });
+    if (op==='edit-all') scope = forEachTargetCell(function(c){
+      if (c.editable !== 'role') c.editableRoles = [];
+      c.editable='role';
+      if (c.editableRoles.indexOf(activeRole) === -1) c.editableRoles.push(activeRole);
+    });
     if (op==='edit-none') scope = forEachTargetCell(function(c){ c.editable='none'; enforceConstraints(c); });
-    if (op==='req-on') scope = forEachTargetCell(function(c){ if(c.visible && c.editable!=='none'){ c.required=true; enforceConstraints(c);} });
+    if (op==='req-on') scope = forEachTargetCell(function(c){ if(c.editable!=='none'){ c.required=true; enforceConstraints(c);} });
     if (op==='req-off') scope = forEachTargetCell(function(c){ c.required=false; enforceConstraints(c); });
     scheduleSave();
     pushLog({
       action: BULK_OP_LABELS[op] || ('Массовая операция: '+op), role: roleTitle(activeRole),
       level: currentLevel()==='order'?'Заказ':'Деталь',
       status: state.settings.statusViewMode==='single' ? 'текущий статус' : 'все статусы (' + (scope?scope.statusesCount:'?') + ')',
-      column: (scope?scope.colsCount:'?') + ' видимых колонок', field:'—', before:'—', after:'—'
+      column: (scope?scope.colsCount:'?') + ' колонок', field:'—', before:'—', after:'—'
     });
     renderTable();
     renderPreview();
@@ -1001,8 +1159,8 @@
       getColumns().forEach(function(col){
         var src = ensureCell(level, source, st.id, col.id);
         state.matrix[level][activeRole][st.id][col.id] = enforceConstraints({
-          visible:src.visible, editable:src.editable, required:src.required, editableRole:src.editableRole
-        });
+          visible:src.visible, editable:src.editable, required:src.required, editableRoles:src.editableRoles.slice()
+        }, activeRole);
       });
     });
     scheduleSave();
@@ -1021,8 +1179,8 @@
     getColumns().forEach(function(col){
       var src = ensureCell(level, activeRole, source, col.id);
       state.matrix[level][activeRole][target][col.id] = enforceConstraints({
-        visible:src.visible, editable:src.editable, required:src.required, editableRole:src.editableRole
-      });
+        visible:src.visible, editable:src.editable, required:src.required, editableRoles:src.editableRoles.slice()
+      }, activeRole);
     });
     scheduleSave();
     var srcTitle = (getStatuses().filter(function(s){return s.id===source;})[0]||{}).title || source;
@@ -1080,6 +1238,21 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     pushLog({action:'Сброс к значениям по умолчанию', role:'—', level:'—', status:'—', column:'—', field:'—', before:'—', after:'—'});
     renderAll();
+  });
+
+  document.getElementById('btnCopyLink').addEventListener('click', function(){
+    var btn = this;
+    var url = location.href.split('?')[0].split('#')[0] + buildShareUrl().slice(location.pathname.length);
+    function done(ok){
+      var old = 'Скопировать ссылку';
+      btn.textContent = ok ? 'Ссылка скопирована ✓' : 'Не удалось скопировать';
+      setTimeout(function(){ btn.textContent = old; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ prompt('Скопируйте ссылку:', url); });
+    } else {
+      prompt('Скопируйте ссылку:', url);
+    }
   });
 
   // Журнал изменений (модальное окно)
