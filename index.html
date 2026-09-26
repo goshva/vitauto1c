@@ -118,6 +118,17 @@
   table.preview-table td.prev-readonly.prev-bool input[type=checkbox]{cursor:not-allowed;}
   table.preview-table td.prev-required input{border-color:var(--danger);}
   table.preview-table .req-star{color:var(--danger);margin-left:2px;}
+  table.preview-table td.prev-missing{background:#fde2e2 !important;box-shadow:inset 0 0 0 2px var(--danger);}
+  table.preview-table td.prev-auto input, table.preview-table td.prev-auto select{font-style:italic;}
+  table.preview-table .req-one{color:var(--danger);margin-left:2px;font-size:10px;}
+  .rule-note{display:block;margin-top:3px;font-size:10px;line-height:1.25;color:#7c2d12;background:#fff4e5;border:1px solid #f5d0a9;border-radius:4px;padding:2px 4px;}
+  .rules-box{margin-top:8px;font-size:11.5px;}
+  .rules-box summary{cursor:pointer;color:var(--accent-dark);}
+  .rules-box ul{margin:6px 0 0;padding-left:18px;}
+  .rules-box li{margin:2px 0;}
+  .defaults-banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 16px 0;padding:8px 12px;border:1px solid #bfd3ff;background:#eef4ff;border-radius:8px;font-size:12px;}
+  .defaults-banner[hidden]{display:none;}
+  .defaults-banner .grow{flex:1 1 240px;}
   .preview-empty{color:var(--muted);font-style:italic;padding:6px 4px;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
@@ -172,6 +183,12 @@
   <div class="roles-tabs" id="roleTabs"></div>
 </header>
 
+<div class="defaults-banner" id="defaultsBanner" hidden>
+  <span class="grow">Доступны новые настройки матрицы по умолчанию (<span id="defaultsBannerId"></span>). У вас в браузере сохранены свои — они не изменятся, пока вы не примените новые.</span>
+  <button class="primary" id="btnApplyDefaults">Применить новые умолчания</button>
+  <button id="btnKeepMine">Оставить мои</button>
+</div>
+
 <div class="bulk-panel" id="bulkPanel">
   <div class="grp">
     <label>Редактирование:</label>
@@ -210,6 +227,10 @@
   <div class="preview-table-wrap">
     <table class="preview-table" id="previewTable"></table>
   </div>
+  <details class="rules-box" id="rulesBox">
+    <summary>Правила заполнения полей (выпадающие списки, автоподстановка, расчёт)</summary>
+    <ul id="rulesList"></ul>
+  </details>
 </div>
 
 <div class="table-wrap">
@@ -243,6 +264,7 @@
   </div>
 </div>
 
+<script src="default-matrix.js"></script>
 <script>
 (function(){
   'use strict';
@@ -291,6 +313,7 @@
     {id:'service_type', title:'Вид услуги', group:'order_header'},
     {id:'brand_fact', title:'Марка', group:'fact'},
     {id:'model_fact', title:'Модель', group:'fact'},
+    {id:'aggregate_fact', title:'Агрегат', group:'fact'},
     {id:'gosnomer_fact', title:'Госномер', group:'fact'},
     {id:'grz_fact', title:'№ Шасии', group:'fact'},
     {id:'vin_fact', title:'VIN (ХТС)', group:'fact'},
@@ -334,7 +357,7 @@
     { label:'Пример 1 — стандартная позиция в наличии', values:{
       cell_select:'', row_number:'1', doc_signed_original:false, shipment_date:'04.02.2026', shipment_number:'141', order_date:'02.02.2026',
       order_internal_number:'ЗК-0141', order_client_number:'—', customer:'ООО «СтройТранс»', contract:'Д-22/2026',
-      service_type:'Запчасть', brand_fact:'КАМАЗ', model_fact:'65115', gosnomer_fact:'А590СЕ197', grz_fact:'А590СЕ197', vin_fact:'XTC651150R1234567', engine_fact:'740.30-260',
+      service_type:'Запчасть', brand_fact:'КАМАЗ', model_fact:'65115', aggregate_fact:'—', gosnomer_fact:'А590СЕ197', grz_fact:'Ш-65115-0012345', vin_fact:'XTC651150R1234567', engine_fact:'740.30-260',
       urgency_fact:'—', vehicle_plate_fact:'А590СЕ197', territory_fact:'СПАК',
       name_fact:'Фонарь задний КАМАЗ левый ТЕХАВТОСВЕТ', article_fact:'7452-262', qty_fact:'1,00', unit_fact:'шт',
       name:'Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ', article:'7452-262 / 7472.3716-04', code_aa:'622563',
@@ -347,7 +370,7 @@
     { label:'Пример 2 — позиция ждёт опознания (артикул не найден)', values:{
       cell_select:'', row_number:'2', doc_signed_original:false, shipment_date:'—', shipment_number:'—', order_date:'02.02.2026',
       order_internal_number:'ЗК-0142', order_client_number:'—', customer:'Частный клиент', contract:'—',
-      service_type:'Запчасть', brand_fact:'ГАЗ', model_fact:'3302 Бизнес', gosnomer_fact:'М141МН777', grz_fact:'М141МН777', vin_fact:'X96330200R7654321', engine_fact:'УМЗ-4216',
+      service_type:'Запчасть', brand_fact:'ГАЗ', model_fact:'3302 Бизнес', aggregate_fact:'—', gosnomer_fact:'М141МН777', grz_fact:'Ш-330200-0076543', vin_fact:'X96330200R7654321', engine_fact:'УМЗ-4216',
       urgency_fact:'срочно', vehicle_plate_fact:'М141МН777', territory_fact:'СПАК',
       name_fact:'Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216', article_fact:'4216.1005074', qty_fact:'1,00', unit_fact:'шт',
       name:'—', article:'—', code_aa:'—', unit:'—', qty:'1,00', qty_norm_hours_client:'0,00', stock_qty:'0,00', reserve_qty:'0,00',
@@ -359,17 +382,133 @@
     { label:'Пример 3 — заказ закрыт и отгружен клиенту разблок.', values:{
       cell_select:'', row_number:'3', doc_signed_original:true, shipment_date:'06.02.2026', shipment_number:'145', order_date:'06.02.2026',
       order_internal_number:'ЗК-0145', order_client_number:'КЛ-778', customer:'ИП Кетчерская', contract:'Д-05/2026',
-      service_type:'Запчасть', brand_fact:'КАМАЗ', model_fact:'54115', gosnomer_fact:'Е427ЕВ777', grz_fact:'Е427ЕВ777', vin_fact:'XTC541150R9876543', engine_fact:'740.51-320',
+      service_type:'Запчасть', brand_fact:'КАМАЗ', model_fact:'54115', aggregate_fact:'Мост средний КАМАЗ 53212', gosnomer_fact:'Е427ЕВ777', grz_fact:'Ш-54115-0098765', vin_fact:'XTC541150R9876543', engine_fact:'740.51-320',
       urgency_fact:'—', vehicle_plate_fact:'Е427ЕВ777', territory_fact:'АРМ',
       name_fact:'Крышка КАМАЗ редуктора среднего моста', article_fact:'54115-2502209', qty_fact:'1,00', unit_fact:'шт',
       name:'Крышка КАМАЗ редуктора среднего моста', article:'54115-2502209', code_aa:'633603', unit:'шт', qty:'1,00',
       qty_norm_hours_client:'2,50', stock_qty:'0,00', reserve_qty:'0,00', ordered_in_transit_qty:'0,00', batch_fifo:'Партия №01-2026',
       line_status:'Отгружено', price:'2 417,43', sum:'2 417,43', payment_form:'Безнал', rrc:'4 800,00',
-      paid_status:'Оплачено', coefficient:'12%', extra_field_1:'2 780,04', extra_field_2:'2 780,04', supplier:'АЛЬЯНС',
+      paid_status:'Оплачено', coefficient:'12%', extra_field_1:'2 780,04', extra_field_2:'6 950,10', supplier:'АЛЬЯНС',
       receipt_date:'06.02.2026', upd_date:'06.02.2026', upd_number:'УПД-3402', supplier_ship_territory:'КЕТЧЕРСКАЯ',
       comment:'Получено лично представителем клиента (САМИ)'
     }}
   ];
+
+  // ---- Справочники (демо-данные для примера; в 1С — реальные справочники) ----
+  var DIRECTORIES = {
+    counterparties: [
+      {name:'ООО «СтройТранс»', contracts:['Д-22/2026', 'Д-23/2026 (сервис)']},
+      {name:'ИП Кетчерская', contracts:['Д-05/2026']},
+      {name:'ООО «АвтоЛайн»', contracts:['Д-31/2026', 'Д-32/2026 (инструмент)']},
+      {name:'Частный клиент', contracts:[]}
+    ],
+    serviceTypes: ['Ремонт', 'Услуга', 'Инструмент', 'Запчасть'],
+    vehicles: [
+      {gosnomer:'А590СЕ197', brand:'КАМАЗ', model:'65115', vin:'XTC651150R1234567', engine:'740.30-260', chassis:'Ш-65115-0012345'},
+      {gosnomer:'М141МН777', brand:'ГАЗ', model:'3302 Бизнес', vin:'X96330200R7654321', engine:'УМЗ-4216', chassis:'Ш-330200-0076543'},
+      {gosnomer:'Е427ЕВ777', brand:'КАМАЗ', model:'54115', vin:'XTC541150R9876543', engine:'740.51-320', chassis:'Ш-54115-0098765'},
+      {gosnomer:'О777ОО150', brand:'МАЗ', model:'5440', vin:'Y3M544000R0011223', engine:'ЯМЗ-6582', chassis:'Ш-5440-0011223'}
+    ],
+    aggregates: ['Двигатель КАМАЗ 740.30-260', 'Двигатель УМЗ-4216', 'КПП ZF 16S151', 'Мост средний КАМАЗ 53212', 'Генератор 5122.3771'],
+    nomenclature: [
+      {name:'Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ', article:'7452-262 / 7472.3716-04', code:'622563', unit:'шт'},
+      {name:'Крышка КАМАЗ редуктора среднего моста', article:'54115-2502209', code:'633603', unit:'шт'},
+      {name:'Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216', article:'4216.1005074', code:'640118', unit:'шт'},
+      {name:'Масло моторное 10W-40, 20 л', article:'M-10W40-20', code:'700211', unit:'л'},
+      {name:'Замена колодок (норма-час)', article:'SRV-BRAKE', code:'900010', unit:'н/ч'}
+    ],
+    units: ['шт', 'компл', 'л', 'кг', 'м', 'н/ч']
+  };
+
+  // Поле → чем заполняется выпадающий список
+  var SELECT_SOURCES = {
+    customer: function(){ return DIRECTORIES.counterparties.map(function(c){ return c.name; }); },
+    contract: function(v){ return contractsOf(v.customer); },
+    service_type: function(){ return DIRECTORIES.serviceTypes; },
+    gosnomer_fact: function(){ return DIRECTORIES.vehicles.map(function(x){ return x.gosnomer; }); },
+    brand_fact: function(){ return uniq(DIRECTORIES.vehicles.map(function(x){ return x.brand; })); },
+    model_fact: function(){ return uniq(DIRECTORIES.vehicles.map(function(x){ return x.model; })); },
+    vin_fact: function(){ return DIRECTORIES.vehicles.map(function(x){ return x.vin; }); },
+    engine_fact: function(){ return uniq(DIRECTORIES.vehicles.map(function(x){ return x.engine; })); },
+    grz_fact: function(){ return DIRECTORIES.vehicles.map(function(x){ return x.chassis; }); },
+    aggregate_fact: function(){ return DIRECTORIES.aggregates; },
+    name: function(){ return DIRECTORIES.nomenclature.map(function(x){ return x.name; }); },
+    article: function(){ return DIRECTORIES.nomenclature.map(function(x){ return x.article; }); },
+    code_aa: function(){ return DIRECTORIES.nomenclature.map(function(x){ return x.code; }); },
+    unit: function(){ return DIRECTORIES.units; }
+  };
+  function uniq(a){ return a.filter(function(x, i){ return a.indexOf(x) === i; }); }
+  function contractsOf(customer){
+    var c = DIRECTORIES.counterparties.filter(function(x){ return x.name === customer; })[0];
+    return c ? c.contracts : [];
+  }
+
+  // Правила заполнения (попадают в экспорт JSON как fieldRules — для реализации в 1С)
+  var VEHICLE_FILL = {brand_fact:'brand', model_fact:'model', vin_fact:'vin', engine_fact:'engine', grz_fact:'chassis'};
+  var NOMENCLATURE_KEYS = {name:'name', article:'article', code_aa:'code', unit:'unit'};
+  var FIELD_RULES = [
+    {type:'options', column:'service_type', values:DIRECTORIES.serviceTypes,
+      text:'Вид услуги — выбор из списка: ремонт, услуга, инструмент, запчасть.'},
+    {type:'filter', column:'contract', by:'customer', directory:'counterparties.contracts',
+      text:'Договор с заказчиком — только договоры выбранного контрагента (Заказчик).'},
+    {type:'autofill', source:['gosnomer_fact'], directory:'vehicles', fills:Object.keys(VEHICLE_FILL),
+      text:'Госномер — выбор из справочника машин; при выборе проставляются Марка, Модель, VIN, Двигатель, № Шасси.'},
+    {type:'oneOfRequired', columns:['gosnomer_fact','aggregate_fact'],
+      text:'Обязательно заполнить одно из: Госномер или Агрегат (выпадающий список).'},
+    {type:'autofill', source:['name','article','code_aa'], directory:'nomenclature', fills:Object.keys(NOMENCLATURE_KEYS),
+      text:'Наименование / Артикул / Код А-А — поиск по любому из них; выбор одного подтягивает остальные три поля (включая Ед. изм.).'},
+    {type:'oneOfRequired', columns:['name','article','code_aa'],
+      text:'Обязательно заполнить одно из: Наименование, Артикул или Код А-А.'},
+    {type:'formula', column:'extra_field_1', expr:'price * (1 + coefficient / 100)', unless:'qty_norm_hours_client > 0',
+      text:'Цена продажи = Цена (себес.) × (1 + Коэфф / 100). Если заполнено «Кол-во норма час» — коэффициент игнорируется, цена продажи вводится вручную.'},
+    {type:'formula', column:'extra_field_2', expr:'qty_norm_hours_client > 0 ? qty_norm_hours_client * extra_field_1 : qty_fact * extra_field_1',
+      text:'Сумма продажи = Кол-во (ФАКТ) × Цена продажи; если заполнено «Кол-во норма час товар для клиента» — Кол-во норма час × Цена продажи.'}
+  ];
+  var ONE_OF_GROUPS = FIELD_RULES.filter(function(r){ return r.type === 'oneOfRequired'; }).map(function(r){ return r.columns; });
+  function groupOf(colId){ return ONE_OF_GROUPS.filter(function(g){ return g.indexOf(colId) !== -1; })[0] || null; }
+  function isEmptyVal(v){ return v == null || v === '' || v === '—'; }
+  function num(v){
+    if (isEmptyVal(v)) return 0;
+    var n = Number(String(v).replace(/[^\d,.\-]/g, '').replace(',', '.'));
+    return isFinite(n) ? n : 0;
+  }
+
+  // Применить правила к строке после изменения поля colId (null — пересчёт формул)
+  function applyRowRules(v, colId){
+    if (colId === 'customer'){
+      var cs = contractsOf(v.customer);
+      if (cs.indexOf(v.contract) === -1) v.contract = cs.length === 1 ? cs[0] : '—';
+    }
+    if (colId === 'gosnomer_fact'){
+      var car = DIRECTORIES.vehicles.filter(function(x){ return x.gosnomer === v.gosnomer_fact; })[0];
+      Object.keys(VEHICLE_FILL).forEach(function(k){ v[k] = car ? car[VEHICLE_FILL[k]] : '—'; });
+    }
+    if (NOMENCLATURE_KEYS[colId] && colId !== 'unit'){
+      var key = NOMENCLATURE_KEYS[colId];
+      var item = DIRECTORIES.nomenclature.filter(function(x){ return x[key] === v[colId]; })[0];
+      if (item) Object.keys(NOMENCLATURE_KEYS).forEach(function(k){ v[k] = item[NOMENCLATURE_KEYS[k]]; });
+    }
+    var hours = num(v.qty_norm_hours_client);
+    if (hours <= 0 && colId !== 'extra_field_1'){
+      v.extra_field_1 = (num(v.price) * (1 + num(v.coefficient) / 100)).toFixed(2);
+    }
+    v.extra_field_2 = ((hours > 0 ? hours : num(v.qty_fact)) * num(v.extra_field_1)).toFixed(2);
+  }
+  SAMPLE_ROWS.forEach(function(r){ applyRowRules(r.values, null); });
+
+  // Короткие пометки правил в заголовке строки матрицы
+  var RULE_NOTES = {
+    service_type:'список: ремонт / услуга / инструмент / запчасть',
+    contract:'только договоры выбранного Заказчика',
+    gosnomer_fact:'обяз. Госномер или Агрегат · подтягивает Марку, Модель, VIN, Двигатель, № Шасси',
+    aggregate_fact:'обяз. Госномер или Агрегат',
+    name:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
+    article:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
+    code_aa:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
+    unit:'подтягивается из номенклатуры',
+    extra_field_1:'= Цена × (1 + Коэфф/100); при норме-часах — вручную',
+    extra_field_2:'= Кол-во (ФАКТ) или норма-час × Цена продажи'
+  };
 
   var EDIT_LABELS = {
     none:'Не редактируется', role:'Выбранные роли', creator:'Только создатель',
@@ -384,13 +523,17 @@
   var DATA_TYPE_VALUES = ['select','date','text','number','checkbox','matrix'];
   var DEFAULT_DATA_TYPES = {
     cell_select:'checkbox', doc_signed_original:'checkbox',
-    row_number:'number', qty_fact:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
+    row_number:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
     shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date',
-    customer:'select', contract:'select', service_type:'select', territory_fact:'select', unit_fact:'select', unit:'select',
-    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select',
-    supplier_ship_territory:'select'
+    customer:'select', contract:'select', service_type:'select',
+    brand_fact:'select', model_fact:'select', aggregate_fact:'select', gosnomer_fact:'select', grz_fact:'select', vin_fact:'select', engine_fact:'select',
+    name:'select', article:'select', code_aa:'select', unit:'select',
+    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select'
   };
+  // Умолчания для всех пользователей: default-matrix.js (собирается tools/make_default_matrix.py)
+  var DEFAULTS = (window.VITAUTO_DEFAULT_MATRIX && window.VITAUTO_DEFAULT_MATRIX.cells) ? window.VITAUTO_DEFAULT_MATRIX : null;
   function defaultDataType(col){
+    if (DEFAULTS && DEFAULTS.columnTypes && DATA_TYPE_VALUES.indexOf(DEFAULTS.columnTypes[col.id]) !== -1) return DEFAULTS.columnTypes[col.id];
     if (DEFAULT_DATA_TYPES[col.id]) return DEFAULT_DATA_TYPES[col.id];
     if (col.type === 'bool') return 'checkbox';
     if (col.type === 'decimal') return 'number';
@@ -497,21 +640,42 @@
     return enforceConstraints(cell, roleId);
   }
 
+  // Ячейка из default-matrix.js: число = биты ролей (0..5) + 64 required + 128 creator + 256 admin
+  function decodeDefaultCell(level, roleId, statusId, colId){
+    if (!DEFAULTS) return null;
+    var row = DEFAULTS.cells[level] && DEFAULTS.cells[level][roleId] && DEFAULTS.cells[level][roleId][statusId];
+    var ci = DEFAULTS.columns.indexOf(colId);
+    if (!row || ci === -1 || typeof row[ci] !== 'number') return null;
+    var v = row[ci];
+    var cell = {visible:true, required: !!(v & 64), editable:'none', editableRoles:[]};
+    if (v & 128) cell.editable = 'creator';
+    else if (v & 256) cell.editable = 'admin';
+    else if (v & 63){
+      cell.editable = 'role';
+      cell.editableRoles = DEFAULTS.roles.filter(function(r, i){ return v & (1 << i); });
+    }
+    return enforceConstraints(cell, roleId);
+  }
+
+  function defaultCell(level, roleId, colId, statusId){
+    return decodeDefaultCell(level, roleId, statusId, colId) || computeDefaultCell(roleId, colId, statusId);
+  }
+
   function buildDefaultMatrix(){
-    function buildLevel(){
+    function buildLevel(level){
       var m = {};
       ROLES.forEach(function(r){
         m[r.id] = {};
         STATUSES.forEach(function(s){
           m[r.id][s.id] = {};
           COLUMNS.forEach(function(c){
-            m[r.id][s.id][c.id] = computeDefaultCell(r.id, c.id, s.id);
+            m[r.id][s.id][c.id] = defaultCell(level, r.id, c.id, s.id);
           });
         });
       });
       return m;
     }
-    return {order: buildLevel(), line: buildLevel()};
+    return {order: buildLevel('order'), line: buildLevel('line')};
   }
 
   function buildDefaultColumnTypes(){
@@ -524,6 +688,7 @@
     return {
       version: SCHEMA_VERSION,
       updatedAt: new Date().toISOString(),
+      defaultsId: DEFAULTS ? DEFAULTS.id : null,
       settings: {statusLevel:'order', activeRole:'manager', statusViewMode:'all', currentStatusIndex:0},
       roles: ROLE_IDS.slice(),
       statuses: STATUSES.map(function(s){return {id:s.id, title:s.title};}),
@@ -553,7 +718,7 @@
           if (!st.matrix[level][r.id][s.id]) st.matrix[level][r.id][s.id] = {};
           COLUMNS.forEach(function(c){
             if (!st.matrix[level][r.id][s.id][c.id]) {
-              st.matrix[level][r.id][s.id][c.id] = computeDefaultCell(r.id, c.id, s.id);
+              st.matrix[level][r.id][s.id][c.id] = defaultCell(level, r.id, c.id, s.id);
             } else {
               enforceConstraints(st.matrix[level][r.id][s.id][c.id], r.id);
             }
@@ -601,6 +766,7 @@
     return st;
   }
 
+  var loadedFromStorage = false;
   function loadState(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -608,6 +774,7 @@
       var parsed = JSON.parse(raw);
       var err = validateImport(parsed);
       if (err){ console.warn('Сохранённая матрица повреждена ('+err+'), используются значения по умолчанию.'); return buildDefaultState(); }
+      loadedFromStorage = true;
       return normalizeSettings(parsed);
     }catch(e){
       return buildDefaultState();
@@ -822,6 +989,15 @@
     return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
   }
 
+  function selectOptions(colId, current, rowValues){
+    if (!SELECT_SOURCES[colId]) return sampleOptions(colId, current);
+    var vals = SELECT_SOURCES[colId](rowValues || {}).slice();
+    if (!isEmptyVal(current) && vals.indexOf(String(current)) === -1) vals.unshift(String(current));
+    return '<option value="">—</option>' + vals.map(function(v){
+      return '<option'+(String(current)===v?' selected':'')+'>'+esc(v)+'</option>';
+    }).join('');
+  }
+
   function sampleOptions(colId, current){
     var vals = [];
     SAMPLE_ROWS.forEach(function(r){
@@ -848,7 +1024,9 @@
 
     var headHtml = '<thead><tr><th>Пример</th>' + columns.map(function(col){
       var cell = ensureCell(level, activeRole, status.id, col.id);
-      return '<th data-col="'+col.id+'">'+esc(col.title)+(cell.required ? '<span class="req-star">*</span>' : '')+'</th>';
+      var grp = groupOf(col.id);
+      var oneOf = grp ? '<span class="req-one" title="Обязательно одно из: '+esc(grp.map(function(id){ return (COLUMNS_BY_ID[id]||{title:id}).title; }).join(' / '))+'">✱</span>' : '';
+      return '<th data-col="'+col.id+'">'+esc(col.title)+(cell.required ? '<span class="req-star">*</span>' : '')+oneOf+'</th>';
     }).join('') + '</tr></thead>';
 
     var bodyHtml = '<tbody>' + SAMPLE_ROWS.map(function(sample, rowIdx){
@@ -866,13 +1044,20 @@
           readonly = false;
         }
         var cls = (readonly ? 'prev-readonly' : 'prev-editable') + (cell.required ? ' prev-required' : '');
+        var grp = groupOf(col.id);
+        var missing = grp && grp.every(function(id){ return isEmptyVal(sample.values[id]); });
+        if (missing) cls += ' prev-missing';
+        if (VEHICLE_FILL[col.id] || col.id === 'unit' || col.id === 'extra_field_2') cls += ' prev-auto';
+        var da = ' data-sample="'+rowIdx+'" data-col="'+col.id+'" ';
         var title = isBool
           ? (isTruthyFlag(val) ? 'true: строка не защищена от изменения' : 'false: защита строки по матрице/статусу')
           : (readonly ? 'Только чтение' : ('Редактируется: ' + editLabel(cell)));
         if (!isBool && col.id === 'doc_signed_original') title = 'Флаг разблокировки строки · ' + title;
         title = DATA_TYPE_LABELS[dtype] + (isDecimal ? ' (до сотых)' : '') + ' · ' + title;
         if (unlocked && !isBool) title = 'Строка разблокирована галкой «оригинал» · ' + title;
-        var dis = readonly ? 'disabled' : '';
+        if (RULE_NOTES[col.id]) title += ' · Правило: ' + RULE_NOTES[col.id];
+        if (missing) title = 'Заполните одно из: ' + grp.map(function(id){ return (COLUMNS_BY_ID[id]||{title:id}).title; }).join(' / ') + ' · ' + title;
+        var dis = (readonly ? 'disabled' : '') + da;
         if (isBool) {
           var canToggle = canRoleEdit(cell, activeRole);
           row += '<td class="'+cls+' prev-bool"><input type="checkbox" class="prev-flag" data-sample="'+rowIdx+'" data-col="'+col.id+'" '+(isTruthyFlag(val)?'checked':'')+' '+(canToggle?'':'disabled')+' title="'+esc(title)+'"></td>';
@@ -881,19 +1066,26 @@
         } else if (dtype === 'date') {
           row += '<td class="'+cls+'"><input type="date" value="'+esc(toIsoDate(val))+'" '+dis+' title="'+esc(title)+'"></td>';
         } else if (dtype === 'select') {
-          row += '<td class="'+cls+'"><select '+dis+' title="'+esc(title)+'">'+sampleOptions(col.id, val)+'</select></td>';
+          row += '<td class="'+cls+'"><select '+dis+' title="'+esc(title)+'">'+selectOptions(col.id, val, sample.values)+'</select></td>';
         } else if (dtype === 'matrix') {
           row += '<td class="'+cls+'"><span class="prev-matrix" title="'+esc(title)+'">▦ матрица</span></td>';
         } else {
-          row += '<td class="'+cls+'"><input type="text" value="'+esc(val)+'" '+(readonly?'disabled':'')+' title="'+esc(title)+'"></td>';
+          row += '<td class="'+cls+'"><input type="text" value="'+esc(val)+'" '+dis+' title="'+esc(title)+'"></td>';
         }
       });
       row += '</tr>';
       return row;
     }).join('') + '</tbody>';
 
+    var keepScroll = elPreviewWrap ? elPreviewWrap.scrollLeft : 0;
     table.innerHTML = headHtml + bodyHtml;
-    syncPreviewToMatrix();
+    if (previewEditing) elPreviewWrap.scrollLeft = keepScroll;
+    else syncPreviewToMatrix();
+  }
+  var previewEditing = false;
+
+  function renderRules(){
+    document.getElementById('rulesList').innerHTML = FIELD_RULES.map(function(r){ return '<li>'+esc(r.text)+'</li>'; }).join('');
   }
 
   // ---- Синхронизация: вертикальный скролл матрицы → горизонтальный скролл примера ----
@@ -986,7 +1178,8 @@
     var statuses = activeStatuses();
     var rowsHtml = '';
     columns.forEach(function(col){
-      rowsHtml += '<tr data-col="'+col.id+'"><th class="row-head">'+col.title+'<span class="id">'+col.id+'</span>'+dataTypeSelectHtml(col.id)+'</th>';
+      rowsHtml += '<tr data-col="'+col.id+'"><th class="row-head">'+col.title+'<span class="id">'+col.id+'</span>'+dataTypeSelectHtml(col.id)
+        + (RULE_NOTES[col.id] ? '<span class="rule-note">'+esc(RULE_NOTES[col.id])+'</span>' : '') + '</th>';
       statuses.forEach(function(st){
         var cell = ensureCell(level, activeRole, st.id, col.id);
         rowsHtml += '<td class="matrix-cell '+cellClass(cell, activeRole)+'" data-status="'+st.id+'" data-col="'+col.id+'">'
@@ -1150,13 +1343,20 @@
   });
 
   // Bulk operations
+  // Правка примера: значение → правила (автоподстановка, фильтр договоров, формулы) → перерисовка
   document.getElementById('previewTable').addEventListener('change', function(e){
     var el = e.target;
-    if (!el.classList.contains('prev-flag')) return;
+    var colId = el.getAttribute('data-col');
     var idx = Number(el.getAttribute('data-sample'));
-    if (!SAMPLE_ROWS[idx]) return;
-    SAMPLE_ROWS[idx].values[el.getAttribute('data-col')] = !!el.checked;
+    if (!colId || !SAMPLE_ROWS[idx]) return;
+    var v = SAMPLE_ROWS[idx].values;
+    if (el.type === 'checkbox') v[colId] = !!el.checked;
+    else if (el.type === 'date'){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(el.value); v[colId] = m ? m[3]+'.'+m[2]+'.'+m[1] : '—'; }
+    else v[colId] = el.value === '' ? '—' : el.value;
+    applyRowRules(v, colId);
+    previewEditing = true;
     renderPreview();
+    previewEditing = false;
   });
 
   document.getElementById('btnBulk').addEventListener('click', function(){
@@ -1251,7 +1451,9 @@
   // Export / Import / Reset
   document.getElementById('btnExport').addEventListener('click', function(){
     state.updatedAt = new Date().toISOString();
-    var blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    var out = JSON.parse(JSON.stringify(state));
+    out.fieldRules = FIELD_RULES;
+    var blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url; a.download = 'column-matrix.json';
@@ -1273,6 +1475,7 @@
         var err = validateImport(parsed);
         if (err){ alert('Ошибка импорта: ' + err); return; }
         state = normalizeSettings(parsed);
+        if (DEFAULTS) state.defaultsId = DEFAULTS.id; // осознанный импорт — не предлагать умолчания
         activeRole = state.settings.activeRole;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         pushLog({action:'Импорт JSON', role:'—', level:'—', status:'—', column:'—', field:'файл', before:'—', after: file.name});
@@ -1293,6 +1496,29 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     pushLog({action:'Сброс к значениям по умолчанию', role:'—', level:'—', status:'—', column:'—', field:'—', before:'—', after:'—'});
     renderAll();
+  });
+
+  // Новые умолчания (default-matrix.js) при уже сохранённой своей матрице — предложить применить
+  var elDefaultsBanner = document.getElementById('defaultsBanner');
+  if (DEFAULTS && loadedFromStorage && state.defaultsId !== DEFAULTS.id){
+    document.getElementById('defaultsBannerId').textContent = 'от ' + new Date(DEFAULTS.id).toLocaleString('ru-RU');
+    elDefaultsBanner.hidden = false;
+  }
+  document.getElementById('btnApplyDefaults').addEventListener('click', function(){
+    if (!confirm('Заменить вашу матрицу новыми настройками по умолчанию? Перед этим можно сделать «Экспорт JSON».')) return;
+    var settings = state.settings;
+    state = buildDefaultState();
+    state.settings = settings;
+    normalizeSettings(state);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    pushLog({action:'Применены новые умолчания', role:'—', level:'—', status:'—', column:'—', field:'источник', before:'—', after: DEFAULTS.source || DEFAULTS.id});
+    elDefaultsBanner.hidden = true;
+    renderAll();
+  });
+  document.getElementById('btnKeepMine').addEventListener('click', function(){
+    state.defaultsId = DEFAULTS.id;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    elDefaultsBanner.hidden = true;
   });
 
   document.getElementById('btnCopyLink').addEventListener('click', function(){
@@ -1349,6 +1575,7 @@
     renderLogTable();
   });
 
+  renderRules();
   renderAll();
 })();
 </script>

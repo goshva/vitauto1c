@@ -181,6 +181,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="default-matrix.js"></script>
 <script>
 (function(){
   'use strict';
@@ -230,6 +231,7 @@
     {id:'service_type', title:'Вид услуги', group:'order_header'},
     {id:'brand_fact', title:'Марка', group:'fact'},
     {id:'model_fact', title:'Модель', group:'fact'},
+    {id:'aggregate_fact', title:'Агрегат', group:'fact'},
     {id:'gosnomer_fact', title:'Госномер', group:'fact'},
     {id:'grz_fact', title:'№ Шасии', group:'fact'},
     {id:'vin_fact', title:'VIN (ХТС)', group:'fact'},
@@ -274,13 +276,32 @@
   var DATA_TYPE_VALUES = ['select','date','text','number','checkbox','matrix'];
   var DEFAULT_DATA_TYPES = {
     cell_select:'checkbox', doc_signed_original:'checkbox',
-    row_number:'number', qty_fact:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
+    row_number:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
     shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date',
-    customer:'select', contract:'select', service_type:'select', territory_fact:'select', unit_fact:'select', unit:'select',
-    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select',
-    supplier_ship_territory:'select'
+    customer:'select', contract:'select', service_type:'select',
+    brand_fact:'select', model_fact:'select', aggregate_fact:'select', gosnomer_fact:'select', grz_fact:'select', vin_fact:'select', engine_fact:'select',
+    name:'select', article:'select', code_aa:'select', unit:'select',
+    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select'
   };
+  // Умолчания для всех пользователей (default-matrix.js), см. index.html
+  var DEFAULTS = (window.VITAUTO_DEFAULT_MATRIX && window.VITAUTO_DEFAULT_MATRIX.cells) ? window.VITAUTO_DEFAULT_MATRIX : null;
+
+  // Правила полей — кратко, как в матрице
+  var RULE_NOTES = {
+    service_type:'Выпадающий список: ремонт / услуга / инструмент / запчасть.',
+    contract:'Только договоры выбранного Заказчика.',
+    gosnomer_fact:'Обязательно Госномер или Агрегат. При выборе подтягиваются Марка, Модель, VIN, Двигатель, № Шасси.',
+    aggregate_fact:'Обязательно Госномер или Агрегат (выпадающий список).',
+    name:'Обязательно одно из Наименование / Артикул / Код А-А; выбор подтягивает остальные поля.',
+    article:'Обязательно одно из Наименование / Артикул / Код А-А; выбор подтягивает остальные поля.',
+    code_aa:'Обязательно одно из Наименование / Артикул / Код А-А; выбор подтягивает остальные поля.',
+    unit:'Подтягивается из номенклатуры.',
+    extra_field_1:'= Цена (себес.) × (1 + Коэфф/100); при норме-часах — вводится вручную, коэффициент игнорируется.',
+    extra_field_2:'= Кол-во (ФАКТ) × Цена продажи; при норме-часах — Кол-во норма час × Цена продажи.'
+  };
+
   function defaultDataType(col){
+    if (DEFAULTS && DEFAULTS.columnTypes && DATA_TYPE_VALUES.indexOf(DEFAULTS.columnTypes[col.id]) !== -1) return DEFAULTS.columnTypes[col.id];
     if (DEFAULT_DATA_TYPES[col.id]) return DEFAULT_DATA_TYPES[col.id];
     if (col.type === 'bool') return 'checkbox';
     if (col.type === 'decimal') return 'number';
@@ -339,12 +360,41 @@
     try{ localStorage.setItem(Q_KEY, JSON.stringify(qs)); }catch(e){}
   }
 
-  // Сохранённая матрица из index.html (если есть) — источник подсказок и основа экспорта
+  // Матрица по умолчанию из default-matrix.js в формате состояния index.html
+  function defaultsMatrixState(){
+    if (!DEFAULTS) return null;
+    var matrix = {};
+    LEVELS.forEach(function(l){
+      matrix[l] = {};
+      ROLE_IDS.forEach(function(r){
+        matrix[l][r] = {};
+        STATUSES.forEach(function(s){
+          matrix[l][r][s.id] = {};
+          var row = (DEFAULTS.cells[l] && DEFAULTS.cells[l][r] && DEFAULTS.cells[l][r][s.id]) || [];
+          DEFAULTS.columns.forEach(function(cid, ci){
+            var v = row[ci];
+            if (typeof v !== 'number') return;
+            var roles = DEFAULTS.roles.filter(function(x, i){ return v & (1 << i); });
+            matrix[l][r][s.id][cid] = {
+              visible:true, required: !!(v & 64),
+              editable: (v & 128) ? 'creator' : (v & 256) ? 'admin' : (roles.length ? 'role' : 'none'),
+              editableRoles: (v & 384) ? [] : roles
+            };
+          });
+        });
+      });
+    });
+    return {version:SCHEMA_VERSION, defaultsId:DEFAULTS.id, settings:{statusLevel:'order', activeRole:'manager', statusViewMode:'all', currentStatusIndex:0},
+      columnTypes: DEFAULTS.columnTypes || {}, matrix:matrix};
+  }
+
+  // Сохранённая матрица из index.html, иначе умолчания — источник подсказок и основа экспорта
   function loadMatrix(){
     try{
       var m = JSON.parse(localStorage.getItem(MATRIX_KEY) || 'null');
-      return m && m.matrix && m.matrix.order && m.matrix.line ? m : null;
-    }catch(e){ return null; }
+      if (m && m.matrix && m.matrix.order && m.matrix.line) return m;
+    }catch(e){}
+    return defaultsMatrixState();
   }
 
   function canRoleEdit(cell, roleId){
@@ -513,7 +563,7 @@
     var c = posToCell(p);
     var answered = !!getAnswer(qs.level, c.col.id, c.status.id);
     var srcNote = {
-      answer:'', matrix:'Предзаполнено из сохранённой матрицы — проверьте и подтвердите.',
+      answer:'', matrix:'Предзаполнено из матрицы (сохранённой в браузере или по умолчанию) — проверьте и подтвердите.',
       prev:'Предзаполнено как на предыдущем статусе — проверьте и подтвердите.', empty:''
     }[draft.src];
     var type = dataTypeOf(c.col.id);
@@ -539,6 +589,7 @@
       + '</div>'
       + (srcNote ? '<div class="hint">'+srcNote+'</div>' : '')
       + '<div class="hint">Колонка видна всем ролям; здесь отмечаются только те, кто может её менять.</div>'
+      + (RULE_NOTES[c.col.id] ? '<div class="hint" style="color:#7c2d12;background:#fff4e5;border:1px solid #f5d0a9;border-radius:8px;padding:6px 8px;">Правило: '+esc(RULE_NOTES[c.col.id])+'</div>' : '')
 
       + '<div class="q">Обязательно к заполнению?</div>'
       + '<label class="switch-row'+(none ? ' disabled' : '')+'"><span>Да, поле обязательное</span>'
