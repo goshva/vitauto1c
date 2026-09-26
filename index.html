@@ -121,6 +121,16 @@
   table.preview-table td.prev-missing{background:#fde2e2 !important;box-shadow:inset 0 0 0 2px var(--danger);}
   table.preview-table td.prev-auto input, table.preview-table td.prev-auto select{font-style:italic;}
   table.preview-table .req-one{color:var(--danger);margin-left:2px;font-size:10px;}
+  .col-code{display:inline-block;min-width:34px;margin-right:6px;padding:1px 5px;border-radius:4px;background:#1f2937;color:#fff;font:600 10.5px/1.4 Consolas,monospace;text-align:center;vertical-align:1px;}
+  tbody tr.grp-row th{position:sticky;left:0;z-index:4;text-align:left;padding:6px 8px;background:#e4e9f2;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;user-select:none;}
+  tbody tr.grp-row.sub th{background:#eef2f8;padding-left:22px;font-weight:500;}
+  tbody tr.grp-row td{background:#e4e9f2;border-bottom:1px solid var(--border);}
+  tbody tr.grp-row.sub td{background:#eef2f8;}
+  tbody tr.grp-row .grp-count{color:var(--muted);font-weight:400;margin-left:6px;}
+  tr.grp-collapsed{display:none;}
+  .grp-tools{display:flex;gap:4px;}
+  table.preview-table tr.prev-grp th{background:#e4e9f2;text-align:center;font-weight:600;border-bottom:1px solid var(--border);}
+  table.preview-table th .col-code{margin-right:4px;}
   .rule-note{display:block;margin-top:3px;font-size:10px;line-height:1.25;color:#7c2d12;background:#fff4e5;border:1px solid #f5d0a9;border-radius:4px;padding:2px 4px;}
   .rules-box{margin-top:8px;font-size:11.5px;}
   .rules-box summary{cursor:pointer;color:var(--accent-dark);}
@@ -169,7 +179,11 @@
       <select id="statusJump" title="Перейти к статусу"></select>
       <button id="btnNextStatus" title="Следующий статус">▶</button>
     </div>
-    <input type="text" id="searchInput" placeholder="Поиск колонки по названию или ID…">
+    <input type="text" id="searchInput" placeholder="Поиск: название, ID или код (C1, F2.3)…">
+    <div class="grp-tools">
+      <button id="btnCollapseAll" title="Свернуть все группы колонок">Свернуть группы</button>
+      <button id="btnExpandAll" title="Развернуть все группы колонок">Развернуть</button>
+    </div>
     <div class="grow"></div>
     <button id="btnCopyLink" title="Ссылка откроет матрицу с текущей ролью, уровнем статуса и режимом статусов">Скопировать ссылку</button>
     <button id="btnLog">Журнал изменений<span class="log-badge" id="logBadge" hidden>0</span></button>
@@ -265,6 +279,7 @@
 </div>
 
 <script src="default-matrix.js"></script>
+<script src="column-codes.js"></script>
 <script>
 (function(){
   'use strict';
@@ -488,8 +503,10 @@
       var item = DIRECTORIES.nomenclature.filter(function(x){ return x[key] === v[colId]; })[0];
       if (item) Object.keys(NOMENCLATURE_KEYS).forEach(function(k){ v[k] = item[NOMENCLATURE_KEYS[k]]; });
     }
+    // Без нормы-часов цена продажи всегда по формуле (ручной ввод перезаписывается);
+    // с нормой-часами коэффициент игнорируется и цена продажи вводится вручную.
     var hours = num(v.qty_norm_hours_client);
-    if (hours <= 0 && colId !== 'extra_field_1'){
+    if (hours <= 0){
       v.extra_field_1 = (num(v.price) * (1 + num(v.coefficient) / 100)).toFixed(2);
     }
     v.extra_field_2 = ((hours > 0 ? hours : num(v.qty_fact)) * num(v.extra_field_1)).toFixed(2);
@@ -597,6 +614,25 @@
   };
   ROLE_PROFILES.chief_mechanic = ROLE_PROFILES.manager;
 
+  // Коды и группы колонок (column-codes.js): A, B, C1, C2, D, E, F1, F2, G, H
+  var COLUMN_GROUPS = window.VITAUTO_COLUMN_GROUPS || [];
+  var COLUMN_CODES = window.VITAUTO_COLUMN_CODES || {};
+  var GROUPS_BY_CODE = {};
+  COLUMN_GROUPS.forEach(function(g){ GROUPS_BY_CODE[g.code] = g; });
+  function colCode(colId){ return COLUMN_CODES[colId] ? COLUMN_CODES[colId].code : ''; }
+  function codeBadge(colId){ var c = colCode(colId); return c ? '<span class="col-code">'+c+'</span>' : ''; }
+  // Цепочка групп колонки сверху вниз: ['C','C1'] или ['A']
+  function groupChain(colId){
+    var info = COLUMN_CODES[colId];
+    if (!info) return [];
+    return info.top !== info.group ? [info.top, info.group] : [info.group];
+  }
+  function groupColumnIds(code){
+    var ids = [];
+    COLUMN_GROUPS.forEach(function(g){ if (g.code === code || g.parent === code) ids = ids.concat(g.columns); });
+    return ids;
+  }
+
   var COLUMNS_BY_ID = {};
   COLUMNS.forEach(function(c){ COLUMNS_BY_ID[c.id] = c; });
   var ROLE_IDS = ROLES.map(function(r){return r.id;});
@@ -693,7 +729,7 @@
       roles: ROLE_IDS.slice(),
       statuses: STATUSES.map(function(s){return {id:s.id, title:s.title};}),
       columnTypes: buildDefaultColumnTypes(),
-      columns: COLUMNS.map(function(c){return {id:c.id, title:c.title, group:c.group, type:c.type||null, dataType:defaultDataType(c)};}),
+      columns: COLUMNS.map(function(c){return {id:c.id, code:colCode(c.id), codeGroup:(COLUMN_CODES[c.id]||{}).group||null, title:c.title, group:c.group, type:c.type||null, dataType:defaultDataType(c)};}),
       matrix: buildDefaultMatrix()
     };
   }
@@ -708,7 +744,7 @@
         st.columnTypes[c.id] = DATA_TYPE_VALUES.indexOf(fromCols) !== -1 ? fromCols : defaultDataType(c);
     });
     st.columns = COLUMNS.map(function(c){
-      return {id:c.id, title:c.title, group:c.group, type:c.type||null, dataType:st.columnTypes[c.id]};
+      return {id:c.id, code:colCode(c.id), codeGroup:(COLUMN_CODES[c.id]||{}).group||null, title:c.title, group:c.group, type:c.type||null, dataType:st.columnTypes[c.id]};
     });
     ['order','line'].forEach(function(level){
       if (!st.matrix || !st.matrix[level]) return;
@@ -736,24 +772,34 @@
     var roleSet = {}; obj.roles.forEach(function(r){roleSet[r]=true;});
     for (var i=0;i<ROLE_IDS.length;i++){ if(!roleSet[ROLE_IDS[i]]) return 'отсутствует обязательная роль: '+ROLE_IDS[i]; }
     for (var j=0;j<obj.roles.length;j++){ if(ROLE_IDS.indexOf(obj.roles[j])===-1) return 'неизвестная роль: '+obj.roles[j]; }
-    var statusSet = {}; obj.statuses.forEach(function(s){ if(!s||!s.id) return; statusSet[s.id]=true; });
-    var colSet = {}; obj.columns.forEach(function(c){ if(!c||!c.id) return; colSet[c.id]=true; });
     if (!obj.matrix || !obj.matrix.order || !obj.matrix.line) return 'отсутствует matrix.order/matrix.line';
     var levels = ['order','line'];
     for (var l=0;l<levels.length;l++){
-      var lvl = obj.matrix[levels[l]];
       for (var r2=0;r2<obj.roles.length;r2++){
-        var rid = obj.roles[r2];
-        if (!lvl[rid]) return 'в matrix.'+levels[l]+' отсутствует роль '+rid;
-        for (var sid in lvl[rid]){
-          if (!statusSet[sid]) return 'в matrix.'+levels[l]+'.'+rid+' неизвестный статус: '+sid;
-          for (var cid in lvl[rid][sid]){
-            if (!colSet[cid]) return 'в matrix.'+levels[l]+'.'+rid+'.'+sid+' неизвестная колонка: '+cid;
-          }
-        }
+        if (!obj.matrix[levels[l]][obj.roles[r2]]) return 'в matrix.'+levels[l]+' отсутствует роль '+obj.roles[r2];
       }
     }
     return null;
+  }
+
+  // Колонки/статусы, известные приложению, принимаются даже если их нет в списках файла
+  // (файл мог выгрузить другой версией страницы); неизвестные — отбрасываются с отчётом.
+  function sanitizeImport(obj){
+    var dropped = {columns:{}, statuses:{}};
+    ['order','line'].forEach(function(level){
+      ROLE_IDS.forEach(function(rid){
+        var byStatus = obj.matrix[level][rid] || {};
+        Object.keys(byStatus).forEach(function(sid){
+          if (STATUS_IDS.indexOf(sid) === -1){ dropped.statuses[sid] = true; delete byStatus[sid]; return; }
+          Object.keys(byStatus[sid] || {}).forEach(function(cid){
+            if (COLUMN_IDS.indexOf(cid) === -1){ dropped.columns[cid] = true; delete byStatus[sid][cid]; }
+          });
+        });
+      });
+    });
+    delete obj.questionnaire;
+    delete obj.fieldRules;
+    return {columns:Object.keys(dropped.columns), statuses:Object.keys(dropped.statuses)};
   }
 
   function normalizeSettings(st){
@@ -774,6 +820,7 @@
       var parsed = JSON.parse(raw);
       var err = validateImport(parsed);
       if (err){ console.warn('Сохранённая матрица повреждена ('+err+'), используются значения по умолчанию.'); return buildDefaultState(); }
+      sanitizeImport(parsed);
       loadedFromStorage = true;
       return normalizeSettings(parsed);
     }catch(e){
@@ -1022,11 +1069,25 @@
 
     var columns = getColumns();
 
-    var headHtml = '<thead><tr><th>Пример</th>' + columns.map(function(col){
+    // Верхняя строка шапки — подгруппы (C1, C2…) с объединением ячеек
+    var grpCells = [], lastG = null;
+    columns.forEach(function(col){
+      var g = (COLUMN_CODES[col.id] || {}).group || '';
+      if (g === lastG) grpCells[grpCells.length - 1].span++;
+      else grpCells.push({code:g, span:1});
+      lastG = g;
+    });
+    var grpRow = '<tr class="prev-grp"><th>Группа</th>' + grpCells.map(function(x){
+      var gr = GROUPS_BY_CODE[x.code];
+      var parent = gr && gr.parent ? GROUPS_BY_CODE[gr.parent] : null;
+      return '<th colspan="'+x.span+'">'+(gr ? '<span class="col-code">'+x.code+'</span>'+esc((parent ? parent.title + ' · ' : '') + gr.title) : '')+'</th>';
+    }).join('') + '</tr>';
+
+    var headHtml = '<thead>' + grpRow + '<tr><th>Пример</th>' + columns.map(function(col){
       var cell = ensureCell(level, activeRole, status.id, col.id);
       var grp = groupOf(col.id);
       var oneOf = grp ? '<span class="req-one" title="Обязательно одно из: '+esc(grp.map(function(id){ return (COLUMNS_BY_ID[id]||{title:id}).title; }).join(' / '))+'">✱</span>' : '';
-      return '<th data-col="'+col.id+'">'+esc(col.title)+(cell.required ? '<span class="req-star">*</span>' : '')+oneOf+'</th>';
+      return '<th data-col="'+col.id+'">'+codeBadge(col.id)+esc(col.title)+(cell.required ? '<span class="req-star">*</span>' : '')+oneOf+'</th>';
     }).join('') + '</tr></thead>';
 
     var bodyHtml = '<tbody>' + SAMPLE_ROWS.map(function(sample, rowIdx){
@@ -1047,7 +1108,8 @@
         var grp = groupOf(col.id);
         var missing = grp && grp.every(function(id){ return isEmptyVal(sample.values[id]); });
         if (missing) cls += ' prev-missing';
-        if (VEHICLE_FILL[col.id] || col.id === 'unit' || col.id === 'extra_field_2') cls += ' prev-auto';
+        if (VEHICLE_FILL[col.id] || col.id === 'unit' || col.id === 'extra_field_2'
+            || (col.id === 'extra_field_1' && num(sample.values.qty_norm_hours_client) <= 0)) cls += ' prev-auto';
         var da = ' data-sample="'+rowIdx+'" data-col="'+col.id+'" ';
         var title = isBool
           ? (isTruthyFlag(val) ? 'true: строка не защищена от изменения' : 'false: защита строки по матрице/статусу')
@@ -1098,7 +1160,7 @@
     var wrapTop = elMatrixWrap.getBoundingClientRect().top;
     var head = elMatrixWrap.querySelector('thead');
     var limit = wrapTop + (head ? head.offsetHeight : 0) + 1;
-    var rows = elBody.querySelectorAll('tr:not(.filtered-out)');
+    var rows = elBody.querySelectorAll('tr[data-col]:not(.filtered-out):not(.grp-collapsed)');
     for (var i = 0; i < rows.length; i++){
       var r = rows[i].getBoundingClientRect();
       // строка считается текущей, если видна хотя бы наполовину
@@ -1177,8 +1239,20 @@
     var columns = getColumns();
     var statuses = activeStatuses();
     var rowsHtml = '';
+    var shownGroups = {};
     columns.forEach(function(col){
-      rowsHtml += '<tr data-col="'+col.id+'"><th class="row-head">'+col.title+'<span class="id">'+col.id+'</span>'+dataTypeSelectHtml(col.id)
+      groupChain(col.id).forEach(function(code, depth){
+        if (shownGroups[code]) return;
+        shownGroups[code] = true;
+        var g = GROUPS_BY_CODE[code];
+        var n = groupColumnIds(code).length;
+        var collapsed = isGroupCollapsed(code);
+        rowsHtml += '<tr class="grp-row'+(depth ? ' sub' : '')+'" data-grp="'+code+'" data-parent="'+(g.parent||'')+'">'
+          + '<th class="row-head">'+(collapsed ? '▸ ' : '▾ ')+'<span class="col-code">'+code+'</span>'+esc(g.title)+'<span class="grp-count">'+n+' кол.</span></th>'
+          + '<td colspan="'+statuses.length+'"></td></tr>';
+      });
+      var chain = groupChain(col.id);
+      rowsHtml += '<tr data-col="'+col.id+'" data-grp="'+chain.join(' ')+'"><th class="row-head">'+codeBadge(col.id)+col.title+'<span class="id">'+col.id+'</span>'+dataTypeSelectHtml(col.id)
         + (RULE_NOTES[col.id] ? '<span class="rule-note">'+esc(RULE_NOTES[col.id])+'</span>' : '') + '</th>';
       statuses.forEach(function(st){
         var cell = ensureCell(level, activeRole, st.id, col.id);
@@ -1195,23 +1269,72 @@
     elStatusLine.textContent = 'Роль: ' + roleTitle(activeRole) + ' · Уровень статуса: ' + (level==='order'?'Заказ':'Деталь (строка)') + ' ('+modeLabel+') · обновлено ' + new Date(state.updatedAt).toLocaleString('ru-RU');
   }
 
+  // Поиск: по названию, ID, коду колонки (F2.3) или коду группы (C1 — все колонки подгруппы, C — всей группы)
+  function columnMatches(colId, q){
+    if (!q) return true;
+    var col = COLUMNS_BY_ID[colId] || {title:colId};
+    var code = colCode(colId).toLowerCase();
+    var chain = groupChain(colId).map(function(x){ return x.toLowerCase(); });
+    return col.title.toLowerCase().indexOf(q) !== -1 || colId.toLowerCase().indexOf(q) !== -1
+      || code === q || code.indexOf(q + '.') === 0 || chain.indexOf(q) !== -1;
+  }
+
+  function collapsedGroups(){
+    if (!Array.isArray(state.settings.collapsedGroups)) state.settings.collapsedGroups = [];
+    return state.settings.collapsedGroups;
+  }
+  function isGroupCollapsed(code){ return collapsedGroups().indexOf(code) !== -1; }
+
   function applySearchFilter(){
     var q = elSearch.value.trim().toLowerCase();
-    var rows = elBody.querySelectorAll('tr');
-    rows.forEach(function(tr){
+    var visibleByGroup = {};
+    elBody.querySelectorAll('tr[data-col]').forEach(function(tr){
       var colId = tr.dataset.col;
-      var col = COLUMNS_BY_ID[colId] || {title:colId};
-      var match = !q || col.title.toLowerCase().indexOf(q)!==-1 || colId.toLowerCase().indexOf(q)!==-1;
+      var match = columnMatches(colId, q);
       tr.classList.toggle('filtered-out', !match);
+      var chain = groupChain(colId);
+      // при активном поиске группы не сворачиваются, чтобы найденное было видно
+      var collapsed = !q && chain.some(isGroupCollapsed);
+      tr.classList.toggle('grp-collapsed', collapsed);
+      if (match) chain.forEach(function(c){ visibleByGroup[c] = true; });
+    });
+    elBody.querySelectorAll('tr.grp-row').forEach(function(tr){
+      var code = tr.dataset.grp, parent = tr.dataset.parent;
+      tr.classList.toggle('filtered-out', !visibleByGroup[code]);
+      tr.classList.toggle('grp-collapsed', !q && !!parent && isGroupCollapsed(parent));
+      var th = tr.querySelector('th');
+      th.firstChild.nodeValue = (!q && isGroupCollapsed(code) ? '▸ ' : '▾ ');
     });
   }
 
   function filteredColumnIds(){
     var q = elSearch.value.trim().toLowerCase();
-    return getColumns().filter(function(c){
-      return !q || c.title.toLowerCase().indexOf(q)!==-1 || c.id.toLowerCase().indexOf(q)!==-1;
-    }).map(function(c){return c.id;});
+    return getColumns().filter(function(c){ return columnMatches(c.id, q); }).map(function(c){return c.id;});
   }
+
+  function toggleGroup(code, collapse){
+    var list = collapsedGroups();
+    var i = list.indexOf(code);
+    if (collapse === undefined) collapse = i === -1;
+    if (collapse && i === -1) list.push(code);
+    if (!collapse && i !== -1) list.splice(i, 1);
+  }
+  elBody.addEventListener('click', function(e){
+    var tr = e.target.closest('tr.grp-row');
+    if (!tr) return;
+    toggleGroup(tr.dataset.grp);
+    scheduleSave();
+    applySearchFilter();
+    scheduleSync();
+  });
+  document.getElementById('btnCollapseAll').addEventListener('click', function(){
+    COLUMN_GROUPS.forEach(function(g){ toggleGroup(g.code, !g.parent); });
+    scheduleSave(); applySearchFilter(); scheduleSync();
+  });
+  document.getElementById('btnExpandAll').addEventListener('click', function(){
+    state.settings.collapsedGroups = [];
+    scheduleSave(); applySearchFilter(); scheduleSync();
+  });
 
   function renderAll(){
     syncUrl();
@@ -1474,13 +1597,17 @@
         var parsed = JSON.parse(reader.result);
         var err = validateImport(parsed);
         if (err){ alert('Ошибка импорта: ' + err); return; }
+        var dropped = sanitizeImport(parsed);
         state = normalizeSettings(parsed);
         if (DEFAULTS) state.defaultsId = DEFAULTS.id; // осознанный импорт — не предлагать умолчания
         activeRole = state.settings.activeRole;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         pushLog({action:'Импорт JSON', role:'—', level:'—', status:'—', column:'—', field:'файл', before:'—', after: file.name});
         renderAll();
-        alert('Матрица успешно импортирована.');
+        var notes = [];
+        if (dropped.columns.length) notes.push('пропущены неизвестные колонки: ' + dropped.columns.join(', '));
+        if (dropped.statuses.length) notes.push('пропущены неизвестные статусы: ' + dropped.statuses.join(', '));
+        alert('Матрица успешно импортирована.' + (notes.length ? '\n' + notes.join('\n') : ''));
       }catch(ex){
         alert('Не удалось прочитать JSON: ' + ex.message);
       }

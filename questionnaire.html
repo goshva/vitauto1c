@@ -96,6 +96,9 @@
   .menu-list button.danger{color:var(--danger);border-color:#f3b4ae;}
   .menu-list .note{font-size:12px;color:var(--muted);}
   .nav-col{padding:10px 0;border-bottom:1px solid var(--border);}
+  .nav-grp{margin-top:12px;padding:6px 8px;border-radius:8px;background:#e4e9f2;font-weight:600;font-size:13px;}
+  .nav-grp.sub{background:#eef2f8;font-weight:500;margin-left:10px;}
+  .col-code{display:inline-block;margin-right:6px;padding:1px 6px;border-radius:5px;background:#1f2937;color:#fff;font:600 12px/1.4 Consolas,monospace;vertical-align:1px;}
   .nav-col-title{font-size:14px;display:flex;justify-content:space-between;gap:8px;}
   .nav-col-title span{color:var(--muted);font-size:12px;white-space:nowrap;}
   .dots{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
@@ -182,6 +185,7 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="default-matrix.js"></script>
+<script src="column-codes.js"></script>
 <script>
 (function(){
   'use strict';
@@ -309,6 +313,17 @@
   }
 
   var ROLE_IDS = ROLES.map(function(r){ return r.id; });
+
+  // Коды колонок и группы (column-codes.js)
+  var CODES = window.VITAUTO_COLUMN_CODES || {};
+  var GROUPS_BY_CODE = {};
+  (window.VITAUTO_COLUMN_GROUPS || []).forEach(function(g){ GROUPS_BY_CODE[g.code] = g; });
+  function groupTitle(colId){
+    var info = CODES[colId];
+    if (!info) return '';
+    var g = GROUPS_BY_CODE[info.group], top = GROUPS_BY_CODE[info.top];
+    return info.top !== info.group ? top.title + ' · ' + g.title : g.title;
+  }
   var S = STATUSES.length, C = COLUMNS.length, TOTAL = S * C;
 
   function esc(s){
@@ -577,7 +592,7 @@
 
     elMain.innerHTML =
       '<section class="card">'
-      + '<div class="crumbs"><span>Колонка '+(c.ci+1)+'/'+C+'</span><span>·</span><span>Статус '+(c.si+1)+'/'+S+'</span>'
+      + '<div class="crumbs">'+(CODES[c.col.id] ? '<span class="col-code">'+CODES[c.col.id].code+'</span><span>'+esc(groupTitle(c.col.id))+'</span><span>·</span>' : '')+'<span>Колонка '+(c.ci+1)+'/'+C+'</span><span>·</span><span>Статус '+(c.si+1)+'/'+S+'</span>'
       +   (answered ? '<span class="pill ok">отвечено</span>' : '<span class="pill draft">нет ответа</span>') + '</div>'
       + '<div class="col-title">'+esc(c.col.title)+'</div>'
       + '<div class="col-id">'+esc(c.col.id)+'</div>'
@@ -773,14 +788,22 @@
 
   function renderNav(){
     var cur = pos();
+    var shown = {};
     document.getElementById('navList').innerHTML = COLUMNS.map(function(col, ci){
+      var info = CODES[col.id], head = '';
+      if (info) [info.top, info.group].forEach(function(code, depth){
+        if (shown[code] || (depth && code === info.top)) return;
+        shown[code] = true;
+        var g = GROUPS_BY_CODE[code];
+        head += '<div class="nav-grp'+(depth ? ' sub' : '')+'"><span class="col-code">'+code+'</span>'+esc(g.title)+'</div>';
+      });
       var done = 0;
       var dots = STATUSES.map(function(s, si){
         var p = ci * S + si, ok = !!getAnswer(qs.level, col.id, s.id);
         if (ok) done++;
         return '<button class="dot'+(ok ? ' ok' : '')+(p === cur ? ' cur' : '')+'" data-pos="'+p+'" title="'+esc(s.title)+'">'+(si+1)+'</button>';
       }).join('');
-      return '<div class="nav-col"><div class="nav-col-title"><b>'+esc(col.title)+'</b><span>'+done+'/'+S+'</span></div><div class="dots">'+dots+'</div></div>';
+      return head + '<div class="nav-col"><div class="nav-col-title"><b>'+(info ? '<span class="col-code">'+info.code+'</span>' : '')+esc(col.title)+'</b><span>'+done+'/'+S+'</span></div><div class="dots">'+dots+'</div></div>';
     }).join('');
     var curDot = document.querySelector('#navList .dot.cur');
     if (curDot) curDot.scrollIntoView({block:'center'});
