@@ -1,0 +1,1710 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конфигуратор матрицы видимости колонок — Витавто (1С:УНФ)</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --border:#dbe0e6; --text:#1f2937; --muted:#6b7280;
+    --accent:#2563eb; --accent-dark:#1d4ed8;
+    --green-bg:#d9f2df; --green-bd:#8fd6a4;
+    --yellow-bg:#fdf3d0; --yellow-bd:#e6c766;
+    --gray-bg:#e9ebee; --gray-bd:#c7ccd3;
+    --danger:#dc2626;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif;font-size:13px;}
+  header.app{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:1px solid var(--border);padding:10px 16px;}
+  h1{font-size:16px;margin:0 0 2px;}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:8px;}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;}
+  .toolbar .grow{flex:1 1 auto;}
+  input[type=text]{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:220px;}
+  button{cursor:pointer;border:1px solid var(--border);background:var(--panel);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);}
+  button:hover{background:#eef1f5;}
+  button.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;}
+  button.primary:hover{background:var(--accent-dark);}
+  button.danger{color:var(--danger);border-color:#f3b4ae;}
+  button.danger:hover{background:#fdeceb;}
+  button.toggle.active{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
+
+  .roles-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;}
+  .roles-tabs button{padding:7px 12px;border-radius:6px 6px 0 0;border-bottom:none;}
+  .roles-tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
+
+  .level-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .level-toggle button{border:none;border-radius:0;}
+  .level-toggle button.active{background:var(--accent);color:#fff;}
+
+  .legend{display:flex;gap:16px;align-items:center;color:var(--muted);font-size:11px;padding:6px 16px;flex-wrap:wrap;}
+  .legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid rgba(0,0,0,.15);}
+  .sw.green{background:var(--green-bg);border-color:var(--green-bd);}
+  .sw.yellow{background:var(--yellow-bg);border-color:var(--yellow-bd);}
+  .sw.gray{background:var(--gray-bg);border-color:var(--gray-bd);}
+
+  .bulk-panel{display:none;flex-wrap:wrap;gap:8px;align-items:center;background:#f0f4fa;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 16px 0;}
+  .bulk-panel.open{display:flex;}
+  .bulk-panel .grp{display:flex;gap:4px;align-items:center;border-right:1px solid var(--border);padding-right:10px;margin-right:2px;}
+  .bulk-panel .grp:last-child{border-right:none;}
+  .bulk-panel select{padding:5px;border:1px solid var(--border);border-radius:6px;font-size:12px;}
+  .bulk-panel label{color:var(--muted);font-size:11px;}
+
+  .table-wrap{margin:12px 16px 24px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel);max-height:72vh;}
+  table{border-collapse:separate;border-spacing:0;min-width:1200px;width:100%;}
+  thead th{position:sticky;top:0;background:#eef1f6;border-bottom:2px solid var(--border);border-left:1px solid var(--border);padding:6px 4px;font-size:11px;font-weight:600;text-align:center;z-index:5;white-space:normal;min-width:118px;}
+  thead th.col-head{position:sticky;left:0;top:0;z-index:6;text-align:left;min-width:250px;background:#eef1f6;}
+  tbody th.row-head{position:sticky;left:0;background:var(--panel);border-right:2px solid var(--border);border-bottom:1px solid var(--border);text-align:left;padding:6px 8px;font-weight:500;min-width:250px;max-width:250px;z-index:4;}
+  tbody th.row-head .id{display:block;color:var(--muted);font-size:10px;font-family:Consolas,monospace;}
+  tbody tr:nth-child(even) th.row-head{background:#fafbfc;}
+  td.matrix-cell{border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:4px;vertical-align:middle;transition:background-color .1s;}
+  td.matrix-cell.cell-green{background:var(--green-bg);}
+  td.matrix-cell.cell-yellow{background:var(--yellow-bg);}
+  td.matrix-cell.cell-gray{background:var(--gray-bg);}
+  .cell-stack{display:flex;flex-direction:column;gap:3px;align-items:center;}
+  .cell-stack select{width:100%;font-size:10px;padding:2px;border-radius:4px;border:1px solid rgba(0,0,0,.2);}
+  .cell-stack .chk-row{display:flex;justify-content:space-between;width:100%;gap:4px;}
+  .cell-stack label.chk{display:flex;align-items:center;gap:2px;font-size:10px;color:#374151;white-space:nowrap;}
+  .cell-stack input[type=checkbox]{width:13px;height:13px;}
+  details.c-roles{width:100%;font-size:10px;border:1px solid rgba(0,0,0,.2);border-radius:4px;background:#fff;}
+  details.c-roles[hidden]{display:none;}
+  details.c-roles summary{cursor:pointer;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;list-style:none;}
+  details.c-roles summary::-webkit-details-marker{display:none;}
+  details.c-roles summary::before{content:'▾ ';color:var(--muted);}
+  details.c-roles[open] summary::before{content:'▴ ';}
+  details.c-roles .roles-list{display:flex;flex-direction:column;gap:1px;padding:2px 4px 4px;border-top:1px solid var(--border);}
+  details.c-roles .roles-list label{display:flex;align-items:center;gap:3px;white-space:nowrap;}
+  select.col-type{margin-top:4px;font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;max-width:100%;}
+  table.preview-table select{width:100%;border:1px solid transparent;background:transparent;font-size:11.5px;padding:2px;border-radius:4px;font-family:inherit;}
+  table.preview-table td.prev-editable select{background:#fff;border-color:var(--green-bd);}
+  table.preview-table .prev-matrix{display:inline-block;font-size:11px;color:var(--muted);border:1px dashed var(--gray-bd);border-radius:4px;padding:2px 6px;white-space:nowrap;}
+
+  tr.filtered-out{display:none;}
+
+  footer.app{padding:10px 16px 30px;color:var(--muted);font-size:11px;}
+  .badge{display:inline-block;background:#eef1f6;border-radius:4px;padding:2px 6px;font-size:11px;color:var(--muted);}
+  .status-line{padding:4px 16px 0;color:var(--muted);font-size:11px;}
+  #importFile{display:none;}
+
+  .status-mode-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .status-mode-toggle button{border:none;border-radius:0;}
+  .status-mode-toggle button.active{background:var(--accent);color:#fff;}
+  .status-nav{display:flex;align-items:center;gap:6px;}
+  .status-nav select{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;max-width:220px;}
+
+  .log-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--danger);color:#fff;font-size:10px;margin-left:6px;}
+  .log-badge[hidden]{display:none;}
+
+  .preview-panel{margin:8px 16px 0;border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px 12px;}
+  .preview-panel h2{font-size:13px;margin:0 0 6px;font-weight:600;}
+  .preview-sub{color:var(--muted);font-size:11px;margin-bottom:8px;}
+  .preview-table-wrap{overflow:auto;position:relative;}
+  table.preview-table tr > :first-child{position:sticky;left:0;z-index:2;background:var(--panel);box-shadow:1px 0 0 var(--border);}
+  table.preview-table thead tr > :first-child{background:#eef1f6;z-index:7;}
+  table.preview-table th.prev-focus{background:#dbe7ff;box-shadow:inset 0 -2px 0 var(--accent);}
+  table.preview-table td.prev-focus{box-shadow:inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent);}
+  tbody tr.row-focus th.row-head{box-shadow:inset 3px 0 0 var(--accent);}
+  table.preview-table{border-collapse:collapse;width:100%;min-width:900px;}
+  table.preview-table th{background:#eef1f6;border:1px solid var(--border);padding:5px 6px;font-size:10.5px;text-align:left;white-space:nowrap;}
+  table.preview-table td{border:1px solid var(--border);padding:4px 5px;vertical-align:middle;}
+  table.preview-table input{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;font-size:11.5px;padding:3px 4px;border-radius:4px;font-family:inherit;color:var(--text);}
+  table.preview-table td.prev-editable{background:var(--green-bg);}
+  table.preview-table td.prev-editable input{background:#fff;border-color:var(--green-bd);}
+  table.preview-table td.prev-readonly{background:var(--yellow-bg);}
+  table.preview-table td.prev-readonly input{cursor:not-allowed;color:#4b5563;}
+  table.preview-table td.prev-bool{text-align:center;}
+  table.preview-table td.prev-bool input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+  table.preview-table td.prev-readonly.prev-bool input[type=checkbox]{cursor:not-allowed;}
+  table.preview-table td.prev-required input{border-color:var(--danger);}
+  table.preview-table .req-star{color:var(--danger);margin-left:2px;}
+  table.preview-table td.prev-missing{background:#fde2e2 !important;box-shadow:inset 0 0 0 2px var(--danger);}
+  table.preview-table td.prev-auto input, table.preview-table td.prev-auto select{font-style:italic;}
+  table.preview-table .req-one{color:var(--danger);margin-left:2px;font-size:10px;}
+  .col-code{display:inline-block;min-width:34px;margin-right:6px;padding:1px 5px;border-radius:4px;background:#1f2937;color:#fff;font:600 10.5px/1.4 Consolas,monospace;text-align:center;vertical-align:1px;}
+  tbody tr.grp-row th{position:sticky;left:0;z-index:4;text-align:left;padding:6px 8px;background:#e4e9f2;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;user-select:none;}
+  tbody tr.grp-row.sub th{background:#eef2f8;padding-left:22px;font-weight:500;}
+  tbody tr.grp-row td{background:#e4e9f2;border-bottom:1px solid var(--border);}
+  tbody tr.grp-row.sub td{background:#eef2f8;}
+  tbody tr.grp-row .grp-count{color:var(--muted);font-weight:400;margin-left:6px;}
+  tr.grp-collapsed{display:none;}
+  .grp-tools{display:flex;gap:4px;}
+  table.preview-table tr.prev-grp th{background:#e4e9f2;text-align:center;font-weight:600;border-bottom:1px solid var(--border);}
+  table.preview-table th .col-code{margin-right:4px;}
+  .rule-note{display:block;margin-top:3px;font-size:10px;line-height:1.25;color:#7c2d12;background:#fff4e5;border:1px solid #f5d0a9;border-radius:4px;padding:2px 4px;}
+  .rules-box{margin-top:8px;font-size:11.5px;}
+  .rules-box summary{cursor:pointer;color:var(--accent-dark);}
+  .rules-box ul{margin:6px 0 0;padding-left:18px;}
+  .rules-box li{margin:2px 0;}
+  .defaults-banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 16px 0;padding:8px 12px;border:1px solid #bfd3ff;background:#eef4ff;border-radius:8px;font-size:12px;}
+  .defaults-banner[hidden]{display:none;}
+  .defaults-banner .grow{flex:1 1 240px;}
+  .preview-empty{color:var(--muted);font-style:italic;padding:6px 4px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
+  .modal-overlay[hidden]{display:none;}
+  .modal{background:var(--panel);border-radius:10px;width:min(920px,92vw);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);}
+  .modal-head h2{margin:0;font-size:15px;}
+  .modal-actions{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;}
+  .modal-body{overflow:auto;padding:0 16px 16px;}
+  table.log-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  table.log-table th, table.log-table td{border-bottom:1px solid var(--border);padding:6px 6px;text-align:left;white-space:nowrap;}
+  table.log-table th{position:sticky;top:0;background:var(--panel);}
+  .btn-close{border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>Конфигуратор матрицы видимости и редактирования колонок — Витавто (1С:УНФ)</h1>
+  <div class="sub">Прототип для настройки прав «Роль × Статус × Колонка» с сохранением в localStorage браузера. Не подключается к 1С, не содержит реальных данных. Рядом: <a href="process.html">интерактивный процесс</a>, <a href="br-fr-analysis.html">разбор БТ/ФТ</a>, <a href="bt.html">БТ</a>, <a href="ft.html">ФТ</a>, <a href="approve.html">протокол апрувов</a>, <a href="protocol-map.html">карта протокола</a>.</div>
+
+  <div class="toolbar">
+    <a href="process.html" style="display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);text-decoration:none;font-size:12px;">Процесс B5</a>
+    <a href="br-fr-analysis.html" style="display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);text-decoration:none;font-size:12px;">Разбор БТ/ФТ</a>
+    <a href="approve.html" style="display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);text-decoration:none;font-size:12px;">Протокол апрувов</a>
+    <a href="protocol-map.html" style="display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);text-decoration:none;font-size:12px;">Карта протокола</a>
+    <a href="questionnaire.html" style="display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--accent-dark);border-radius:6px;background:var(--accent);color:#fff;text-decoration:none;font-size:12px;">Опросник ролей</a>
+    <div class="level-toggle" id="levelToggle">
+      <button data-level="order" class="active">Уровень статуса: Заказ</button>
+      <button data-level="line">Деталь (строка)</button>
+    </div>
+    <div class="status-mode-toggle" id="statusModeToggle">
+      <button data-mode="all" class="active">Показать все статусы</button>
+      <button data-mode="single">По одному статусу</button>
+    </div>
+    <div class="status-nav" id="statusNav">
+      <button id="btnPrevStatus" title="Предыдущий статус">◀</button>
+      <select id="statusJump" title="Перейти к статусу"></select>
+      <button id="btnNextStatus" title="Следующий статус">▶</button>
+    </div>
+    <input type="text" id="searchInput" placeholder="Поиск: название, ID или код (C1, F2.3)…">
+    <div class="grp-tools">
+      <button id="btnCollapseAll" title="Свернуть все группы колонок">Свернуть группы</button>
+      <button id="btnExpandAll" title="Развернуть все группы колонок">Развернуть</button>
+    </div>
+    <div class="grow"></div>
+    <button id="btnCopyLink" title="Ссылка откроет матрицу с текущей ролью, уровнем статуса и режимом статусов">Скопировать ссылку</button>
+    <button id="btnLog">Журнал изменений<span class="log-badge" id="logBadge" hidden>0</span></button>
+    <button id="btnBulk">Массовые операции ▾</button>
+    <button id="btnExport">Экспорт JSON</button>
+    <button id="btnImport">Импорт JSON</button>
+    <input type="file" id="importFile" accept="application/json">
+    <button id="btnReset" class="danger">Сбросить к умолчаниям</button>
+  </div>
+
+  <div class="roles-tabs" id="roleTabs"></div>
+</header>
+
+<div class="defaults-banner" id="defaultsBanner" hidden>
+  <span class="grow">Доступны новые настройки матрицы по умолчанию (<span id="defaultsBannerId"></span>). У вас в браузере сохранены свои — они не изменятся, пока вы не примените новые.</span>
+  <button class="primary" id="btnApplyDefaults">Применить новые умолчания</button>
+  <button id="btnKeepMine">Оставить мои</button>
+</div>
+
+<div class="bulk-panel" id="bulkPanel">
+  <div class="grp">
+    <label>Редактирование:</label>
+    <button data-op="edit-all" title="Добавляет текущую роль в «Выбранные роли»">Разрешить редактирование роли</button>
+    <button data-op="edit-none">Только чтение</button>
+  </div>
+  <div class="grp">
+    <label>Обязательность:</label>
+    <button data-op="req-on">Сделать обязательным</button>
+    <button data-op="req-off">Снять обязательность</button>
+  </div>
+  <div class="grp">
+    <label>Копировать роль →</label>
+    <select id="copyRoleSource"></select>
+    <button id="btnCopyRole">Копировать в текущую</button>
+  </div>
+  <div class="grp">
+    <label>Копировать статус:</label>
+    <select id="copyStatusSource"></select>
+    <span>→</span>
+    <select id="copyStatusTarget"></select>
+    <button id="btnCopyStatus">Копировать</button>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="sw green"></span>редактируется</span>
+  <span><span class="sw yellow"></span>только чтение (или роль не выбрана в «Выбранные роли»)</span>
+  <span>Все колонки видны всем ролям</span>
+  <span class="badge" id="statusLine"></span>
+</div>
+
+<div class="preview-panel" id="previewPanel">
+  <h2>Как это увидит роль «<span id="previewRoleName"></span>» — пример строк таблицы (статус: <span id="previewStatusName"></span>)</h2>
+  <div class="preview-sub">Зелёные поля — доступны для редактирования, жёлтые — только для просмотра. Все колонки видны всем ролям. Галка «Документ подписан оригинал» (true) снимает защиту строки: поля становятся редактируемыми.</div>
+  <div class="preview-table-wrap">
+    <table class="preview-table" id="previewTable"></table>
+  </div>
+  <details class="rules-box" id="rulesBox">
+    <summary>Правила заполнения полей (выпадающие списки, автоподстановка, расчёт)</summary>
+    <ul id="rulesList"></ul>
+  </details>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr id="headRow"></tr></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<footer class="app">
+  Настройки хранятся в localStorage браузера (ключ <code>vitaauto_column_matrix_v1</code>), не шифруются и не покидают этот компьютер.
+  Для переноса правил в 1С используйте экспорт JSON. При изменении структуры матрицы увеличивайте номер версии в файле.
+</footer>
+
+<div class="modal-overlay" id="logModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Журнал изменений матрицы</h2>
+      <button class="btn-close" id="btnCloseLog" title="Закрыть">✕</button>
+    </div>
+    <div class="modal-actions">
+      <span class="badge" id="logCount"></span>
+      <button class="danger" id="btnClearLog">Очистить журнал</button>
+    </div>
+    <div class="modal-body">
+      <table class="log-table" id="logTable">
+        <thead><tr><th>Время</th><th>Действие</th><th>Роль</th><th>Уровень</th><th>Статус</th><th>Колонка</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead>
+        <tbody id="logTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="default-matrix.js"></script>
+<script src="column-codes.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  var STORAGE_KEY = 'vitaauto_column_matrix_v1';
+  var LOG_KEY = 'vitaauto_column_matrix_v1_log';
+  var LOG_LIMIT = 500;
+  var SCHEMA_VERSION = 1;
+
+  var ROLES = [
+    {id:'manager', title:'Менеджер'},
+    {id:'storekeeper', title:'Кладовщик / Сборщик'},
+    {id:'chief_mechanic', title:'Главный механик'},
+    {id:'admin', title:'Администратор'},
+    {id:'supplier', title:'Поставщик'},
+    {id:'client', title:'Клиент'}
+  ];
+
+  var STATUSES = [
+    {id:'new', title:'Новый'},
+    {id:'ordered', title:'Заказано у поставщика'},
+    {id:'paid', title:'Оплачено'},
+    {id:'in_transit', title:'В пути'},
+    {id:'awaiting_receipt', title:'Ожидаем поступление'},
+    {id:'acceptance', title:'Приемка'},
+    {id:'reserve', title:'Резервирование'},
+    {id:'assembly', title:'Комплектация'},
+    {id:'ready_to_ship', title:'Готово к отгрузке'},
+    {id:'shipped', title:'Отгружено'},
+    {id:'return', title:'Возврат'},
+    {id:'closed', title:'Закрыт'}
+  ];
+
+  // Канон заголовков: Google Sheet 1W-WQ1MzvItG4PtxDANAf6aVg71IiNIhjBxI2fhY4ZRM (Лист1)
+  var COLUMNS = [
+    {id:'cell_select', title:'поле выбора ячеек', group:'system'},
+    {id:'row_number', title:'№ п/п', group:'system'},
+    {id:'doc_signed_original', title:'Документ подписан оригинал', group:'doc_flag', type:'bool'},
+    {id:'shipment_date', title:'Дата отгрузки', group:'auto'},
+    {id:'shipment_number', title:'Номер отгрузки', group:'auto'},
+    {id:'order_date', title:'Дата заказа', group:'auto'},
+    {id:'order_internal_number', title:'№ заказ внутренний наш', group:'auto'},
+    {id:'order_client_number', title:'№ заказ клиент', group:'order_header'},
+    {id:'customer', title:'Заказчик', group:'order_header'},
+    {id:'contract', title:'Договор с заказчиком', group:'order_header'},
+    {id:'service_type', title:'Вид услуги', group:'order_header'},
+    {id:'brand_fact', title:'Марка', group:'fact'},
+    {id:'model_fact', title:'Модель', group:'fact'},
+    {id:'aggregate_fact', title:'Агрегат', group:'fact'},
+    {id:'gosnomer_fact', title:'Госномер', group:'fact'},
+    {id:'grz_fact', title:'№ Шасии', group:'fact'},
+    {id:'vin_fact', title:'VIN (ХТС)', group:'fact'},
+    {id:'engine_fact', title:'Двигатель', group:'fact'},
+    {id:'urgency_fact', title:'Срочность (ФАКТ) / комментарий заказчика', group:'fact'},
+    {id:'vehicle_plate_fact', title:'Машина ГРЗ (ФАКТ)', group:'fact'},
+    {id:'territory_fact', title:'Территория (ФАКТ)', group:'fact'},
+    {id:'name_fact', title:'Наименование (ФАКТ)', group:'fact_editable'},
+    {id:'article_fact', title:'Артикул (ФАКТ)', group:'fact_editable'},
+    {id:'qty_fact', title:'Кол-во (ФАКТ)', group:'fact'},
+    {id:'unit_fact', title:'Ед. изм. (ФАКТ)', group:'fact'},
+    {id:'name', title:'Наименование', group:'nomenclature'},
+    {id:'article', title:'Артикул', group:'nomenclature'},
+    {id:'code_aa', title:'Код А-А / код поставщика', group:'nomenclature'},
+    {id:'unit', title:'Ед. изм.', group:'nomenclature'},
+    {id:'qty', title:'Кол-во', group:'nomenclature', type:'decimal'},
+    {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
+    {id:'stock_qty', title:'Кол-во в наличии на складе', group:'stock', type:'decimal'},
+    {id:'reserve_qty', title:'Кол-во в резерве', group:'stock', type:'decimal'},
+    {id:'ordered_in_transit_qty', title:'Кол-во заказанного в пути / свободное', group:'stock'},
+    {id:'batch_fifo', title:'№ партии ФИФО / выбор партии', group:'stock'},
+    {id:'line_status', title:'Статус заявки', group:'status'},
+    {id:'price', title:'Цена (себес.)', group:'pricing', type:'decimal'},
+    {id:'sum', title:'Сумма (себес.)', group:'pricing', type:'decimal'},
+    {id:'payment_form', title:'Форма оплаты', group:'payment'},
+    {id:'rrc', title:'РРЦ', group:'margin_locked'},
+    {id:'paid_status', title:'Оплачено (счёт, оплата, постоплата)', group:'payment'},
+    {id:'coefficient', title:'Коэфф', group:'margin_open'},
+    {id:'extra_field_1', title:'Цена продажи', group:'pricing', type:'decimal'},
+    {id:'extra_field_2', title:'Сумма продажи', group:'pricing', type:'decimal'},
+    {id:'supplier', title:'Поставщик', group:'receipt'},
+    {id:'receipt_date', title:'Дата получения', group:'receipt'},
+    {id:'upd_date', title:'Дата УПД', group:'receipt'},
+    {id:'upd_number', title:'№ УПД', group:'receipt'},
+    {id:'supplier_ship_territory', title:'Территория отгрузки поставщиком', group:'receipt'},
+    {id:'comment', title:'Комментарий', group:'comment'}
+  ];
+
+  // Примеры строк реальной таблицы (для наглядного предпросмотра прав роли)
+  var SAMPLE_ROWS = [
+    { label:'Пример 1 — стандартная позиция в наличии', values:{
+      cell_select:'', row_number:'1', doc_signed_original:false, shipment_date:'04.02.2026', shipment_number:'141', order_date:'02.02.2026',
+      order_internal_number:'ЗК-0141', order_client_number:'—', customer:'ООО «СтройТранс»', contract:'Д-22/2026',
+      service_type:'Запчасть', brand_fact:'КАМАЗ', model_fact:'65115', aggregate_fact:'—', gosnomer_fact:'А590СЕ197', grz_fact:'Ш-65115-0012345', vin_fact:'XTC651150R1234567', engine_fact:'740.30-260',
+      urgency_fact:'—', vehicle_plate_fact:'А590СЕ197', territory_fact:'СПАК',
+      name_fact:'Фонарь задний КАМАЗ левый ТЕХАВТОСВЕТ', article_fact:'7452-262', qty_fact:'1,00', unit_fact:'шт',
+      name:'Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ', article:'7452-262 / 7472.3716-04', code_aa:'622563',
+      unit:'шт', qty:'1,00', qty_norm_hours_client:'0,00', stock_qty:'12,00', reserve_qty:'1,00', ordered_in_transit_qty:'0,00 / 11,00',
+      batch_fifo:'Партия №04-2026', line_status:'Резервирование', price:'1 164,49', sum:'1 164,49',
+      payment_form:'Безнал', rrc:'2 048,00', paid_status:'Оплачено', coefficient:'15%',
+      extra_field_1:'1 339,16', extra_field_2:'1 339,16', supplier:'АЛЬЯНС', receipt_date:'04.02.2026',
+      upd_date:'04.02.2026', upd_number:'УПД-3391', supplier_ship_territory:'КЕТЧЕРСКАЯ', comment:'Стандартная отгрузка'
+    }},
+    { label:'Пример 2 — позиция ждёт опознания (артикул не найден)', values:{
+      cell_select:'', row_number:'2', doc_signed_original:false, shipment_date:'—', shipment_number:'—', order_date:'02.02.2026',
+      order_internal_number:'ЗК-0142', order_client_number:'—', customer:'Частный клиент', contract:'—',
+      service_type:'Запчасть', brand_fact:'ГАЗ', model_fact:'3302 Бизнес', aggregate_fact:'—', gosnomer_fact:'М141МН777', grz_fact:'Ш-330200-0076543', vin_fact:'X96330200R7654321', engine_fact:'УМЗ-4216',
+      urgency_fact:'срочно', vehicle_plate_fact:'М141МН777', territory_fact:'СПАК',
+      name_fact:'Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216', article_fact:'4216.1005074', qty_fact:'1,00', unit_fact:'шт',
+      name:'—', article:'—', code_aa:'—', unit:'—', qty:'1,00', qty_norm_hours_client:'0,00', stock_qty:'0,00', reserve_qty:'0,00',
+      ordered_in_transit_qty:'0,00', batch_fifo:'—', line_status:'Не опознан', price:'0,00', sum:'0,00',
+      payment_form:'—', rrc:'—', paid_status:'—', coefficient:'—', extra_field_1:'0,00', extra_field_2:'0,00',
+      supplier:'—', receipt_date:'—', upd_date:'—', upd_number:'—', supplier_ship_territory:'—',
+      comment:'Ожидает опознания администратором, нужна фотофиксация'
+    }},
+    { label:'Пример 3 — заказ закрыт и отгружен клиенту разблок.', values:{
+      cell_select:'', row_number:'3', doc_signed_original:true, shipment_date:'06.02.2026', shipment_number:'145', order_date:'06.02.2026',
+      order_internal_number:'ЗК-0145', order_client_number:'КЛ-778', customer:'ИП Кетчерская', contract:'Д-05/2026',
+      service_type:'Запчасть', brand_fact:'КАМАЗ', model_fact:'54115', aggregate_fact:'Мост средний КАМАЗ 53212', gosnomer_fact:'Е427ЕВ777', grz_fact:'Ш-54115-0098765', vin_fact:'XTC541150R9876543', engine_fact:'740.51-320',
+      urgency_fact:'—', vehicle_plate_fact:'Е427ЕВ777', territory_fact:'АРМ',
+      name_fact:'Крышка КАМАЗ редуктора среднего моста', article_fact:'54115-2502209', qty_fact:'1,00', unit_fact:'шт',
+      name:'Крышка КАМАЗ редуктора среднего моста', article:'54115-2502209', code_aa:'633603', unit:'шт', qty:'1,00',
+      qty_norm_hours_client:'2,50', stock_qty:'0,00', reserve_qty:'0,00', ordered_in_transit_qty:'0,00', batch_fifo:'Партия №01-2026',
+      line_status:'Отгружено', price:'2 417,43', sum:'2 417,43', payment_form:'Безнал', rrc:'4 800,00',
+      paid_status:'Оплачено', coefficient:'12%', extra_field_1:'2 780,04', extra_field_2:'6 950,10', supplier:'АЛЬЯНС',
+      receipt_date:'06.02.2026', upd_date:'06.02.2026', upd_number:'УПД-3402', supplier_ship_territory:'КЕТЧЕРСКАЯ',
+      comment:'Получено лично представителем клиента (САМИ)'
+    }}
+  ];
+
+  // ---- Справочники (демо-данные для примера; в 1С — реальные справочники) ----
+  var DIRECTORIES = {
+    counterparties: [
+      {name:'ООО «СтройТранс»', contracts:['Д-22/2026', 'Д-23/2026 (сервис)']},
+      {name:'ИП Кетчерская', contracts:['Д-05/2026']},
+      {name:'ООО «АвтоЛайн»', contracts:['Д-31/2026', 'Д-32/2026 (инструмент)']},
+      {name:'Частный клиент', contracts:[]}
+    ],
+    serviceTypes: ['Ремонт', 'Услуга', 'Инструмент', 'Запчасть'],
+    vehicles: [
+      {gosnomer:'А590СЕ197', brand:'КАМАЗ', model:'65115', vin:'XTC651150R1234567', engine:'740.30-260', chassis:'Ш-65115-0012345'},
+      {gosnomer:'М141МН777', brand:'ГАЗ', model:'3302 Бизнес', vin:'X96330200R7654321', engine:'УМЗ-4216', chassis:'Ш-330200-0076543'},
+      {gosnomer:'Е427ЕВ777', brand:'КАМАЗ', model:'54115', vin:'XTC541150R9876543', engine:'740.51-320', chassis:'Ш-54115-0098765'},
+      {gosnomer:'О777ОО150', brand:'МАЗ', model:'5440', vin:'Y3M544000R0011223', engine:'ЯМЗ-6582', chassis:'Ш-5440-0011223'}
+    ],
+    aggregates: ['Двигатель КАМАЗ 740.30-260', 'Двигатель УМЗ-4216', 'КПП ZF 16S151', 'Мост средний КАМАЗ 53212', 'Генератор 5122.3771'],
+    nomenclature: [
+      {name:'Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ', article:'7452-262 / 7472.3716-04', code:'622563', unit:'шт'},
+      {name:'Крышка КАМАЗ редуктора среднего моста', article:'54115-2502209', code:'633603', unit:'шт'},
+      {name:'Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216', article:'4216.1005074', code:'640118', unit:'шт'},
+      {name:'Масло моторное 10W-40, 20 л', article:'M-10W40-20', code:'700211', unit:'л'},
+      {name:'Замена колодок (норма-час)', article:'SRV-BRAKE', code:'900010', unit:'н/ч'}
+    ],
+    units: ['шт', 'компл', 'л', 'кг', 'м', 'н/ч']
+  };
+
+  // Поле → чем заполняется выпадающий список
+  var SELECT_SOURCES = {
+    customer: function(){ return DIRECTORIES.counterparties.map(function(c){ return c.name; }); },
+    contract: function(v){ return contractsOf(v.customer); },
+    service_type: function(){ return DIRECTORIES.serviceTypes; },
+    gosnomer_fact: function(){ return DIRECTORIES.vehicles.map(function(x){ return x.gosnomer; }); },
+    brand_fact: function(){ return uniq(DIRECTORIES.vehicles.map(function(x){ return x.brand; })); },
+    model_fact: function(){ return uniq(DIRECTORIES.vehicles.map(function(x){ return x.model; })); },
+    vin_fact: function(){ return DIRECTORIES.vehicles.map(function(x){ return x.vin; }); },
+    engine_fact: function(){ return uniq(DIRECTORIES.vehicles.map(function(x){ return x.engine; })); },
+    grz_fact: function(){ return DIRECTORIES.vehicles.map(function(x){ return x.chassis; }); },
+    aggregate_fact: function(){ return DIRECTORIES.aggregates; },
+    name: function(){ return DIRECTORIES.nomenclature.map(function(x){ return x.name; }); },
+    article: function(){ return DIRECTORIES.nomenclature.map(function(x){ return x.article; }); },
+    code_aa: function(){ return DIRECTORIES.nomenclature.map(function(x){ return x.code; }); },
+    unit: function(){ return DIRECTORIES.units; }
+  };
+  function uniq(a){ return a.filter(function(x, i){ return a.indexOf(x) === i; }); }
+  function contractsOf(customer){
+    var c = DIRECTORIES.counterparties.filter(function(x){ return x.name === customer; })[0];
+    return c ? c.contracts : [];
+  }
+
+  // Правила заполнения (попадают в экспорт JSON как fieldRules — для реализации в 1С)
+  var VEHICLE_FILL = {brand_fact:'brand', model_fact:'model', vin_fact:'vin', engine_fact:'engine', grz_fact:'chassis'};
+  var NOMENCLATURE_KEYS = {name:'name', article:'article', code_aa:'code', unit:'unit'};
+  var FIELD_RULES = [
+    {type:'options', column:'service_type', values:DIRECTORIES.serviceTypes,
+      text:'Вид услуги — выбор из списка: ремонт, услуга, инструмент, запчасть.'},
+    {type:'filter', column:'contract', by:'customer', directory:'counterparties.contracts',
+      text:'Договор с заказчиком — только договоры выбранного контрагента (Заказчик).'},
+    {type:'autofill', source:['gosnomer_fact'], directory:'vehicles', fills:Object.keys(VEHICLE_FILL),
+      text:'Госномер — выбор из справочника машин; при выборе проставляются Марка, Модель, VIN, Двигатель, № Шасси.'},
+    {type:'oneOfRequired', columns:['gosnomer_fact','aggregate_fact'],
+      text:'Обязательно заполнить одно из: Госномер или Агрегат (выпадающий список).'},
+    {type:'autofill', source:['name','article','code_aa'], directory:'nomenclature', fills:Object.keys(NOMENCLATURE_KEYS),
+      text:'Наименование / Артикул / Код А-А — поиск по любому из них; выбор одного подтягивает остальные три поля (включая Ед. изм.).'},
+    {type:'oneOfRequired', columns:['name','article','code_aa'],
+      text:'Обязательно заполнить одно из: Наименование, Артикул или Код А-А.'},
+    {type:'formula', column:'extra_field_1', expr:'price * (1 + coefficient / 100)', unless:'qty_norm_hours_client > 0',
+      text:'Цена продажи = Цена (себес.) × (1 + Коэфф / 100). Если заполнено «Кол-во норма час» — коэффициент игнорируется, цена продажи вводится вручную.'},
+    {type:'formula', column:'extra_field_2', expr:'qty_norm_hours_client > 0 ? qty_norm_hours_client * extra_field_1 : qty_fact * extra_field_1',
+      text:'Сумма продажи = Кол-во (ФАКТ) × Цена продажи; если заполнено «Кол-во норма час товар для клиента» — Кол-во норма час × Цена продажи.'}
+  ];
+  var ONE_OF_GROUPS = FIELD_RULES.filter(function(r){ return r.type === 'oneOfRequired'; }).map(function(r){ return r.columns; });
+  function groupOf(colId){ return ONE_OF_GROUPS.filter(function(g){ return g.indexOf(colId) !== -1; })[0] || null; }
+  function isEmptyVal(v){ return v == null || v === '' || v === '—'; }
+  function num(v){
+    if (isEmptyVal(v)) return 0;
+    var n = Number(String(v).replace(/[^\d,.\-]/g, '').replace(',', '.'));
+    return isFinite(n) ? n : 0;
+  }
+
+  // Применить правила к строке после изменения поля colId (null — пересчёт формул)
+  function applyRowRules(v, colId){
+    if (colId === 'customer'){
+      var cs = contractsOf(v.customer);
+      if (cs.indexOf(v.contract) === -1) v.contract = cs.length === 1 ? cs[0] : '—';
+    }
+    if (colId === 'gosnomer_fact'){
+      var car = DIRECTORIES.vehicles.filter(function(x){ return x.gosnomer === v.gosnomer_fact; })[0];
+      Object.keys(VEHICLE_FILL).forEach(function(k){ v[k] = car ? car[VEHICLE_FILL[k]] : '—'; });
+    }
+    if (NOMENCLATURE_KEYS[colId] && colId !== 'unit'){
+      var key = NOMENCLATURE_KEYS[colId];
+      var item = DIRECTORIES.nomenclature.filter(function(x){ return x[key] === v[colId]; })[0];
+      if (item) Object.keys(NOMENCLATURE_KEYS).forEach(function(k){ v[k] = item[NOMENCLATURE_KEYS[k]]; });
+    }
+    // Без нормы-часов цена продажи всегда по формуле (ручной ввод перезаписывается);
+    // с нормой-часами коэффициент игнорируется и цена продажи вводится вручную.
+    var hours = num(v.qty_norm_hours_client);
+    if (hours <= 0){
+      v.extra_field_1 = (num(v.price) * (1 + num(v.coefficient) / 100)).toFixed(2);
+    }
+    v.extra_field_2 = ((hours > 0 ? hours : num(v.qty_fact)) * num(v.extra_field_1)).toFixed(2);
+  }
+  SAMPLE_ROWS.forEach(function(r){ applyRowRules(r.values, null); });
+
+  // Короткие пометки правил в заголовке строки матрицы
+  var RULE_NOTES = {
+    service_type:'список: ремонт / услуга / инструмент / запчасть',
+    contract:'только договоры выбранного Заказчика',
+    gosnomer_fact:'обяз. Госномер или Агрегат · подтягивает Марку, Модель, VIN, Двигатель, № Шасси',
+    aggregate_fact:'обяз. Госномер или Агрегат',
+    name:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
+    article:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
+    code_aa:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
+    unit:'подтягивается из номенклатуры',
+    extra_field_1:'= Цена × (1 + Коэфф/100); при норме-часах — вручную',
+    extra_field_2:'= Кол-во (ФАКТ) или норма-час × Цена продажи'
+  };
+
+  var EDIT_LABELS = {
+    none:'Не редактируется', role:'Выбранные роли', creator:'Только создатель',
+    admin:'Только админ'
+  };
+  var EDIT_VALUES = ['none','role','creator','admin'];
+
+  // Тип данных колонки (задаётся на колонку, общий для всех ролей и статусов)
+  var DATA_TYPE_LABELS = {
+    select:'Выпадающий список', date:'Дата', text:'Текст', number:'Число', checkbox:'Чекбокс', matrix:'Матрица'
+  };
+  var DATA_TYPE_VALUES = ['select','date','text','number','checkbox','matrix'];
+  var DEFAULT_DATA_TYPES = {
+    cell_select:'checkbox', doc_signed_original:'checkbox',
+    row_number:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
+    shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date',
+    customer:'select', contract:'select', service_type:'select',
+    brand_fact:'select', model_fact:'select', aggregate_fact:'select', gosnomer_fact:'select', grz_fact:'select', vin_fact:'select', engine_fact:'select',
+    name:'select', article:'select', code_aa:'select', unit:'select',
+    batch_fifo:'select', line_status:'select', payment_form:'select', paid_status:'select', supplier:'select'
+  };
+  // Умолчания для всех пользователей: default-matrix.js (собирается tools/make_default_matrix.py)
+  var DEFAULTS = (window.VITAUTO_DEFAULT_MATRIX && window.VITAUTO_DEFAULT_MATRIX.cells) ? window.VITAUTO_DEFAULT_MATRIX : null;
+  function defaultDataType(col){
+    if (DEFAULTS && DEFAULTS.columnTypes && DATA_TYPE_VALUES.indexOf(DEFAULTS.columnTypes[col.id]) !== -1) return DEFAULTS.columnTypes[col.id];
+    if (DEFAULT_DATA_TYPES[col.id]) return DEFAULT_DATA_TYPES[col.id];
+    if (col.type === 'bool') return 'checkbox';
+    if (col.type === 'decimal') return 'number';
+    return 'text';
+  }
+
+  var EARLY_STATUSES = ['new','ordered','paid','in_transit','awaiting_receipt'];
+
+  // ---- Ролевые профили по умолчанию (визуальные группы колонок) ----
+  var ROLE_PROFILES = {
+    manager: {
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'none'},
+      order_header:{visible:true, editable:'role'}, fact:{visible:true, editable:'role'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
+      stock:{visible:true, editable:'none'}, status:{visible:true, editable:'none'},
+      pricing:{visible:true, editable:'role'}, payment:{visible:true, editable:'role'},
+      margin_locked:{visible:true, editable:'none'}, margin_open:{visible:true, editable:'role'},
+      extra:{visible:false, editable:'none'}, receipt:{visible:true, editable:'none'},
+      comment:{visible:true, editable:'role'}
+    },
+    storekeeper: {
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'none'},
+      order_header:{visible:true, editable:'none'}, fact:{visible:true, editable:'none'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
+      stock:{visible:true, editable:'role'}, status:{visible:true, editable:'none'},
+      pricing:{visible:true, editable:'none'}, payment:{visible:false, editable:'none'},
+      margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
+      extra:{visible:false, editable:'none'}, receipt:{visible:true, editable:'role'},
+      comment:{visible:true, editable:'role'}
+    },
+    admin: {
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'role'},
+      order_header:{visible:true, editable:'role'}, fact:{visible:true, editable:'role'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
+      stock:{visible:true, editable:'role'}, status:{visible:true, editable:'role'},
+      pricing:{visible:true, editable:'role'}, payment:{visible:true, editable:'role'},
+      margin_locked:{visible:true, editable:'role'}, margin_open:{visible:true, editable:'role'},
+      extra:{visible:true, editable:'role'}, receipt:{visible:true, editable:'role'},
+      comment:{visible:true, editable:'role'}
+    },
+    supplier: {
+      system:{visible:false, editable:'none'}, doc_flag:{visible:false, editable:'none'}, auto:{visible:false, editable:'none'},
+      order_header:{visible:false, editable:'none'}, fact:{visible:false, editable:'none'},
+      fact_editable:{visible:false, editable:'none'}, nomenclature:{visible:true, editable:'none'},
+      stock:{visible:false, editable:'none'}, status:{visible:true, editable:'none'},
+      pricing:{visible:true, editable:'none'}, payment:{visible:false, editable:'none'},
+      margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
+      extra:{visible:false, editable:'none'}, receipt:{visible:false, editable:'none'},
+      comment:{visible:true, editable:'role'}
+    },
+    client: {
+      system:{visible:false, editable:'none'}, doc_flag:{visible:false, editable:'none'}, auto:{visible:true, editable:'none'},
+      order_header:{visible:true, editable:'none'}, fact:{visible:false, editable:'none'},
+      fact_editable:{visible:false, editable:'none'}, nomenclature:{visible:true, editable:'none'},
+      stock:{visible:false, editable:'none'}, status:{visible:true, editable:'none'},
+      pricing:{visible:true, editable:'none'}, payment:{visible:false, editable:'none'},
+      margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
+      extra:{visible:false, editable:'none'}, receipt:{visible:false, editable:'none'},
+      comment:{visible:true, editable:'none'}
+    }
+  };
+  ROLE_PROFILES.chief_mechanic = ROLE_PROFILES.manager;
+
+  // Коды и группы колонок (column-codes.js): A, B, C1, C2, D, E, F1, F2, G, H
+  var COLUMN_GROUPS = window.VITAUTO_COLUMN_GROUPS || [];
+  var COLUMN_CODES = window.VITAUTO_COLUMN_CODES || {};
+  var GROUPS_BY_CODE = {};
+  COLUMN_GROUPS.forEach(function(g){ GROUPS_BY_CODE[g.code] = g; });
+  function colCode(colId){ return COLUMN_CODES[colId] ? COLUMN_CODES[colId].code : ''; }
+  function codeBadge(colId){ var c = colCode(colId); return c ? '<span class="col-code">'+c+'</span>' : ''; }
+  // Цепочка групп колонки сверху вниз: ['C','C1'] или ['A']
+  function groupChain(colId){
+    var info = COLUMN_CODES[colId];
+    if (!info) return [];
+    return info.top !== info.group ? [info.top, info.group] : [info.group];
+  }
+  function groupColumnIds(code){
+    var ids = [];
+    COLUMN_GROUPS.forEach(function(g){ if (g.code === code || g.parent === code) ids = ids.concat(g.columns); });
+    return ids;
+  }
+
+  var COLUMNS_BY_ID = {};
+  COLUMNS.forEach(function(c){ COLUMNS_BY_ID[c.id] = c; });
+  var ROLE_IDS = ROLES.map(function(r){return r.id;});
+  var STATUS_IDS = STATUSES.map(function(s){return s.id;});
+  var COLUMN_IDS = COLUMNS.map(function(c){return c.id;});
+
+  // roleId — роль вкладки, которой принадлежит ячейка (подставляется в «Выбранные роли» по умолчанию)
+  function enforceConstraints(cell, roleId){
+    // миграция старого формата: 'all' → своя роль, editableRole → editableRoles[]
+    if (cell.editable === 'all'){ cell.editable = 'role'; cell.editableRoles = roleId ? [roleId] : []; }
+    if (!Array.isArray(cell.editableRoles)) cell.editableRoles = cell.editableRole ? [cell.editableRole] : [];
+    delete cell.editableRole;
+    cell.editableRoles = ROLE_IDS.filter(function(id){ return cell.editableRoles.indexOf(id) !== -1; });
+    if (EDIT_VALUES.indexOf(cell.editable) === -1) cell.editable = 'none';
+
+    cell.visible = true; // всё видно всем: видимость не настраивается
+    if (cell.editable === 'role' && !cell.editableRoles.length) cell.editable = 'none';
+    if (cell.required && cell.editable === 'none' && roleId){ cell.editable = 'role'; cell.editableRoles = [roleId]; }
+    if (cell.editable !== 'role') cell.editableRoles = [];
+    return cell;
+  }
+
+  function computeDefaultCell(roleId, colId, statusId){
+    var col = COLUMNS_BY_ID[colId];
+    var profile = ROLE_PROFILES[roleId][col.group];
+    var cell = {visible:profile.visible, editable:profile.editable, required:false,
+      editableRoles: profile.editable === 'role' ? [roleId] : []};
+
+    if (roleId === 'storekeeper' && col.group === 'receipt' && EARLY_STATUSES.indexOf(statusId) !== -1){
+      cell.editable = 'none';
+    }
+    if (roleId === 'manager' && statusId === 'new' && (colId==='name'||colId==='article'||colId==='qty')){
+      cell.required = true;
+    }
+    if (roleId === 'storekeeper' && statusId === 'acceptance' && (colId==='receipt_date'||colId==='upd_number')){
+      cell.required = true;
+    }
+    if (statusId === 'closed' && roleId !== 'admin' && colId !== 'doc_signed_original'){
+      cell.editable = 'none';
+    }
+    return enforceConstraints(cell, roleId);
+  }
+
+  // Ячейка из default-matrix.js: число = биты ролей (0..5) + 64 required + 128 creator + 256 admin
+  function decodeDefaultCell(level, roleId, statusId, colId){
+    if (!DEFAULTS) return null;
+    var row = DEFAULTS.cells[level] && DEFAULTS.cells[level][roleId] && DEFAULTS.cells[level][roleId][statusId];
+    var ci = DEFAULTS.columns.indexOf(colId);
+    if (!row || ci === -1 || typeof row[ci] !== 'number') return null;
+    var v = row[ci];
+    var cell = {visible:true, required: !!(v & 64), editable:'none', editableRoles:[]};
+    if (v & 128) cell.editable = 'creator';
+    else if (v & 256) cell.editable = 'admin';
+    else if (v & 63){
+      cell.editable = 'role';
+      cell.editableRoles = DEFAULTS.roles.filter(function(r, i){ return v & (1 << i); });
+    }
+    return enforceConstraints(cell, roleId);
+  }
+
+  function defaultCell(level, roleId, colId, statusId){
+    return decodeDefaultCell(level, roleId, statusId, colId) || computeDefaultCell(roleId, colId, statusId);
+  }
+
+  function buildDefaultMatrix(){
+    function buildLevel(level){
+      var m = {};
+      ROLES.forEach(function(r){
+        m[r.id] = {};
+        STATUSES.forEach(function(s){
+          m[r.id][s.id] = {};
+          COLUMNS.forEach(function(c){
+            m[r.id][s.id][c.id] = defaultCell(level, r.id, c.id, s.id);
+          });
+        });
+      });
+      return m;
+    }
+    return {order: buildLevel('order'), line: buildLevel('line')};
+  }
+
+  function buildDefaultColumnTypes(){
+    var t = {};
+    COLUMNS.forEach(function(c){ t[c.id] = defaultDataType(c); });
+    return t;
+  }
+
+  function buildDefaultState(){
+    return {
+      version: SCHEMA_VERSION,
+      updatedAt: new Date().toISOString(),
+      defaultsId: DEFAULTS ? DEFAULTS.id : null,
+      settings: {statusLevel:'order', activeRole:'manager', statusViewMode:'all', currentStatusIndex:0},
+      roles: ROLE_IDS.slice(),
+      statuses: STATUSES.map(function(s){return {id:s.id, title:s.title};}),
+      columnTypes: buildDefaultColumnTypes(),
+      columns: COLUMNS.map(function(c){return {id:c.id, code:colCode(c.id), codeGroup:(COLUMN_CODES[c.id]||{}).group||null, title:c.title, group:c.group, type:c.type||null, dataType:defaultDataType(c)};}),
+      matrix: buildDefaultMatrix()
+    };
+  }
+
+  function syncCanonicalColumns(st){
+    var prev = {};
+    (st.columns || []).forEach(function(c){ if (c && c.id) prev[c.id] = c; });
+    if (!st.columnTypes || typeof st.columnTypes !== 'object') st.columnTypes = {};
+    COLUMNS.forEach(function(c){
+      var fromCols = prev[c.id] && prev[c.id].dataType;
+      if (DATA_TYPE_VALUES.indexOf(st.columnTypes[c.id]) === -1)
+        st.columnTypes[c.id] = DATA_TYPE_VALUES.indexOf(fromCols) !== -1 ? fromCols : defaultDataType(c);
+    });
+    st.columns = COLUMNS.map(function(c){
+      return {id:c.id, code:colCode(c.id), codeGroup:(COLUMN_CODES[c.id]||{}).group||null, title:c.title, group:c.group, type:c.type||null, dataType:st.columnTypes[c.id]};
+    });
+    ['order','line'].forEach(function(level){
+      if (!st.matrix || !st.matrix[level]) return;
+      ROLES.forEach(function(r){
+        if (!st.matrix[level][r.id]) st.matrix[level][r.id] = {};
+        STATUSES.forEach(function(s){
+          if (!st.matrix[level][r.id][s.id]) st.matrix[level][r.id][s.id] = {};
+          COLUMNS.forEach(function(c){
+            if (!st.matrix[level][r.id][s.id][c.id]) {
+              st.matrix[level][r.id][s.id][c.id] = defaultCell(level, r.id, c.id, s.id);
+            } else {
+              enforceConstraints(st.matrix[level][r.id][s.id][c.id], r.id);
+            }
+          });
+        });
+      });
+    });
+    return st;
+  }
+
+  function validateImport(obj){
+    if (!obj || typeof obj !== 'object') return 'файл не является корректным JSON-объектом';
+    if (obj.version !== SCHEMA_VERSION) return 'неподдерживаемая версия схемы: ' + obj.version;
+    if (!Array.isArray(obj.roles) || !Array.isArray(obj.statuses) || !Array.isArray(obj.columns)) return 'отсутствуют массивы roles/statuses/columns';
+    var roleSet = {}; obj.roles.forEach(function(r){roleSet[r]=true;});
+    for (var i=0;i<ROLE_IDS.length;i++){ if(!roleSet[ROLE_IDS[i]]) return 'отсутствует обязательная роль: '+ROLE_IDS[i]; }
+    for (var j=0;j<obj.roles.length;j++){ if(ROLE_IDS.indexOf(obj.roles[j])===-1) return 'неизвестная роль: '+obj.roles[j]; }
+    if (!obj.matrix || !obj.matrix.order || !obj.matrix.line) return 'отсутствует matrix.order/matrix.line';
+    var levels = ['order','line'];
+    for (var l=0;l<levels.length;l++){
+      for (var r2=0;r2<obj.roles.length;r2++){
+        if (!obj.matrix[levels[l]][obj.roles[r2]]) return 'в matrix.'+levels[l]+' отсутствует роль '+obj.roles[r2];
+      }
+    }
+    return null;
+  }
+
+  // Колонки/статусы, известные приложению, принимаются даже если их нет в списках файла
+  // (файл мог выгрузить другой версией страницы); неизвестные — отбрасываются с отчётом.
+  function sanitizeImport(obj){
+    var dropped = {columns:{}, statuses:{}};
+    ['order','line'].forEach(function(level){
+      ROLE_IDS.forEach(function(rid){
+        var byStatus = obj.matrix[level][rid] || {};
+        Object.keys(byStatus).forEach(function(sid){
+          if (STATUS_IDS.indexOf(sid) === -1){ dropped.statuses[sid] = true; delete byStatus[sid]; return; }
+          Object.keys(byStatus[sid] || {}).forEach(function(cid){
+            if (COLUMN_IDS.indexOf(cid) === -1){ dropped.columns[cid] = true; delete byStatus[sid][cid]; }
+          });
+        });
+      });
+    });
+    delete obj.questionnaire;
+    delete obj.fieldRules;
+    return {columns:Object.keys(dropped.columns), statuses:Object.keys(dropped.statuses)};
+  }
+
+  function normalizeSettings(st){
+    if (!st.settings) st.settings = {};
+    if (st.settings.statusLevel !== 'line') st.settings.statusLevel = 'order';
+    if (ROLE_IDS.indexOf(st.settings.activeRole) === -1) st.settings.activeRole = 'manager';
+    if (st.settings.statusViewMode !== 'single') st.settings.statusViewMode = 'all';
+    if (typeof st.settings.currentStatusIndex !== 'number' || st.settings.currentStatusIndex < 0) st.settings.currentStatusIndex = 0;
+    syncCanonicalColumns(st);
+    return st;
+  }
+
+  var loadedFromStorage = false;
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return buildDefaultState();
+      var parsed = JSON.parse(raw);
+      var err = validateImport(parsed);
+      if (err){ console.warn('Сохранённая матрица повреждена ('+err+'), используются значения по умолчанию.'); return buildDefaultState(); }
+      sanitizeImport(parsed);
+      loadedFromStorage = true;
+      return normalizeSettings(parsed);
+    }catch(e){
+      return buildDefaultState();
+    }
+  }
+
+  function loadLog(){
+    try{ var raw = localStorage.getItem(LOG_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
+    catch(e){ return []; }
+  }
+  function saveLog(){ localStorage.setItem(LOG_KEY, JSON.stringify(changeLog)); }
+  function pushLog(entry){
+    entry.ts = new Date().toISOString();
+    changeLog.unshift(entry);
+    if (changeLog.length > LOG_LIMIT) changeLog.length = LOG_LIMIT;
+    saveLog();
+    updateLogBadge();
+    var overlay = document.getElementById('logModalOverlay');
+    if (overlay && !overlay.hidden) renderLogTable();
+  }
+  function updateLogBadge(){
+    var badge = document.getElementById('logBadge');
+    if (!badge) return;
+    if (changeLog.length){ badge.hidden = false; badge.textContent = changeLog.length > 99 ? '99+' : String(changeLog.length); }
+    else badge.hidden = true;
+  }
+  function formatFieldValue(field, v){
+    if (field === 'visible' || field === 'required') return v ? 'Да' : 'Нет';
+    if (field === 'editable') return EDIT_LABELS[v] || v;
+    if (field === 'editableRoles') return v && v.length ? v.map(roleTitle).join(', ') : '—';
+    if (field === 'dataType') return DATA_TYPE_LABELS[v] || v;
+    return String(v);
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+  }
+
+  var state = loadState();
+  var changeLog = loadLog();
+  // ---- Query-параметры ссылки: ?role=manager&level=order|line&mode=all|single&status=new ----
+  // Имеют приоритет над сохранёнными настройками; адресная строка обновляется при каждом изменении.
+  function applyUrlParams(){
+    var p;
+    try{ p = new URLSearchParams(location.search); }catch(e){ return; }
+    var role = p.get('role'), level = p.get('level'), mode = p.get('mode'), status = p.get('status');
+    if (role && ROLE_IDS.indexOf(role) !== -1) state.settings.activeRole = role;
+    if (level === 'order' || level === 'line') state.settings.statusLevel = level;
+    if (mode === 'all' || mode === 'single') state.settings.statusViewMode = mode;
+    if (status){
+      var idx = STATUS_IDS.indexOf(status);
+      if (idx === -1 && /^\d+$/.test(status)) idx = parseInt(status, 10) - 1; // допускается номер статуса с 1
+      if (idx >= 0 && idx < STATUS_IDS.length){
+        state.settings.currentStatusIndex = idx;
+        if (!mode) state.settings.statusViewMode = 'single';
+      }
+    }
+  }
+
+  function buildShareUrl(){
+    var p = new URLSearchParams(location.search);
+    p.set('role', activeRole);
+    p.set('level', currentLevel());
+    p.set('mode', state.settings.statusViewMode === 'single' ? 'single' : 'all');
+    if (state.settings.statusViewMode === 'single'){
+      var st = getStatuses()[clampStatusIndex(state.settings.currentStatusIndex, getStatuses().length)];
+      if (st) p.set('status', st.id);
+    } else {
+      p.delete('status');
+    }
+    return location.pathname + '?' + p.toString() + location.hash;
+  }
+
+  function syncUrl(){
+    try{ history.replaceState(null, '', buildShareUrl()); }catch(e){}
+  }
+
+  applyUrlParams();
+  var activeRole = state.settings.activeRole;
+
+  var saveTimer = null;
+  function scheduleSave(){
+    syncUrl();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      state.updatedAt = new Date().toISOString();
+      state.settings.activeRole = activeRole;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }, 300);
+  }
+
+  function currentLevel(){ return state.settings.statusLevel === 'line' ? 'line' : 'order'; }
+  function getColumns(){ return state.columns && state.columns.length ? state.columns : COLUMNS; }
+  function getStatuses(){ return state.statuses && state.statuses.length ? state.statuses : STATUSES; }
+  function roleTitle(id){ var r = ROLES.filter(function(x){return x.id===id;})[0]; return r ? r.title : id; }
+
+  function clampStatusIndex(idx, len){
+    if (!len) return 0;
+    return Math.max(0, Math.min(idx, len - 1));
+  }
+  function activeStatuses(){
+    var statuses = getStatuses();
+    if (state.settings.statusViewMode === 'single'){
+      var idx = clampStatusIndex(state.settings.currentStatusIndex, statuses.length);
+      return statuses[idx] ? [statuses[idx]] : [];
+    }
+    return statuses;
+  }
+
+  function ensureCell(level, roleId, statusId, colId){
+    var m = state.matrix[level];
+    if (!m[roleId]) m[roleId] = {};
+    if (!m[roleId][statusId]) m[roleId][statusId] = {};
+    if (!m[roleId][statusId][colId]) m[roleId][statusId][colId] = enforceConstraints({visible:true, editable:'none', required:false, editableRoles:[]}, roleId);
+    return m[roleId][statusId][colId];
+  }
+
+  function dataTypeOf(colId){
+    return (state.columnTypes && state.columnTypes[colId]) || defaultDataType(COLUMNS_BY_ID[colId] || {id:colId});
+  }
+
+  // Может ли роль вкладки редактировать ячейку
+  function canRoleEdit(cell, roleId){
+    if (cell.editable === 'none') return false;
+    if (cell.editable === 'role') return cell.editableRoles.indexOf(roleId) !== -1;
+    return true;
+  }
+
+  function editLabel(cell){
+    if (cell.editable === 'role') return 'Роли: ' + cell.editableRoles.map(roleTitle).join(', ');
+    return EDIT_LABELS[cell.editable] || cell.editable;
+  }
+
+  function cellClass(cell, roleId){
+    if (!canRoleEdit(cell, roleId)) return 'cell-yellow';
+    return 'cell-green';
+  }
+
+  // ---------------- Rendering ----------------
+
+  var elRoleTabs = document.getElementById('roleTabs');
+  var elHeadRow = document.getElementById('headRow');
+  var elBody = document.getElementById('tableBody');
+  var elSearch = document.getElementById('searchInput');
+  var elStatusLine = document.getElementById('statusLine');
+  var elLevelToggle = document.getElementById('levelToggle');
+  var elBulkPanel = document.getElementById('bulkPanel');
+  var elCopyRoleSource = document.getElementById('copyRoleSource');
+  var elCopyStatusSource = document.getElementById('copyStatusSource');
+  var elCopyStatusTarget = document.getElementById('copyStatusTarget');
+
+  function renderRoleTabs(){
+    elRoleTabs.innerHTML = ROLES.map(function(r){
+      return '<button data-role="'+r.id+'" class="'+(r.id===activeRole?'active':'')+'">'+r.title+'</button>';
+    }).join('');
+  }
+
+  function renderLevelToggle(){
+    var lvl = currentLevel();
+    elLevelToggle.querySelectorAll('button').forEach(function(b){
+      b.classList.toggle('active', b.dataset.level === lvl);
+    });
+  }
+
+  function renderCopySelectors(){
+    elCopyRoleSource.innerHTML = ROLES.filter(function(r){return r.id!==activeRole;})
+      .map(function(r){return '<option value="'+r.id+'">'+r.title+'</option>';}).join('');
+    var statuses = getStatuses();
+    var opts = statuses.map(function(s){return '<option value="'+s.id+'">'+s.title+'</option>';}).join('');
+    elCopyStatusSource.innerHTML = opts;
+    elCopyStatusTarget.innerHTML = opts;
+  }
+
+  function renderHead(){
+    var statuses = activeStatuses();
+    var html = '<th class="col-head">Колонка интерфейса</th>';
+    statuses.forEach(function(s){ html += '<th>'+s.title+'</th>'; });
+    elHeadRow.innerHTML = html;
+  }
+
+  function renderStatusModeToggle(){
+    document.querySelectorAll('#statusModeToggle button').forEach(function(b){
+      b.classList.toggle('active', b.dataset.mode === state.settings.statusViewMode);
+    });
+  }
+
+  function renderStatusNav(){
+    var statuses = getStatuses();
+    var idx = clampStatusIndex(state.settings.currentStatusIndex, statuses.length);
+    state.settings.currentStatusIndex = idx;
+    var jump = document.getElementById('statusJump');
+    jump.innerHTML = statuses.map(function(s,i){
+      return '<option value="'+i+'"'+(i===idx?' selected':'')+'>'+s.title+'</option>';
+    }).join('');
+    document.getElementById('btnPrevStatus').disabled = idx <= 0;
+    document.getElementById('btnNextStatus').disabled = idx >= statuses.length - 1;
+  }
+
+  function isTruthyFlag(v){
+    return v === true || v === 'true' || v === 1 || v === '1' || v === 'да' || v === 'Да';
+  }
+
+  function formatDecimal2(v){
+    if (v == null || v === '' || v === '—') return '0.00';
+    var n = Number(String(v).replace(/[^\d,.\-]/g, '').replace(',', '.'));
+    if (!isFinite(n)) return '0.00';
+    return n.toFixed(2);
+  }
+
+  // 'дд.мм.гггг' → 'гггг-мм-дд' для input[type=date]
+  function toIsoDate(v){
+    var m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(v || '').trim());
+    return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+  }
+
+  function selectOptions(colId, current, rowValues){
+    if (!SELECT_SOURCES[colId]) return sampleOptions(colId, current);
+    var vals = SELECT_SOURCES[colId](rowValues || {}).slice();
+    if (!isEmptyVal(current) && vals.indexOf(String(current)) === -1) vals.unshift(String(current));
+    return '<option value="">—</option>' + vals.map(function(v){
+      return '<option'+(String(current)===v?' selected':'')+'>'+esc(v)+'</option>';
+    }).join('');
+  }
+
+  function sampleOptions(colId, current){
+    var vals = [];
+    SAMPLE_ROWS.forEach(function(r){
+      var v = r.values[colId];
+      if (v != null && v !== '' && v !== '—' && typeof v !== 'boolean' && vals.indexOf(String(v)) === -1) vals.push(String(v));
+    });
+    if (current != null && current !== '' && current !== '—' && vals.indexOf(String(current)) === -1) vals.unshift(String(current));
+    return '<option value="">—</option>' + vals.map(function(v){
+      return '<option'+(String(current)===v?' selected':'')+'>'+esc(v)+'</option>';
+    }).join('');
+  }
+
+  function renderPreview(){
+    var level = currentLevel();
+    var statuses = getStatuses();
+    var idx = clampStatusIndex(state.settings.currentStatusIndex, statuses.length);
+    var status = statuses[idx];
+    var table = document.getElementById('previewTable');
+    document.getElementById('previewRoleName').textContent = roleTitle(activeRole);
+    document.getElementById('previewStatusName').textContent = status ? status.title : '—';
+    if (!status){ table.innerHTML = ''; return; }
+
+    var columns = getColumns();
+
+    // Верхняя строка шапки — подгруппы (C1, C2…) с объединением ячеек
+    var grpCells = [], lastG = null;
+    columns.forEach(function(col){
+      var g = (COLUMN_CODES[col.id] || {}).group || '';
+      if (g === lastG) grpCells[grpCells.length - 1].span++;
+      else grpCells.push({code:g, span:1});
+      lastG = g;
+    });
+    var grpRow = '<tr class="prev-grp"><th>Группа</th>' + grpCells.map(function(x){
+      var gr = GROUPS_BY_CODE[x.code];
+      var parent = gr && gr.parent ? GROUPS_BY_CODE[gr.parent] : null;
+      return '<th colspan="'+x.span+'">'+(gr ? '<span class="col-code">'+x.code+'</span>'+esc((parent ? parent.title + ' · ' : '') + gr.title) : '')+'</th>';
+    }).join('') + '</tr>';
+
+    var headHtml = '<thead>' + grpRow + '<tr><th>Пример</th>' + columns.map(function(col){
+      var cell = ensureCell(level, activeRole, status.id, col.id);
+      var grp = groupOf(col.id);
+      var oneOf = grp ? '<span class="req-one" title="Обязательно одно из: '+esc(grp.map(function(id){ return (COLUMNS_BY_ID[id]||{title:id}).title; }).join(' / '))+'">✱</span>' : '';
+      return '<th data-col="'+col.id+'">'+codeBadge(col.id)+esc(col.title)+(cell.required ? '<span class="req-star">*</span>' : '')+oneOf+'</th>';
+    }).join('') + '</tr></thead>';
+
+    var bodyHtml = '<tbody>' + SAMPLE_ROWS.map(function(sample, rowIdx){
+      var unlocked = isTruthyFlag(sample.values.doc_signed_original);
+      var row = '<tr data-sample="'+rowIdx+'"><td style="font-weight:600;white-space:nowrap;color:var(--muted);">'+esc(sample.label)+(unlocked?' <span class="badge" title="Галка true: строка не защищена">разблок.</span>':'')+'</td>';
+      columns.forEach(function(col){
+        var cell = ensureCell(level, activeRole, status.id, col.id);
+        var dtype = dataTypeOf(col.id);
+        var isBool = dtype === 'checkbox';
+        var isDecimal = dtype === 'number';
+        var val = sample.values[col.id] != null ? sample.values[col.id] : (isBool ? false : (isDecimal ? '0.00' : '—'));
+        var readonly = !canRoleEdit(cell, activeRole);
+        // Галка true → строка не защищена: остальные поля редактируются поверх матрицы
+        if (unlocked && col.id !== 'doc_signed_original' && col.id !== 'row_number') {
+          readonly = false;
+        }
+        var cls = (readonly ? 'prev-readonly' : 'prev-editable') + (cell.required ? ' prev-required' : '');
+        var grp = groupOf(col.id);
+        var missing = grp && grp.every(function(id){ return isEmptyVal(sample.values[id]); });
+        if (missing) cls += ' prev-missing';
+        if (VEHICLE_FILL[col.id] || col.id === 'unit' || col.id === 'extra_field_2'
+            || (col.id === 'extra_field_1' && num(sample.values.qty_norm_hours_client) <= 0)) cls += ' prev-auto';
+        var da = ' data-sample="'+rowIdx+'" data-col="'+col.id+'" ';
+        var title = isBool
+          ? (isTruthyFlag(val) ? 'true: строка не защищена от изменения' : 'false: защита строки по матрице/статусу')
+          : (readonly ? 'Только чтение' : ('Редактируется: ' + editLabel(cell)));
+        if (!isBool && col.id === 'doc_signed_original') title = 'Флаг разблокировки строки · ' + title;
+        title = DATA_TYPE_LABELS[dtype] + (isDecimal ? ' (до сотых)' : '') + ' · ' + title;
+        if (unlocked && !isBool) title = 'Строка разблокирована галкой «оригинал» · ' + title;
+        if (RULE_NOTES[col.id]) title += ' · Правило: ' + RULE_NOTES[col.id];
+        if (missing) title = 'Заполните одно из: ' + grp.map(function(id){ return (COLUMNS_BY_ID[id]||{title:id}).title; }).join(' / ') + ' · ' + title;
+        var dis = (readonly ? 'disabled' : '') + da;
+        if (isBool) {
+          var canToggle = canRoleEdit(cell, activeRole);
+          row += '<td class="'+cls+' prev-bool"><input type="checkbox" class="prev-flag" data-sample="'+rowIdx+'" data-col="'+col.id+'" '+(isTruthyFlag(val)?'checked':'')+' '+(canToggle?'':'disabled')+' title="'+esc(title)+'"></td>';
+        } else if (isDecimal) {
+          row += '<td class="'+cls+'"><input type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(formatDecimal2(val))+'" '+dis+' title="'+esc(title)+'"></td>';
+        } else if (dtype === 'date') {
+          row += '<td class="'+cls+'"><input type="date" value="'+esc(toIsoDate(val))+'" '+dis+' title="'+esc(title)+'"></td>';
+        } else if (dtype === 'select') {
+          row += '<td class="'+cls+'"><select '+dis+' title="'+esc(title)+'">'+selectOptions(col.id, val, sample.values)+'</select></td>';
+        } else if (dtype === 'matrix') {
+          row += '<td class="'+cls+'"><span class="prev-matrix" title="'+esc(title)+'">▦ матрица</span></td>';
+        } else {
+          row += '<td class="'+cls+'"><input type="text" value="'+esc(val)+'" '+dis+' title="'+esc(title)+'"></td>';
+        }
+      });
+      row += '</tr>';
+      return row;
+    }).join('') + '</tbody>';
+
+    var keepScroll = elPreviewWrap ? elPreviewWrap.scrollLeft : 0;
+    table.innerHTML = headHtml + bodyHtml;
+    if (previewEditing) elPreviewWrap.scrollLeft = keepScroll;
+    else syncPreviewToMatrix();
+  }
+  var previewEditing = false;
+
+  function renderRules(){
+    document.getElementById('rulesList').innerHTML = FIELD_RULES.map(function(r){ return '<li>'+esc(r.text)+'</li>'; }).join('');
+  }
+
+  // ---- Синхронизация: вертикальный скролл матрицы → горизонтальный скролл примера ----
+  // Верхняя видимая строка матрицы (колонка интерфейса) прокручивает пример к той же колонке.
+  var elMatrixWrap = document.querySelector('.table-wrap');
+  var elPreviewWrap = document.querySelector('.preview-table-wrap');
+  var focusedColId = null;
+
+  function topVisibleMatrixColId(){
+    var wrapTop = elMatrixWrap.getBoundingClientRect().top;
+    var head = elMatrixWrap.querySelector('thead');
+    var limit = wrapTop + (head ? head.offsetHeight : 0) + 1;
+    var rows = elBody.querySelectorAll('tr[data-col]:not(.filtered-out):not(.grp-collapsed)');
+    for (var i = 0; i < rows.length; i++){
+      var r = rows[i].getBoundingClientRect();
+      // строка считается текущей, если видна хотя бы наполовину
+      if (r.bottom - r.height / 2 > limit) return rows[i].dataset.col;
+    }
+    return null;
+  }
+
+  function syncPreviewToMatrix(){
+    var colId = topVisibleMatrixColId();
+    focusedColId = colId;
+    elBody.querySelectorAll('tr.row-focus').forEach(function(tr){ tr.classList.remove('row-focus'); });
+    var table = document.getElementById('previewTable');
+    table.querySelectorAll('.prev-focus').forEach(function(c){ c.classList.remove('prev-focus'); });
+    if (!colId) return;
+    var tr = elBody.querySelector('tr[data-col="'+colId+'"]');
+    if (tr) tr.classList.add('row-focus');
+    var th = table.querySelector('thead th[data-col="'+colId+'"]');
+    if (!th) return;
+    var idx = Array.prototype.indexOf.call(th.parentNode.children, th);
+    th.classList.add('prev-focus');
+    table.querySelectorAll('tbody tr').forEach(function(row){
+      if (row.children[idx]) row.children[idx].classList.add('prev-focus');
+    });
+    var stickyW = th.parentNode.children[0].offsetWidth;
+    elPreviewWrap.scrollLeft = Math.max(0, th.offsetLeft - stickyW);
+  }
+
+  var syncRaf = 0;
+  function scheduleSync(){
+    if (syncRaf) return;
+    syncRaf = requestAnimationFrame(function(){ syncRaf = 0; syncPreviewToMatrix(); });
+  }
+  elMatrixWrap.addEventListener('scroll', scheduleSync, {passive:true});
+  window.addEventListener('resize', scheduleSync);
+
+  function editSelectHtml(cell){
+    var opts = EDIT_VALUES.map(function(v){
+      return '<option value="'+v+'"'+(cell.editable===v?' selected':'')+'>'+EDIT_LABELS[v]+'</option>';
+    }).join('');
+    return '<select class="c-editable">'+opts+'</select>';
+  }
+
+  function rolesPickerHtml(cell, open){
+    var picked = cell.editableRoles;
+    var summary = picked.length ? picked.map(roleTitle).join(', ') : 'Выберите роли';
+    var items = ROLES.map(function(r){
+      return '<label><input type="checkbox" class="c-role-opt" value="'+r.id+'"'+(picked.indexOf(r.id)!==-1?' checked':'')+'>'+r.title+'</label>';
+    }).join('');
+    return '<details class="c-roles"'+(cell.editable==='role'?'':' hidden')+(open?' open':'')+'>'
+      + '<summary title="'+esc(summary)+'">'+(picked.length>1?'('+picked.length+') ':'')+esc(summary)+'</summary>'
+      + '<div class="roles-list">'+items+'</div></details>';
+  }
+
+  function cellInnerHtml(cell, rolesOpen){
+    return '<div class="cell-stack">'
+      +   '<div class="chk-row">'
+      +     '<label class="chk"><input type="checkbox" class="c-required" '+(cell.required?'checked':'')+'>Обяз.</label>'
+      +   '</div>'
+      +   editSelectHtml(cell)
+      +   rolesPickerHtml(cell, rolesOpen)
+      + '</div>';
+  }
+
+  function dataTypeSelectHtml(colId){
+    var cur = dataTypeOf(colId);
+    return '<select class="col-type" data-col="'+colId+'" title="Тип данных колонки">'
+      + DATA_TYPE_VALUES.map(function(v){
+          return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+DATA_TYPE_LABELS[v]+'</option>';
+        }).join('')
+      + '</select>';
+  }
+
+  function renderTable(){
+    var level = currentLevel();
+    var columns = getColumns();
+    var statuses = activeStatuses();
+    var rowsHtml = '';
+    var shownGroups = {};
+    columns.forEach(function(col){
+      groupChain(col.id).forEach(function(code, depth){
+        if (shownGroups[code]) return;
+        shownGroups[code] = true;
+        var g = GROUPS_BY_CODE[code];
+        var n = groupColumnIds(code).length;
+        var collapsed = isGroupCollapsed(code);
+        rowsHtml += '<tr class="grp-row'+(depth ? ' sub' : '')+'" data-grp="'+code+'" data-parent="'+(g.parent||'')+'">'
+          + '<th class="row-head">'+(collapsed ? '▸ ' : '▾ ')+'<span class="col-code">'+code+'</span>'+esc(g.title)+'<span class="grp-count">'+n+' кол.</span></th>'
+          + '<td colspan="'+statuses.length+'"></td></tr>';
+      });
+      var chain = groupChain(col.id);
+      rowsHtml += '<tr data-col="'+col.id+'" data-grp="'+chain.join(' ')+'"><th class="row-head">'+codeBadge(col.id)+col.title+'<span class="id">'+col.id+'</span>'+dataTypeSelectHtml(col.id)
+        + (RULE_NOTES[col.id] ? '<span class="rule-note">'+esc(RULE_NOTES[col.id])+'</span>' : '') + '</th>';
+      statuses.forEach(function(st){
+        var cell = ensureCell(level, activeRole, st.id, col.id);
+        rowsHtml += '<td class="matrix-cell '+cellClass(cell, activeRole)+'" data-status="'+st.id+'" data-col="'+col.id+'">'
+          + cellInnerHtml(cell, false)
+          + '</td>';
+      });
+      rowsHtml += '</tr>';
+    });
+    elBody.innerHTML = rowsHtml;
+    applySearchFilter();
+    scheduleSync();
+    var modeLabel = state.settings.statusViewMode==='single' ? 'один статус' : 'все статусы';
+    elStatusLine.textContent = 'Роль: ' + roleTitle(activeRole) + ' · Уровень статуса: ' + (level==='order'?'Заказ':'Деталь (строка)') + ' ('+modeLabel+') · обновлено ' + new Date(state.updatedAt).toLocaleString('ru-RU');
+  }
+
+  // Поиск: по названию, ID, коду колонки (F2.3) или коду группы (C1 — все колонки подгруппы, C — всей группы)
+  function columnMatches(colId, q){
+    if (!q) return true;
+    var col = COLUMNS_BY_ID[colId] || {title:colId};
+    var code = colCode(colId).toLowerCase();
+    var chain = groupChain(colId).map(function(x){ return x.toLowerCase(); });
+    return col.title.toLowerCase().indexOf(q) !== -1 || colId.toLowerCase().indexOf(q) !== -1
+      || code === q || code.indexOf(q + '.') === 0 || chain.indexOf(q) !== -1;
+  }
+
+  function collapsedGroups(){
+    if (!Array.isArray(state.settings.collapsedGroups)) state.settings.collapsedGroups = [];
+    return state.settings.collapsedGroups;
+  }
+  function isGroupCollapsed(code){ return collapsedGroups().indexOf(code) !== -1; }
+
+  function applySearchFilter(){
+    var q = elSearch.value.trim().toLowerCase();
+    var visibleByGroup = {};
+    elBody.querySelectorAll('tr[data-col]').forEach(function(tr){
+      var colId = tr.dataset.col;
+      var match = columnMatches(colId, q);
+      tr.classList.toggle('filtered-out', !match);
+      var chain = groupChain(colId);
+      // при активном поиске группы не сворачиваются, чтобы найденное было видно
+      var collapsed = !q && chain.some(isGroupCollapsed);
+      tr.classList.toggle('grp-collapsed', collapsed);
+      if (match) chain.forEach(function(c){ visibleByGroup[c] = true; });
+    });
+    elBody.querySelectorAll('tr.grp-row').forEach(function(tr){
+      var code = tr.dataset.grp, parent = tr.dataset.parent;
+      tr.classList.toggle('filtered-out', !visibleByGroup[code]);
+      tr.classList.toggle('grp-collapsed', !q && !!parent && isGroupCollapsed(parent));
+      var th = tr.querySelector('th');
+      th.firstChild.nodeValue = (!q && isGroupCollapsed(code) ? '▸ ' : '▾ ');
+    });
+  }
+
+  function filteredColumnIds(){
+    var q = elSearch.value.trim().toLowerCase();
+    return getColumns().filter(function(c){ return columnMatches(c.id, q); }).map(function(c){return c.id;});
+  }
+
+  function toggleGroup(code, collapse){
+    var list = collapsedGroups();
+    var i = list.indexOf(code);
+    if (collapse === undefined) collapse = i === -1;
+    if (collapse && i === -1) list.push(code);
+    if (!collapse && i !== -1) list.splice(i, 1);
+  }
+  elBody.addEventListener('click', function(e){
+    var tr = e.target.closest('tr.grp-row');
+    if (!tr) return;
+    toggleGroup(tr.dataset.grp);
+    scheduleSave();
+    applySearchFilter();
+    scheduleSync();
+  });
+  document.getElementById('btnCollapseAll').addEventListener('click', function(){
+    COLUMN_GROUPS.forEach(function(g){ toggleGroup(g.code, !g.parent); });
+    scheduleSave(); applySearchFilter(); scheduleSync();
+  });
+  document.getElementById('btnExpandAll').addEventListener('click', function(){
+    state.settings.collapsedGroups = [];
+    scheduleSave(); applySearchFilter(); scheduleSync();
+  });
+
+  function renderAll(){
+    syncUrl();
+    renderRoleTabs();
+    renderLevelToggle();
+    renderStatusModeToggle();
+    renderStatusNav();
+    renderCopySelectors();
+    renderHead();
+    renderTable();
+    renderPreview();
+    updateLogBadge();
+  }
+
+  // ---------------- Events ----------------
+
+  elRoleTabs.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-role]');
+    if (!btn) return;
+    activeRole = btn.dataset.role;
+    state.settings.activeRole = activeRole;
+    scheduleSave();
+    renderRoleTabs();
+    renderCopySelectors();
+    renderTable();
+    renderPreview();
+  });
+
+  elLevelToggle.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-level]');
+    if (!btn) return;
+    state.settings.statusLevel = btn.dataset.level;
+    scheduleSave();
+    renderLevelToggle();
+    renderTable();
+    renderPreview();
+  });
+
+  document.getElementById('statusModeToggle').addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    state.settings.statusViewMode = btn.dataset.mode;
+    scheduleSave();
+    renderStatusModeToggle();
+    renderHead();
+    renderTable();
+  });
+
+  function onStatusIndexChange(){
+    scheduleSave();
+    renderStatusNav();
+    if (state.settings.statusViewMode === 'single'){ renderHead(); renderTable(); }
+    renderPreview();
+  }
+  document.getElementById('btnPrevStatus').addEventListener('click', function(){
+    state.settings.currentStatusIndex = Math.max(0, state.settings.currentStatusIndex - 1);
+    onStatusIndexChange();
+  });
+  document.getElementById('btnNextStatus').addEventListener('click', function(){
+    var len = getStatuses().length;
+    state.settings.currentStatusIndex = Math.min(len - 1, state.settings.currentStatusIndex + 1);
+    onStatusIndexChange();
+  });
+  document.getElementById('statusJump').addEventListener('change', function(e){
+    state.settings.currentStatusIndex = parseInt(e.target.value, 10) || 0;
+    onStatusIndexChange();
+  });
+
+  elSearch.addEventListener('input', function(){ applySearchFilter(); scheduleSync(); });
+
+  function logCellDiff(level, roleId, statusId, colId, before, after){
+    var fieldNames = {editable:'Редактирование', required:'Обязательность', editableRoles:'Роли-редакторы'};
+    var col = COLUMNS_BY_ID[colId] || {title:colId};
+    var st = getStatuses().filter(function(s){return s.id===statusId;})[0] || {title:statusId};
+    ['editable','required','editableRoles'].forEach(function(f){
+      var changed = f === 'editableRoles' ? before[f].join(',') !== after[f].join(',') : before[f] !== after[f];
+      if (changed){
+        pushLog({
+          action:'Изменение ячейки', role:roleTitle(roleId), level: level==='order'?'Заказ':'Деталь',
+          status: st.title, column: col.title, field: fieldNames[f],
+          before: formatFieldValue(f, before[f]), after: formatFieldValue(f, after[f])
+        });
+      }
+    });
+  }
+
+  elBody.addEventListener('change', function(e){
+    var el = e.target;
+    if (el.classList.contains('col-type')){
+      var cid = el.dataset.col, prevType = dataTypeOf(cid);
+      state.columnTypes[cid] = el.value;
+      (state.columns || []).forEach(function(c){ if (c.id === cid) c.dataType = el.value; });
+      pushLog({
+        action:'Тип данных колонки', role:'все роли', level:'—', status:'все статусы',
+        column:(COLUMNS_BY_ID[cid] || {title:cid}).title, field:'Тип данных',
+        before: formatFieldValue('dataType', prevType), after: formatFieldValue('dataType', el.value)
+      });
+      scheduleSave();
+      renderPreview();
+      return;
+    }
+    var td = el.closest('td.matrix-cell');
+    if (!td) return;
+    var statusId = td.dataset.status, colId = td.dataset.col;
+    var level = currentLevel();
+    var cell = ensureCell(level, activeRole, statusId, colId);
+    var before = {editable:cell.editable, required:cell.required, editableRoles:cell.editableRoles.slice()};
+    var rolesOpen = false;
+
+    if (el.classList.contains('c-required')) cell.required = el.checked;
+    else if (el.classList.contains('c-editable')){
+      cell.editable = el.value;
+      if (cell.editable === 'role' && !cell.editableRoles.length){ cell.editableRoles = [activeRole]; rolesOpen = true; }
+    }
+    else if (el.classList.contains('c-role-opt')){
+      rolesOpen = true;
+      cell.editableRoles = Array.prototype.map.call(td.querySelectorAll('.c-role-opt:checked'), function(x){ return x.value; });
+    }
+
+    enforceConstraints(cell, activeRole);
+    logCellDiff(level, activeRole, statusId, colId, before, cell);
+
+    // перерисовать ячейку: ограничения могли изменить другие поля
+    td.className = 'matrix-cell ' + cellClass(cell, activeRole);
+    td.innerHTML = cellInnerHtml(cell, rolesOpen && cell.editable === 'role');
+
+    scheduleSave();
+    renderPreview();
+  });
+
+  // Bulk operations
+  // Правка примера: значение → правила (автоподстановка, фильтр договоров, формулы) → перерисовка
+  document.getElementById('previewTable').addEventListener('change', function(e){
+    var el = e.target;
+    var colId = el.getAttribute('data-col');
+    var idx = Number(el.getAttribute('data-sample'));
+    if (!colId || !SAMPLE_ROWS[idx]) return;
+    var v = SAMPLE_ROWS[idx].values;
+    if (el.type === 'checkbox') v[colId] = !!el.checked;
+    else if (el.type === 'date'){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(el.value); v[colId] = m ? m[3]+'.'+m[2]+'.'+m[1] : '—'; }
+    else v[colId] = el.value === '' ? '—' : el.value;
+    applyRowRules(v, colId);
+    previewEditing = true;
+    renderPreview();
+    previewEditing = false;
+  });
+
+  document.getElementById('btnBulk').addEventListener('click', function(){
+    elBulkPanel.classList.toggle('open');
+  });
+
+  function forEachTargetCell(fn){
+    var level = currentLevel();
+    var cols = filteredColumnIds();
+    var statuses = activeStatuses();
+    statuses.forEach(function(st){
+      cols.forEach(function(colId){
+        var cell = ensureCell(level, activeRole, st.id, colId);
+        fn(cell);
+        enforceConstraints(cell, activeRole);
+      });
+    });
+    return {colsCount: cols.length, statusesCount: statuses.length};
+  }
+
+  var BULK_OP_LABELS = {
+    'edit-all':'Массово: разрешить редактирование', 'edit-none':'Массово: только чтение',
+    'req-on':'Массово: сделать обязательным', 'req-off':'Массово: снять обязательность'
+  };
+
+  elBulkPanel.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-op]');
+    if (!btn) return;
+    var op = btn.dataset.op;
+    var scope;
+    if (op==='edit-all') scope = forEachTargetCell(function(c){
+      if (c.editable !== 'role') c.editableRoles = [];
+      c.editable='role';
+      if (c.editableRoles.indexOf(activeRole) === -1) c.editableRoles.push(activeRole);
+    });
+    if (op==='edit-none') scope = forEachTargetCell(function(c){ c.editable='none'; enforceConstraints(c); });
+    if (op==='req-on') scope = forEachTargetCell(function(c){ if(c.editable!=='none'){ c.required=true; enforceConstraints(c);} });
+    if (op==='req-off') scope = forEachTargetCell(function(c){ c.required=false; enforceConstraints(c); });
+    scheduleSave();
+    pushLog({
+      action: BULK_OP_LABELS[op] || ('Массовая операция: '+op), role: roleTitle(activeRole),
+      level: currentLevel()==='order'?'Заказ':'Деталь',
+      status: state.settings.statusViewMode==='single' ? 'текущий статус' : 'все статусы (' + (scope?scope.statusesCount:'?') + ')',
+      column: (scope?scope.colsCount:'?') + ' колонок', field:'—', before:'—', after:'—'
+    });
+    renderTable();
+    renderPreview();
+  });
+
+  document.getElementById('btnCopyRole').addEventListener('click', function(){
+    var source = elCopyRoleSource.value;
+    if (!source) return;
+    var level = currentLevel();
+    getStatuses().forEach(function(st){
+      getColumns().forEach(function(col){
+        var src = ensureCell(level, source, st.id, col.id);
+        state.matrix[level][activeRole][st.id][col.id] = enforceConstraints({
+          visible:src.visible, editable:src.editable, required:src.required, editableRoles:src.editableRoles.slice()
+        }, activeRole);
+      });
+    });
+    scheduleSave();
+    pushLog({
+      action:'Копирование роли', role: roleTitle(activeRole), level: level==='order'?'Заказ':'Деталь',
+      status:'все статусы', column:'все колонки', field:'источник', before: roleTitle(source), after: roleTitle(activeRole)
+    });
+    renderTable();
+    renderPreview();
+  });
+
+  document.getElementById('btnCopyStatus').addEventListener('click', function(){
+    var source = elCopyStatusSource.value, target = elCopyStatusTarget.value;
+    if (!source || !target || source===target) return;
+    var level = currentLevel();
+    getColumns().forEach(function(col){
+      var src = ensureCell(level, activeRole, source, col.id);
+      state.matrix[level][activeRole][target][col.id] = enforceConstraints({
+        visible:src.visible, editable:src.editable, required:src.required, editableRoles:src.editableRoles.slice()
+      }, activeRole);
+    });
+    scheduleSave();
+    var srcTitle = (getStatuses().filter(function(s){return s.id===source;})[0]||{}).title || source;
+    var tgtTitle = (getStatuses().filter(function(s){return s.id===target;})[0]||{}).title || target;
+    pushLog({
+      action:'Копирование статуса', role: roleTitle(activeRole), level: level==='order'?'Заказ':'Деталь',
+      status: tgtTitle, column:'все колонки', field:'источник', before: srcTitle, after: tgtTitle
+    });
+    renderTable();
+    renderPreview();
+  });
+
+  // Export / Import / Reset
+  document.getElementById('btnExport').addEventListener('click', function(){
+    state.updatedAt = new Date().toISOString();
+    var out = JSON.parse(JSON.stringify(state));
+    out.fieldRules = FIELD_RULES;
+    var blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'column-matrix.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btnImport').addEventListener('click', function(){
+    document.getElementById('importFile').click();
+  });
+
+  document.getElementById('importFile').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var parsed = JSON.parse(reader.result);
+        var err = validateImport(parsed);
+        if (err){ alert('Ошибка импорта: ' + err); return; }
+        var dropped = sanitizeImport(parsed);
+        state = normalizeSettings(parsed);
+        if (DEFAULTS) state.defaultsId = DEFAULTS.id; // осознанный импорт — не предлагать умолчания
+        activeRole = state.settings.activeRole;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        pushLog({action:'Импорт JSON', role:'—', level:'—', status:'—', column:'—', field:'файл', before:'—', after: file.name});
+        renderAll();
+        var notes = [];
+        if (dropped.columns.length) notes.push('пропущены неизвестные колонки: ' + dropped.columns.join(', '));
+        if (dropped.statuses.length) notes.push('пропущены неизвестные статусы: ' + dropped.statuses.join(', '));
+        alert('Матрица успешно импортирована.' + (notes.length ? '\n' + notes.join('\n') : ''));
+      }catch(ex){
+        alert('Не удалось прочитать JSON: ' + ex.message);
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+    e.target.value = '';
+  });
+
+  document.getElementById('btnReset').addEventListener('click', function(){
+    if (!confirm('Сбросить все настройки матрицы к значениям по умолчанию? Действие необратимо.')) return;
+    state = buildDefaultState();
+    activeRole = 'manager';
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    pushLog({action:'Сброс к значениям по умолчанию', role:'—', level:'—', status:'—', column:'—', field:'—', before:'—', after:'—'});
+    renderAll();
+  });
+
+  // Новые умолчания (default-matrix.js) при уже сохранённой своей матрице — предложить применить
+  var elDefaultsBanner = document.getElementById('defaultsBanner');
+  if (DEFAULTS && loadedFromStorage && state.defaultsId !== DEFAULTS.id){
+    document.getElementById('defaultsBannerId').textContent = 'от ' + new Date(DEFAULTS.id).toLocaleString('ru-RU');
+    elDefaultsBanner.hidden = false;
+  }
+  document.getElementById('btnApplyDefaults').addEventListener('click', function(){
+    if (!confirm('Заменить вашу матрицу новыми настройками по умолчанию? Перед этим можно сделать «Экспорт JSON».')) return;
+    var settings = state.settings;
+    state = buildDefaultState();
+    state.settings = settings;
+    normalizeSettings(state);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    pushLog({action:'Применены новые умолчания', role:'—', level:'—', status:'—', column:'—', field:'источник', before:'—', after: DEFAULTS.source || DEFAULTS.id});
+    elDefaultsBanner.hidden = true;
+    renderAll();
+  });
+  document.getElementById('btnKeepMine').addEventListener('click', function(){
+    state.defaultsId = DEFAULTS.id;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    elDefaultsBanner.hidden = true;
+  });
+
+  document.getElementById('btnCopyLink').addEventListener('click', function(){
+    var btn = this;
+    var url = location.href.split('?')[0].split('#')[0] + buildShareUrl().slice(location.pathname.length);
+    function done(ok){
+      var old = 'Скопировать ссылку';
+      btn.textContent = ok ? 'Ссылка скопирована ✓' : 'Не удалось скопировать';
+      setTimeout(function(){ btn.textContent = old; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ prompt('Скопируйте ссылку:', url); });
+    } else {
+      prompt('Скопируйте ссылку:', url);
+    }
+  });
+
+  // Журнал изменений (модальное окно)
+  function renderLogTable(){
+    var tbody = document.getElementById('logTableBody');
+    document.getElementById('logCount').textContent = 'Записей: ' + changeLog.length;
+    if (!changeLog.length){
+      tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);font-style:italic;">Журнал пуст</td></tr>';
+      return;
+    }
+    tbody.innerHTML = changeLog.map(function(l){
+      return '<tr>'
+        + '<td>'+esc(new Date(l.ts).toLocaleString('ru-RU'))+'</td>'
+        + '<td>'+esc(l.action||'')+'</td>'
+        + '<td>'+esc(l.role||'')+'</td>'
+        + '<td>'+esc(l.level||'')+'</td>'
+        + '<td>'+esc(l.status||'')+'</td>'
+        + '<td>'+esc(l.column||'')+'</td>'
+        + '<td>'+esc(l.field||'')+'</td>'
+        + '<td>'+esc(l.before||'')+'</td>'
+        + '<td>'+esc(l.after||'')+'</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  var elLogOverlay = document.getElementById('logModalOverlay');
+  document.getElementById('btnLog').addEventListener('click', function(){
+    elLogOverlay.hidden = false;
+    renderLogTable();
+  });
+  document.getElementById('btnCloseLog').addEventListener('click', function(){ elLogOverlay.hidden = true; });
+  elLogOverlay.addEventListener('click', function(e){ if (e.target === elLogOverlay) elLogOverlay.hidden = true; });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !elLogOverlay.hidden) elLogOverlay.hidden = true; });
+  document.getElementById('btnClearLog').addEventListener('click', function(){
+    if (!confirm('Очистить журнал изменений?')) return;
+    changeLog = [];
+    saveLog();
+    updateLogBadge();
+    renderLogTable();
+  });
+
+  renderRules();
+  renderAll();
+})();
+</script>
+</body>
+</html>
