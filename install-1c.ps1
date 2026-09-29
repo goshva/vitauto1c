@@ -34,7 +34,7 @@ param(
     [switch]      $DeleteArchives,                  # удалить архивы после распаковки
     [string]      $IbUser,                          # пользователь 1С в базе «Автосервис» (если есть список пользователей)
     [SecureString]$IbPassword,                      # его пароль; при -IbUser без пароля будет запрошен
-    [string]      $ExtensionFile = $(if ($PSScriptRoot) { Join-Path $PSScriptRoot 'АРМЗакупокИПродаж_v1.cfe' } else { 'АРМЗакупокИПродаж_v1.cfe' }),  # расширение (.cfe) рядом со скриптом; '' — не подключать
+    [string]      $ExtensionFile = $(if ($PSScriptRoot) { Join-Path $PSScriptRoot 'АРМЗакупокИПродаж_v2.0.cfe' } else { 'АРМЗакупокИПродаж_v2.0.cfe' }),  # расширение (.cfe) рядом со скриптом; '' — не подключать
     [string]      $ExtensionName,                    # имя расширения в базе; по умолчанию — из имени файла
     [double]      $EstDbGB       = 6,                 # оценка размера базы в PostgreSQL (для проверки места)
     [switch]      $SkipSpaceCheck,                    # пропустить проверку свободного места на диске
