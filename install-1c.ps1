@@ -493,8 +493,8 @@ try {
         & icacls $TechLogDir /grant '*S-1-5-18:(OI)(CI)F' /T /Q | Out-Null
         & icacls $TechLogDir /grant '*S-1-5-20:(OI)(CI)F' /T /Q | Out-Null
 
-        $confDir = Split-Path -Parent $LogcfgPath
-        New-Item -ItemType Directory -Force -Path $confDir | Out-Null
+        $logcfgParent = Split-Path -Parent $LogcfgPath
+        New-Item -ItemType Directory -Force -Path $logcfgParent | Out-Null
         if (Test-Path $LogcfgPath) {
             $bak = "$LogcfgPath.bak.{0:yyyyMMddHHmmss}" -f (Get-Date)
             Copy-Item $LogcfgPath $bak -Force
