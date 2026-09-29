@@ -573,17 +573,33 @@ log_min_duration_statement = $TraceThresholdMs
         }
     }
 
+    $extBaked = $false   # расширение уже встроено в .dt (применено к файловой базе до миграции)
     $cfFile = Get-ChildItem $ConfDir -Recurse -Include '*.dt', '*.cf' | Sort-Object { $_.Extension -ne '.dt' } | Select-Object -First 1
     if (-not $cfFile) {
-        # Файловая база (1Cv8.1CD) — выгружаем в .dt вместе с данными
+        # Файловая база (1Cv8.1CD) — сюда встраиваем расширение и выгружаем в .dt вместе с данными
         $fileDb = Get-ChildItem $ConfDir -Recurse -Filter '1Cv8.1CD' | Select-Object -First 1
         if ($fileDb) {
+            $fdir   = $fileDb.DirectoryName
             $dtPath = Join-Path $ConfDir "$IbName.dt"
-            Write-Host "  Найдена файловая база: $($fileDb.DirectoryName)"
-            Write-Host '  Выгрузка в .dt (может занять несколько минут)...'
-            # Подбор пользователя: заданный -> без пользователя -> Админ/Администратор без пароля -> запрос (3 раза)
-            $tries = if ($ibAuth) { @($ibAuth) } else { @('', '/N "Админ" /P ""', '/N "Администратор" /P ""') }
-            $done  = $false
+            Write-Host "  Найдена файловая база: $fdir"
+
+            # Расширение выгодно применить здесь, к файловой базе: доступ монопольный,
+            # фоновых заданий нет. Тогда .dt уже содержит расширение и на сервере
+            # не потребуется UpdateDBCfg (который упирается в блокировку фоновыми заданиями).
+            $applyExt = [bool]$ExtensionFile
+            if ($applyExt -and -not (Test-Path $ExtensionFile)) { throw "Файл расширения не найден: $ExtensionFile" }
+            if ($applyExt -and -not $ExtensionName) {
+                $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', ''
+            }
+
+            # Первая операция служит и проверкой входа: LoadCfg расширения (если есть) либо сразу DumpIB.
+            # Подбор пользователя: заданный -> без пользователя -> Админ/Администратор -> запрос (3 раза).
+            $tries    = if ($ibAuth) { @($ibAuth) } else { @('', '/N "Админ" /P ""', '/N "Администратор" /P ""') }
+            $firstOp  = if ($applyExt) { "/LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" } else { "/DumpIB `"$dtPath`"" }
+            $firstTag = if ($applyExt) { 'ext_load' } else { 'dumpib' }
+            if ($applyExt) { Write-Host "  Подключение расширения '$ExtensionName' к файловой базе..." }
+            else           { Write-Host '  Выгрузка в .dt (может занять несколько минут)...' }
+            $done = $false
             for ($i = 0; -not $done; $i++) {
                 if ($i -lt $tries.Count) { $auth = $tries[$i] }
                 elseif ($i -lt $tries.Count + 3) {
@@ -595,14 +611,22 @@ log_min_duration_statement = $TraceThresholdMs
                 }
                 else { throw 'Не удалось войти в файловую базу — нужны имя и пароль пользователя 1С с правами администратора' }
                 try {
-                    Invoke-1C "DESIGNER /F `"$($fileDb.DirectoryName)`" $auth /DumpIB `"$dtPath`"" 'dumpib'
+                    Invoke-1C "DESIGNER /F `"$fdir`" $auth $firstOp" $firstTag
                     $done = $true
                     $ibAuth = $auth   # тот же пользователь окажется и в серверной базе после загрузки
                 } catch {
-                    $log = Join-Path $LogDir '1c_dumpib.log'
+                    $log = Join-Path $LogDir "1c_$firstTag.log"
                     $authError = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'не идентифицирован|Неправильн|пароль')
                     if (-not $authError) { throw }
                 }
+            }
+            if ($applyExt) {
+                # применяем расширение к файловой базе (монопольно) и выгружаем один раз
+                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply'
+                Ok "расширение '$ExtensionName' встроено в базу до миграции"
+                $extBaked = $true
+                Write-Host '  Выгрузка в .dt (может занять несколько минут)...'
+                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /DumpIB `"$dtPath`"" 'dumpib'
             }
             Ok ("выгружено: {0} ({1:N0} МБ)" -f $dtPath, ((Get-Item $dtPath).Length / 1MB))
             $cfFile = Get-Item $dtPath
@@ -655,7 +679,11 @@ log_min_duration_statement = $TraceThresholdMs
 
     # =================================================================
     #  Расширение конфигурации (.cfe)
-    if ($ExtensionFile) {
+    if ($ExtensionFile -and $extBaked) {
+        Ok "расширение '$ExtensionName' уже в базе (встроено до миграции)"
+    } elseif ($ExtensionFile) {
+        # Источник — не файловая база (.dt/.cf/шаблон): применяем на сервере.
+        # Здесь возможна блокировка фоновыми заданиями — ретраим с паузой.
         Step '4б. Подключение расширения конфигурации'
         if (-not (Test-Path $ExtensionFile)) { throw "Файл расширения не найден: $ExtensionFile" }
         if (-not $ExtensionName) {
@@ -663,9 +691,20 @@ log_min_duration_statement = $TraceThresholdMs
         }
         if (-not $ibAuth) { $ibAuth = '/N "Админ" /P ""' }   # серверная база наследует пользователей из файловой
         Ok "файл: $ExtensionFile  ->  расширение '$ExtensionName'"
-        # LoadCfg создаёт расширение, если его ещё нет, либо заменяет содержимое существующего
         Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" 'ext_load'
-        Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply'
+        $applied = $false
+        for ($i = 1; $i -le 6 -and -not $applied; $i++) {
+            try {
+                Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply'
+                $applied = $true
+            } catch {
+                $log = Join-Path $LogDir '1c_ext_apply.log'
+                $locked = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'блокировк|заблокирована|monopol|exclusive')
+                if (-not $locked -or $i -eq 6) { throw }
+                Warn "база занята фоновыми заданиями, повтор через 15 с (попытка $i из 6)"
+                Start-Sleep -Seconds 15
+            }
+        }
         Ok "расширение '$ExtensionName' подключено и применено"
     }
 
