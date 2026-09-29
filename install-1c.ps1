@@ -195,6 +195,28 @@ function Assert-FreeSpace {
     }
 }
 
+# Вызов psql через 127.0.0.1 (без ::1 -> без WSAEACCES-шума в stderr).
+# EAP локально ослаблен: вывод psql в stderr не должен ронять скрипт под -ErrorAction Stop.
+# Возвращает объект { Out; Code }.
+function Invoke-Psql {
+    param(
+        [string]$Bin, [int]$Port, [string]$User, [string]$Db, [string]$Sql,
+        [string]$PwPlain, [switch]$Tuple
+    )
+    $env:PGPASSWORD = $PwPlain
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $flag = if ($Tuple) { '-tAc' } else { '-c' }
+        $out = & (Join-Path $Bin 'psql.exe') -w -h 127.0.0.1 -p $Port -U $User -d $Db $flag $Sql 2>&1
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+        Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+    }
+    [pscustomobject]@{ Out = (($out | Out-String).Trim()); Code = $code }
+}
+
 function Invoke-Msi([string]$Action, [string]$Target, [string]$ArgsLine, [string]$LogName) {
     $log = Join-Path $LogDir $LogName
     $p = Start-Process msiexec.exe -ArgumentList "$Action `"$Target`" $ArgsLine /norestart /l*v `"$log`"" -Wait -PassThru
@@ -322,9 +344,10 @@ try {
             if (Test-Path $d) { Warn "не удалось удалить $d (файлы заняты?)" } else { Ok "удалён каталог $d" }
         }
         Remove-IbFromList
-        # остановить старый коллектор трассировки (задача будет пересоздана)
-        & schtasks /End /TN 'pgtrace' 2>$null | Out-Null
-        & schtasks /Delete /TN 'pgtrace' /F 2>$null | Out-Null
+        # остановить старый коллектор трассировки (задача будет пересоздана).
+        # cmd /c глушит вывод и код возврата — отсутствие задачи не роняет скрипт.
+        cmd /c 'schtasks /End /TN pgtrace >nul 2>nul'
+        cmd /c 'schtasks /Delete /TN pgtrace /F >nul 2>nul'
         Get-Process pgtrace -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
         Ok 'прошлая установка удалена'
     }
@@ -424,21 +447,16 @@ log_min_duration_statement = $TraceThresholdMs
     Ok "служба PostgreSQL: $pgSvcName (Running, порт $PgPort)"
 
     # Ранняя проверка входа: ловим проблему с паролем здесь, а не на шаге 4
-    $env:PGPASSWORD = $PgPasswordPlain
-    $chk = & (Join-Path $PgBin 'psql.exe') -w -h 127.0.0.1 -p $PgPort -U $PgUser -d postgres -tAc 'select 1' 2>&1
-    $chkRc = $LASTEXITCODE
-    Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
-    if ($chkRc -ne 0) { throw "PostgreSQL запущен, но вход $PgUser не проходит: $chk" }
+    $chk = Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -Sql 'select 1' -PwPlain $PgPasswordPlain -Tuple
+    if ($chk.Code -ne 0) { throw "PostgreSQL запущен, но вход $PgUser не проходит: $($chk.Out)" }
     Ok "вход $PgUser на порт $PgPort проверен"
 
     # =================================================================
     if (-not $NoTrace) {
         Step '2в. Трассировка запросов -> Redis'
-        $psqlExe = Join-Path $PgBin 'psql.exe'
-        $env:PGPASSWORD = $PgPasswordPlain
         # агрегация запросов (в разделяемой памяти, не на диске)
-        & $psqlExe -w -h 127.0.0.1 -p $PgPort -U $PgUser -d postgres -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' | Out-Null
-        Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+        Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain `
+                    -Sql 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' | Out-Null
         Ok 'pg_stat_statements включён (агрегация и метаданные запросов)'
 
         # --- Redis (Memurai) ---
@@ -484,11 +502,17 @@ log_min_duration_statement = $TraceThresholdMs
             }
         }
         if (Test-Path $exe) {
-            # автозапуск через планировщик (эквивалент службы, без внешних зависимостей)
+            # автозапуск через планировщик (эквивалент службы, без внешних зависимостей).
+            # EAP локально ослаблен: вывод schtasks в stderr не должен ронять скрипт.
             $taskArgs = "-redis $RedisAddr -logdir `"$TraceLogDir`" -max $TraceStack"
-            & schtasks /Create /TN 'pgtrace' /TR "`"$exe`" $taskArgs" /SC ONSTART /RU 'SYSTEM' /RL HIGHEST /F | Out-Null
-            & schtasks /Run /TN 'pgtrace' | Out-Null
-            Ok "коллектор pgtrace запущен (задача 'pgtrace'), стек последних $TraceStack запросов -> $RedisAddr"
+            $savedEap = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            & schtasks /Create /TN 'pgtrace' /TR "`"$exe`" $taskArgs" /SC ONSTART /RU 'SYSTEM' /RL HIGHEST /F 2>&1 | Out-Null
+            $createdOk = $LASTEXITCODE -eq 0
+            & schtasks /Run /TN 'pgtrace' 2>&1 | Out-Null
+            $ErrorActionPreference = $savedEap
+            if ($createdOk) { Ok "коллектор pgtrace запущен (задача 'pgtrace'), стек последних $TraceStack запросов -> $RedisAddr" }
+            else            { Warn "не удалось создать задачу 'pgtrace' (schtasks код $LASTEXITCODE) — запустите коллектор вручную: $exe" }
         } else {
             Warn 'pgtrace.exe не найден и не собран (нет Go?) — коллектор не запущен'
         }
@@ -527,8 +551,6 @@ log_min_duration_statement = $TraceThresholdMs
 
     # =================================================================
     Step "4. Создание информационной базы '$IbName'"
-    $psql = Join-Path $PgBin 'psql.exe'
-    $env:PGPASSWORD = $PgPasswordPlain
     $v8     = Join-Path $Bin1C '1cv8.exe'
     $ibPath = "$Server1C\$IbName"
 
@@ -598,7 +620,8 @@ log_min_duration_statement = $TraceThresholdMs
     if (-not $cfFile) { throw "В $ConfDir не найдены .dt/.cf/1Cv8.1CD" }
     Ok ("источник базы: {0} ({1:N0} МБ)" -f $cfFile.FullName, ($cfFile.Length / 1MB))
 
-    $exists = (& $psql -w -h localhost -p $PgPort -U $PgUser -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$IbName'") -eq '1'
+    $exists = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain `
+                           -Sql "SELECT 1 FROM pg_database WHERE datname='$IbName'" -Tuple).Out -eq '1'
     if ($exists) {
         Ok "база '$IbName' уже есть в PostgreSQL — создание пропущено"
     } else {
@@ -626,9 +649,8 @@ log_min_duration_statement = $TraceThresholdMs
 
     if (-not $NoTrace) {
         # чтобы срез pg_stat_statements был доступен и из самой базы autoservice
-        $env:PGPASSWORD = $PgPasswordPlain
-        & (Join-Path $PgBin 'psql.exe') -w -h 127.0.0.1 -p $PgPort -U $PgUser -d $IbName -c 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' 2>&1 | Out-Null
-        Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+        Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db $IbName -PwPlain $PgPasswordPlain `
+                    -Sql 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' | Out-Null
     }
 
     # =================================================================
@@ -655,8 +677,8 @@ log_min_duration_statement = $TraceThresholdMs
         else { Warn "порт $port не отвечает"; $allOk = $false }
     }
 
-    $pgVer = & $psql -w -h localhost -p $PgPort -U $PgUser -d $IbName -tAc 'SELECT version()'
-    if ($LASTEXITCODE -eq 0) { Ok "PostgreSQL: подключение к БД '$IbName' — $pgVer" } else { Warn 'PostgreSQL: нет подключения к БД'; $allOk = $false }
+    $pgVer = Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db $IbName -PwPlain $PgPasswordPlain -Sql 'SELECT version()' -Tuple
+    if ($pgVer.Code -eq 0) { Ok "PostgreSQL: подключение к БД '$IbName' — $($pgVer.Out)" } else { Warn 'PostgreSQL: нет подключения к БД'; $allOk = $false }
 
     try {
         $tmpCf = Join-Path $env:TEMP 'check_conn.cf'
