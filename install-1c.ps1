@@ -8,11 +8,13 @@
     1. Проверка архивов (наличие, размер, целостность) -> докачка при необходимости -> распаковка
     2. Тихая установка PostgreSQL (+ initdb и служба, если MSI их не создал)
     3. Тихая установка 1С (клиенты + сервер) + служба агента сервера
+    3б. Технологический журнал (logcfg.xml) + рестарт агента
     4. Создание базы на сервере 1С из cf/dt
-    5. Проверка подключения (порты, PostgreSQL, вход конфигуратором)
+    5. Проверка подключения (порты, PostgreSQL, вход конфигуратором) и записи ТЖ
 
   Архивы по умолчанию сохраняются в -BaseDir, чтобы повторный запуск не качал 3.7 ГБ заново.
   Ключ -DeleteArchives удаляет их после распаковки.
+  Трассировка — технологический журнал 1С (не Redis/pgtrace). -NoTrace отключает настройку и проверку ТЖ.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\install-1c.ps1
@@ -36,13 +38,11 @@ param(
     [string]      $ExtensionName,                    # имя расширения в базе; по умолчанию — из имени файла
     [double]      $EstDbGB       = 6,                 # оценка размера базы в PostgreSQL (для проверки места)
     [switch]      $SkipSpaceCheck,                    # пропустить проверку свободного места на диске
-    # --- трассировка запросов PostgreSQL -> Redis ---
-    [switch]      $NoTrace,                           # не настраивать трассировку в Redis
-    [string]      $TraceLogDir     = 'D:\1c\pglog',   # каталог CSV-логов PostgreSQL (HDD, не SSD с базой)
-    [int]         $TraceThresholdMs = 0,              # логировать запросы дольше N мс (0 = все)
-    [string]      $RedisAddr       = '127.0.0.1:6379',# адрес Redis для коллектора
-    [int]         $TraceStack      = 1000,            # сколько последних запросов держать в Redis
-    [string]      $MemuraiMsi                         # путь к установщику Memurai (.msi); иначе ищется рядом
+    # --- технологический журнал 1С (logcfg.xml) ---
+    [switch]      $NoTrace,                           # не настраивать и не проверять ТЖ
+    [string]      $TechLogDir          = 'D:\1c\tj',  # каталог файлов ТЖ (HDD, не SSD с базой)
+    [int]         $TechLogThresholdMs  = 200,         # логировать события DBMS дольше N мс
+    [string]      $LogcfgPath          = 'C:\Program Files\1cv8\conf\logcfg.xml'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -252,6 +252,33 @@ function Find-1CBin {
     }
 }
 
+# Ждать, пока localhost слушает указанные порты (после рестарта агента 1С).
+function Wait-LocalPorts([int[]]$Ports, [int]$TimeoutSec = 60) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        $allUp = $true
+        foreach ($p in $Ports) {
+            if (-not (Test-NetConnection -ComputerName localhost -Port $p -InformationLevel Quiet -WarningAction SilentlyContinue)) {
+                $allUp = $false
+                break
+            }
+        }
+        if ($allUp) { return $true }
+        Start-Sleep -Seconds 2
+    }
+    return $false
+}
+
+# Новее ли что-то в каталоге ТЖ относительно момента $Since (файлы и подкаталоги).
+function Test-TechLogFresh([string]$Dir, [datetime]$Since) {
+    if (-not (Test-Path $Dir)) { return $false }
+    $items = Get-ChildItem $Dir -Recurse -Force -ErrorAction SilentlyContinue
+    foreach ($i in $items) {
+        if ($i.LastWriteTime -gt $Since -or $i.CreationTime -gt $Since) { return $true }
+    }
+    return $false
+}
+
 # Удалить из списка баз (ibases.v8i) секции, указывающие на нашу серверную базу
 function Remove-IbFromList {
     $pattern = "Srvr=`"?$([regex]::Escape($Server1C))`"?;Ref=`"?$([regex]::Escape($IbName))`"?;"
@@ -344,8 +371,7 @@ try {
             if (Test-Path $d) { Warn "не удалось удалить $d (файлы заняты?)" } else { Ok "удалён каталог $d" }
         }
         Remove-IbFromList
-        # остановить старый коллектор трассировки (задача будет пересоздана).
-        # cmd /c глушит вывод и код возврата — отсутствие задачи не роняет скрипт.
+        # остановить старый коллектор Redis-трассировки, если остался от прошлых установок
         cmd /c 'schtasks /End /TN pgtrace >nul 2>nul'
         cmd /c 'schtasks /Delete /TN pgtrace /F >nul 2>nul'
         Get-Process pgtrace -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -414,29 +440,6 @@ try {
     if ($rc -ne 0) { throw "initdb завершился с кодом $rc (сообщения выше)" }
     $conf = Join-Path $PgDataDir 'postgresql.conf'
     Add-Content $conf "`nport = $PgPort`nlisten_addresses = '*'"
-    if (-not $NoTrace) {
-        # Трассировка: агрегация в разделяемой памяти (pg_stat_statements) + CSV-лог на HDD,
-        # который читает коллектор и отправляет в Redis. На SSD с базой логи не пишутся.
-        New-Item -ItemType Directory -Force -Path $TraceLogDir | Out-Null
-        & icacls $TraceLogDir /grant '*S-1-5-20:(OI)(CI)F' /T /Q | Out-Null   # NETWORK SERVICE — писать логи
-        $traceCfg = @"
-
-# --- трассировка запросов (pgtrace -> Redis) ---
-shared_preload_libraries = 'pg_stat_statements'
-pg_stat_statements.max = 10000
-pg_stat_statements.track = all
-logging_collector = on
-log_destination = 'csvlog'
-log_directory = '$($TraceLogDir -replace '\\','/')'
-log_filename = 'postgresql-%H.csv'
-log_rotation_age = 60
-log_rotation_size = 10240
-log_truncate_on_rotation = on
-log_min_duration_statement = $TraceThresholdMs
-"@
-        Add-Content $conf $traceCfg
-        Ok "трассировка настроена: CSV-лог -> $TraceLogDir, порог $TraceThresholdMs мс"
-    }
     & icacls $PgDataDir /grant '*S-1-5-20:(OI)(CI)F' /T /Q | Out-Null   # NETWORK SERVICE
 
     $pgSvcName = 'postgresql-1c-15'
@@ -450,73 +453,6 @@ log_min_duration_statement = $TraceThresholdMs
     $chk = Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -Sql 'select 1' -PwPlain $PgPasswordPlain -Tuple
     if ($chk.Code -ne 0) { throw "PostgreSQL запущен, но вход $PgUser не проходит: $($chk.Out)" }
     Ok "вход $PgUser на порт $PgPort проверен"
-
-    # =================================================================
-    if (-not $NoTrace) {
-        Step '2в. Трассировка запросов -> Redis'
-        # агрегация запросов (в разделяемой памяти, не на диске)
-        Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain `
-                    -Sql 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' | Out-Null
-        Ok 'pg_stat_statements включён (агрегация и метаданные запросов)'
-
-        # --- Redis (Memurai) ---
-        $memuraiSvc = Get-Service -Name '*memurai*' -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($memuraiSvc) {
-            if ($memuraiSvc.Status -ne 'Running') { Start-Service $memuraiSvc.Name }
-            Ok "Redis (Memurai) уже установлен: служба $($memuraiSvc.Name)"
-        } else {
-            if (-not $MemuraiMsi) {
-                $MemuraiMsi = Get-ChildItem $BaseDir, $PSScriptRoot -Filter 'Memurai*.msi' -ErrorAction SilentlyContinue |
-                              Select-Object -First 1 -ExpandProperty FullName
-            }
-            if ($MemuraiMsi -and (Test-Path $MemuraiMsi)) {
-                Write-Host "  Тихая установка Memurai: $MemuraiMsi"
-                $code = Invoke-Msi '/i' $MemuraiMsi '/qn' 'memurai_msi.log'
-                if ($code -notin 0, 3010) { Warn "Memurai MSI вернул $code (см. logs\memurai_msi.log)" }
-                else { Ok 'Memurai установлен' }
-            } else {
-                Warn 'Memurai не найден. Скачайте установщик (memurai.com, Developer edition бесплатна),'
-                Warn 'положите Memurai*.msi рядом со скриптом или укажите -MemuraiMsi.'
-                Warn "Коллектор всё равно запустится и начнёт писать в Redis, как только он появится на $RedisAddr"
-            }
-        }
-
-        # --- коллектор pgtrace ---
-        $src = Join-Path $PSScriptRoot 'pgtrace'
-        # если BaseDir совпадает с папкой скрипта — работаем прямо в исходниках, не копируем
-        $traceDir = if ((Resolve-Path $BaseDir).Path -eq (Resolve-Path $PSScriptRoot).Path) { $src } else { Join-Path $BaseDir 'pgtrace' }
-        $exe = Join-Path $traceDir 'pgtrace.exe'
-        if (-not (Test-Path $exe)) {
-            if ($src -ne $traceDir -and (Test-Path (Join-Path $src 'pgtrace.exe'))) {
-                New-Item -ItemType Directory -Force -Path $traceDir | Out-Null
-                Copy-Item (Join-Path $src '*') $traceDir -Recurse -Force
-            } elseif (Get-Command go -ErrorAction SilentlyContinue) {
-                Write-Host '  Сборка коллектора pgtrace (go build)...'
-                New-Item -ItemType Directory -Force -Path $traceDir | Out-Null
-                if ($src -ne $traceDir) {
-                    Copy-Item (Join-Path $src '*.go') $traceDir -Force
-                    Copy-Item (Join-Path $src 'go.mod') $traceDir -Force -ErrorAction SilentlyContinue
-                }
-                Push-Location $traceDir
-                try { & go build -o pgtrace.exe . } finally { Pop-Location }
-            }
-        }
-        if (Test-Path $exe) {
-            # автозапуск через планировщик (эквивалент службы, без внешних зависимостей).
-            # EAP локально ослаблен: вывод schtasks в stderr не должен ронять скрипт.
-            $taskArgs = "-redis $RedisAddr -logdir `"$TraceLogDir`" -max $TraceStack"
-            $savedEap = $ErrorActionPreference
-            $ErrorActionPreference = 'Continue'
-            & schtasks /Create /TN 'pgtrace' /TR "`"$exe`" $taskArgs" /SC ONSTART /RU 'SYSTEM' /RL HIGHEST /F 2>&1 | Out-Null
-            $createdOk = $LASTEXITCODE -eq 0
-            & schtasks /Run /TN 'pgtrace' 2>&1 | Out-Null
-            $ErrorActionPreference = $savedEap
-            if ($createdOk) { Ok "коллектор pgtrace запущен (задача 'pgtrace'), стек последних $TraceStack запросов -> $RedisAddr" }
-            else            { Warn "не удалось создать задачу 'pgtrace' (schtasks код $LASTEXITCODE) — запустите коллектор вручную: $exe" }
-        } else {
-            Warn 'pgtrace.exe не найден и не собран (нет Go?) — коллектор не запущен'
-        }
-    }
 
     # =================================================================
     Step "3. Установка 1С:Предприятие $PlatformVersion"
@@ -548,6 +484,52 @@ log_min_duration_statement = $TraceThresholdMs
     if ($agentSvc.State -ne 'Running') { Start-Service -Name $agentSvc.Name }
     Ok "служба сервера 1С: $($agentSvc.Name) (Running)"
     Start-Sleep -Seconds 10   # даём кластеру подняться
+
+    # =================================================================
+    if (-not $NoTrace) {
+        Step '3б. Технологический журнал (logcfg.xml)'
+        New-Item -ItemType Directory -Force -Path $TechLogDir | Out-Null
+        # ragent обычно работает как Local System; NETWORK SERVICE — на случай смены учётки
+        & icacls $TechLogDir /grant '*S-1-5-18:(OI)(CI)F' /T /Q | Out-Null
+        & icacls $TechLogDir /grant '*S-1-5-20:(OI)(CI)F' /T /Q | Out-Null
+
+        $confDir = Split-Path -Parent $LogcfgPath
+        New-Item -ItemType Directory -Force -Path $confDir | Out-Null
+        if (Test-Path $LogcfgPath) {
+            $bak = "$LogcfgPath.bak.{0:yyyyMMddHHmmss}" -f (Get-Date)
+            Copy-Item $LogcfgPath $bak -Force
+            Ok "старый logcfg сохранён: $bak"
+        }
+
+        # duration в logcfg — в стотысячных долях секунды (10000 = 1 с) → N мс = N*10
+        $durationUnits = [math]::Max(0, $TechLogThresholdMs) * 10
+        $logcfgXml = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Сгенерировано install-1c.ps1: ТЖ DBMS >= $TechLogThresholdMs мс -> $TechLogDir -->
+<config xmlns="http://v8.1c.ru/v8/tech-log">
+  <log location="$TechLogDir" history="24">
+    <event>
+      <eq property="name" value="DBMS"/>
+      <ge property="duration" value="$durationUnits"/>
+    </event>
+    <property name="all"/>
+  </log>
+</config>
+"@
+        [IO.File]::WriteAllText($LogcfgPath, $logcfgXml, (New-Object Text.UTF8Encoding $false))
+        Ok "записан $LogcfgPath (порог DBMS $TechLogThresholdMs мс, каталог $TechLogDir)"
+
+        Write-Host "  Перезапуск службы $($agentSvc.Name) для применения logcfg..."
+        Restart-Service -Name $agentSvc.Name -Force
+        Start-Sleep -Seconds 3
+        if (-not (Wait-LocalPorts -Ports @(1540, 1541) -TimeoutSec 90)) {
+            Warn 'порты 1540/1541 не поднялись за 90 с после рестарта агента — проверьте службу вручную'
+        } else {
+            Ok 'агент 1С снова слушает 1540/1541'
+        }
+    } else {
+        Warn 'технологический журнал пропущен (-NoTrace)'
+    }
 
     # =================================================================
     Step "4. Создание информационной базы '$IbName'"
@@ -671,12 +653,6 @@ log_min_duration_statement = $TraceThresholdMs
         Ok "база создана: $ibPath"
     }
 
-    if (-not $NoTrace) {
-        # чтобы срез pg_stat_statements был доступен и из самой базы autoservice
-        Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db $IbName -PwPlain $PgPasswordPlain `
-                    -Sql 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;' | Out-Null
-    }
-
     # =================================================================
     #  Расширение конфигурации (.cfe)
     if ($ExtensionFile -and $extBaked) {
@@ -711,6 +687,7 @@ log_min_duration_statement = $TraceThresholdMs
     # =================================================================
     Step '5. Проверка подключения'
     $allOk = $true
+    $tjMark = Get-Date
     foreach ($port in 1540, 1541, $PgPort) {
         if (Test-NetConnection -ComputerName localhost -Port $port -InformationLevel Quiet -WarningAction SilentlyContinue) { Ok "порт $port открыт" }
         else { Warn "порт $port не отвечает"; $allOk = $false }
@@ -726,14 +703,23 @@ log_min_duration_statement = $TraceThresholdMs
         Ok "1С: конфигуратор подключился к $ibPath"
     } catch { Warn $_.Exception.Message; $allOk = $false }
 
+    if (-not $NoTrace) {
+        Write-Host '  Ожидание записи технологического журнала (15 с)...'
+        Start-Sleep -Seconds 15
+        if (Test-TechLogFresh -Dir $TechLogDir -Since $tjMark) {
+            Ok "технологический журнал пишет в $TechLogDir"
+        } else {
+            Warn "ТЖ не дал новых файлов в $TechLogDir после проверки входа."
+            Warn "Проверьте права на каталог, наличие $LogcfgPath и что служба агента перезапускалась."
+        }
+    }
+
     if ($allOk) { Write-Host "`nГОТОВО. База: $ibPath ($IbTitle)" -ForegroundColor Green }
     else        { Write-Host "`nЗавершено с предупреждениями, смотрите $LogDir" -ForegroundColor Yellow }
     if (-not $NoTrace) {
-        Write-Host "Трассировка -> Redis ($RedisAddr):" -ForegroundColor Green
-        Write-Host "  pg:trace  — список последних $TraceStack запросов (LRANGE pg:trace 0 -1)"
-        Write-Host '  pg:agg / pg:agg:meta — агрегация по нормализованным запросам (ZREVRANGE pg:agg 0 20 WITHSCORES)'
-        Write-Host '  pg:meta   — счётчики коллектора (HGETALL pg:meta)'
-        Write-Host '  SQL-агрегация: SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC;'
+        Write-Host "Технологический журнал:" -ForegroundColor Green
+        Write-Host "  logcfg:  $LogcfgPath"
+        Write-Host "  каталог: $TechLogDir (DBMS >= $TechLogThresholdMs мс, history 24 ч)"
     }
 }
 catch {
