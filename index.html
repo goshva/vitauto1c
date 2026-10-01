@@ -179,7 +179,7 @@
       <select id="statusJump" title="Перейти к статусу"></select>
       <button id="btnNextStatus" title="Следующий статус">▶</button>
     </div>
-    <input type="text" id="searchInput" placeholder="Поиск: название, ID или код (C1, F2.3)…">
+    <input type="text" id="searchInput" placeholder="Поиск: название, ID или код (Е, Р2)…">
     <div class="grp-tools">
       <button id="btnCollapseAll" title="Свернуть все группы колонок">Свернуть группы</button>
       <button id="btnExpandAll" title="Развернуть все группы колонок">Развернуть</button>
@@ -300,11 +300,14 @@
 
   var STATUSES = [
     {id:'new', title:'Новый'},
+    {id:'in_work', title:'В работе'},
+    {id:'partially_ordered', title:'Частично заказано'},
     {id:'ordered', title:'Заказано у поставщика'},
     {id:'paid', title:'Оплачено'},
     {id:'in_transit', title:'В пути'},
     {id:'awaiting_receipt', title:'Ожидаем поступление'},
     {id:'acceptance', title:'Приемка'},
+    {id:'to_stock', title:'На склад'},
     {id:'reserve', title:'Резервирование'},
     {id:'assembly', title:'Комплектация'},
     {id:'ready_to_ship', title:'Готово к отгрузке'},
@@ -345,7 +348,6 @@
     {id:'code_aa', title:'Код А-А / код поставщика', group:'nomenclature'},
     {id:'unit', title:'Ед. изм.', group:'nomenclature'},
     {id:'qty', title:'Кол-во', group:'nomenclature', type:'decimal'},
-    {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
     {id:'stock_qty', title:'Кол-во в наличии на складе', group:'stock', type:'decimal'},
     {id:'reserve_qty', title:'Кол-во в резерве', group:'stock', type:'decimal'},
     {id:'ordered_in_transit_qty', title:'Кол-во заказанного в пути / свободное', group:'stock'},
@@ -356,6 +358,7 @@
     {id:'payment_form', title:'Форма оплаты', group:'payment'},
     {id:'rrc', title:'РРЦ', group:'margin_locked'},
     {id:'paid_status', title:'Оплачено (счёт, оплата, постоплата)', group:'payment'},
+    {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
     {id:'coefficient', title:'Коэфф', group:'margin_open'},
     {id:'extra_field_1', title:'Цена продажи', group:'pricing', type:'decimal'},
     {id:'extra_field_2', title:'Сумма продажи', group:'pricing', type:'decimal'},
@@ -378,7 +381,7 @@
       name:'Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ', article:'7452-262 / 7472.3716-04', code_aa:'622563',
       unit:'шт', qty:'1,00', qty_norm_hours_client:'0,00', stock_qty:'12,00', reserve_qty:'1,00', ordered_in_transit_qty:'0,00 / 11,00',
       batch_fifo:'Партия №04-2026', line_status:'Резервирование', price:'1 164,49', sum:'1 164,49',
-      payment_form:'Безнал', rrc:'2 048,00', paid_status:'Оплачено', coefficient:'15%',
+      payment_form:'Безнал', rrc:'2 048,00', paid_status:'Оплачено', coefficient:'1,15',
       extra_field_1:'1 339,16', extra_field_2:'1 339,16', supplier:'АЛЬЯНС', receipt_date:'04.02.2026',
       upd_date:'04.02.2026', upd_number:'УПД-3391', supplier_ship_territory:'КЕТЧЕРСКАЯ', comment:'Стандартная отгрузка'
     }},
@@ -403,7 +406,7 @@
       name:'Крышка КАМАЗ редуктора среднего моста', article:'54115-2502209', code_aa:'633603', unit:'шт', qty:'1,00',
       qty_norm_hours_client:'2,50', stock_qty:'0,00', reserve_qty:'0,00', ordered_in_transit_qty:'0,00', batch_fifo:'Партия №01-2026',
       line_status:'Отгружено', price:'2 417,43', sum:'2 417,43', payment_form:'Безнал', rrc:'4 800,00',
-      paid_status:'Оплачено', coefficient:'12%', extra_field_1:'2 780,04', extra_field_2:'6 950,10', supplier:'АЛЬЯНС',
+      paid_status:'Оплачено', coefficient:'1,15', extra_field_1:'2 780,04', extra_field_2:'6 950,10', supplier:'АЛЬЯНС',
       receipt_date:'06.02.2026', upd_date:'06.02.2026', upd_number:'УПД-3402', supplier_ship_territory:'КЕТЧЕРСКАЯ',
       comment:'Получено лично представителем клиента (САМИ)'
     }}
@@ -474,8 +477,10 @@
       text:'Наименование / Артикул / Код А-А — поиск по любому из них; выбор одного подтягивает остальные три поля (включая Ед. изм.).'},
     {type:'oneOfRequired', columns:['name','article','code_aa'],
       text:'Обязательно заполнить одно из: Наименование, Артикул или Код А-А.'},
-    {type:'formula', column:'extra_field_1', expr:'price * (1 + coefficient / 100)', unless:'qty_norm_hours_client > 0',
-      text:'Цена продажи = Цена (себес.) × (1 + Коэфф / 100). Если заполнено «Кол-во норма час» — коэффициент игнорируется, цена продажи вводится вручную.'},
+    {type:'formula', column:'sum', expr:'price * qty',
+      text:'Сумма (себес.) = Цена (себес.) × Кол-во.'},
+    {type:'formula', column:'extra_field_1', expr:'(rrc > 0 ? rrc : price) * coefficient', unless:'coefficient = 0',
+      text:'Цена продажи = РРЦ × Коэфф, если РРЦ заполнена; иначе Цена (себес.) × Коэфф. Пока Коэфф не заполнен, цена продажи вводится вручную.'},
     {type:'formula', column:'extra_field_2', expr:'qty_norm_hours_client > 0 ? qty_norm_hours_client * extra_field_1 : qty_fact * extra_field_1',
       text:'Сумма продажи = Кол-во (ФАКТ) × Цена продажи; если заполнено «Кол-во норма час товар для клиента» — Кол-во норма час × Цена продажи.'}
   ];
@@ -503,11 +508,14 @@
       var item = DIRECTORIES.nomenclature.filter(function(x){ return x[key] === v[colId]; })[0];
       if (item) Object.keys(NOMENCLATURE_KEYS).forEach(function(k){ v[k] = item[NOMENCLATURE_KEYS[k]]; });
     }
-    // Без нормы-часов цена продажи всегда по формуле (ручной ввод перезаписывается);
-    // с нормой-часами коэффициент игнорируется и цена продажи вводится вручную.
+    // Сумма себестоимости = цена себестоимости × количество.
+    v.sum = (num(v.price) * num(v.qty)).toFixed(2);
+    // Цена продажи = база × Коэфф, где база — РРЦ, если она заполнена, иначе цена себестоимости.
+    // Пока Коэфф не заполнен, цена продажи остаётся введённой вручную.
     var hours = num(v.qty_norm_hours_client);
-    if (hours <= 0){
-      v.extra_field_1 = (num(v.price) * (1 + num(v.coefficient) / 100)).toFixed(2);
+    var coef = num(v.coefficient);
+    if (coef > 0){
+      v.extra_field_1 = ((num(v.rrc) > 0 ? num(v.rrc) : num(v.price)) * coef).toFixed(2);
     }
     v.extra_field_2 = ((hours > 0 ? hours : num(v.qty_fact)) * num(v.extra_field_1)).toFixed(2);
   }
@@ -523,7 +531,8 @@
     article:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
     code_aa:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
     unit:'подтягивается из номенклатуры',
-    extra_field_1:'= Цена × (1 + Коэфф/100); при норме-часах — вручную',
+    sum:'= Цена (себес.) × Кол-во',
+    extra_field_1:'= РРЦ × Коэфф, если РРЦ заполнена; иначе Цена (себес.) × Коэфф',
     extra_field_2:'= Кол-во (ФАКТ) или норма-час × Цена продажи'
   };
 
@@ -557,7 +566,7 @@
     return 'text';
   }
 
-  var EARLY_STATUSES = ['new','ordered','paid','in_transit','awaiting_receipt'];
+  var EARLY_STATUSES = ['new','in_work','partially_ordered','ordered','paid','in_transit','awaiting_receipt'];
 
   // ---- Ролевые профили по умолчанию (визуальные группы колонок) ----
   var ROLE_PROFILES = {
@@ -614,7 +623,8 @@
   };
   ROLE_PROFILES.chief_mechanic = ROLE_PROFILES.manager;
 
-  // Коды и группы колонок (column-codes.js): A, B, C1, C2, D, E, F1, F2, G, H
+  // Коды и группы колонок (column-codes.js): буква группы (А В Е К М Н О Р С Т) + цифра
+  var groupLetter = window.VITAUTO_GROUP_LETTER || function(code){ return code; };
   var COLUMN_GROUPS = window.VITAUTO_COLUMN_GROUPS || [];
   var COLUMN_CODES = window.VITAUTO_COLUMN_CODES || {};
   var GROUPS_BY_CODE = {};
@@ -1080,7 +1090,7 @@
     var grpRow = '<tr class="prev-grp"><th>Группа</th>' + grpCells.map(function(x){
       var gr = GROUPS_BY_CODE[x.code];
       var parent = gr && gr.parent ? GROUPS_BY_CODE[gr.parent] : null;
-      return '<th colspan="'+x.span+'">'+(gr ? '<span class="col-code">'+x.code+'</span>'+esc((parent ? parent.title + ' · ' : '') + gr.title) : '')+'</th>';
+      return '<th colspan="'+x.span+'">'+(gr ? '<span class="col-code">'+groupLetter(x.code)+'</span>'+esc((parent ? parent.title + ' · ' : '') + gr.title) : '')+'</th>';
     }).join('') + '</tr>';
 
     var headHtml = '<thead>' + grpRow + '<tr><th>Пример</th>' + columns.map(function(col){
@@ -1109,7 +1119,7 @@
         var missing = grp && grp.every(function(id){ return isEmptyVal(sample.values[id]); });
         if (missing) cls += ' prev-missing';
         if (VEHICLE_FILL[col.id] || col.id === 'unit' || col.id === 'extra_field_2'
-            || (col.id === 'extra_field_1' && num(sample.values.qty_norm_hours_client) <= 0)) cls += ' prev-auto';
+            || col.id === 'sum' || (col.id === 'extra_field_1' && num(sample.values.coefficient) > 0)) cls += ' prev-auto';
         var da = ' data-sample="'+rowIdx+'" data-col="'+col.id+'" ';
         var title = isBool
           ? (isTruthyFlag(val) ? 'true: строка не защищена от изменения' : 'false: защита строки по матрице/статусу')
@@ -1248,7 +1258,7 @@
         var n = groupColumnIds(code).length;
         var collapsed = isGroupCollapsed(code);
         rowsHtml += '<tr class="grp-row'+(depth ? ' sub' : '')+'" data-grp="'+code+'" data-parent="'+(g.parent||'')+'">'
-          + '<th class="row-head">'+(collapsed ? '▸ ' : '▾ ')+'<span class="col-code">'+code+'</span>'+esc(g.title)+'<span class="grp-count">'+n+' кол.</span></th>'
+          + '<th class="row-head">'+(collapsed ? '▸ ' : '▾ ')+'<span class="col-code">'+groupLetter(code)+'</span>'+esc(g.title)+'<span class="grp-count">'+n+' кол.</span></th>'
           + '<td colspan="'+statuses.length+'"></td></tr>';
       });
       var chain = groupChain(col.id);
@@ -1269,14 +1279,15 @@
     elStatusLine.textContent = 'Роль: ' + roleTitle(activeRole) + ' · Уровень статуса: ' + (level==='order'?'Заказ':'Деталь (строка)') + ' ('+modeLabel+') · обновлено ' + new Date(state.updatedAt).toLocaleString('ru-RU');
   }
 
-  // Поиск: по названию, ID, коду колонки (F2.3) или коду группы (C1 — все колонки подгруппы, C — всей группы)
+  // Поиск: по названию, ID, коду колонки (Р2) или букве группы (Е — все колонки группы).
+  // Запрос вида «буква» или «буква + цифра» из букв кодов ищется только по коду — иначе одна буква
+  // совпала бы почти с любым названием.
   function columnMatches(colId, q){
     if (!q) return true;
     var col = COLUMNS_BY_ID[colId] || {title:colId};
     var code = colCode(colId).toLowerCase();
-    var chain = groupChain(colId).map(function(x){ return x.toLowerCase(); });
-    return col.title.toLowerCase().indexOf(q) !== -1 || colId.toLowerCase().indexOf(q) !== -1
-      || code === q || code.indexOf(q + '.') === 0 || chain.indexOf(q) !== -1;
+    if (/^[авекмнорстух]\d?$/.test(q)) return code === q || (q.length === 1 && code.charAt(0) === q);
+    return col.title.toLowerCase().indexOf(q) !== -1 || colId.toLowerCase().indexOf(q) !== -1 || code === q;
   }
 
   function collapsedGroups(){

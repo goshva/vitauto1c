@@ -24,6 +24,13 @@ NEW_COLUMNS = {
     'aggregate_fact': ('model_fact', 'gosnomer_fact', 'select'),
 }
 
+# Новые статусы, которых нет в экспорте: id -> (вставить после, скопировать права с)
+NEW_STATUSES = {
+    'in_work': ('new', 'new'),                       # «В работе»
+    'partially_ordered': ('in_work', 'ordered'),     # «Частично заказано» — перед «Заказано у поставщика»
+    'to_stock': ('acceptance', 'acceptance'),        # «На склад» — после «Приемка»
+}
+
 # Поля с правилом «обязательно одно из» (fieldRules.oneOfRequired в index.html):
 # обязательность задаёт правило группы, поэтому флаг required у отдельных полей снимается.
 ONE_OF_REQUIRED = ['gosnomer_fact', 'aggregate_fact', 'name', 'article', 'code_aa']
@@ -59,13 +66,20 @@ def main(src):
         copy_from[cid] = like
         types.setdefault(cid, typ)
 
+    status_from = {}
+    for sid, (after, like) in NEW_STATUSES.items():
+        if sid in statuses:
+            continue
+        statuses.insert(statuses.index(after) + 1, sid)
+        status_from[sid] = like
+
     cells = {}
     for lvl in LEVELS:
         cells[lvl] = {}
         for r in ROLES:
             cells[lvl][r] = {}
             for s in statuses:
-                src_cells = data['matrix'][lvl][r][s]
+                src_cells = data['matrix'][lvl][r][status_from.get(s, s)]
                 row = []
                 for c in columns:
                     code = encode(src_cells.get(copy_from.get(c, c)) or {'editable': 'none'})
