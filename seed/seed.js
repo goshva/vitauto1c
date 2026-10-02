@@ -1,5 +1,5 @@
 // Наполнение базы 1С демо-данными АРМ (seed). Запускается 32-битным cscript из seed-1c.ps1.
-//   cscript //nologo seed.js <режим> <файл со строкой соединения, UTF-16> <файл отчёта> [data.json]
+//   cscript //nologo //E:JScript seed.js <режим> <файл со строкой соединения, UTF-16> <файл отчёта> [data.json]
 // Режимы:
 //   safemode-get | safemode-off | safemode-on — безопасный режим расширения АРМЗакупокИПродаж
 //   seed                                      — наполнение по data.json
@@ -27,7 +27,7 @@ function readUtf8(path) {
 
 var conn;
 try { conn = new ActiveXObject("V83.COMConnector").Connect(connStr); }
-catch (e) { fail("не удалось подключиться к базе: " + e.message); finish(2); }
+catch (e) { fail("не удалось подключиться к базе: " + (e.message || "(без текста)") + " [0x" + (e.number >>> 0).toString(16) + "]"); finish(2); }
 
 // ---------------------------------------------------------------- безопасный режим
 function findExtension() {

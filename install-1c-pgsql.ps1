@@ -46,7 +46,7 @@ param(
     [int]         $TechLogThresholdMs  = 200,         # логировать события DBMS дольше N мс
     [string]      $LogcfgPath,                        # по умолчанию <корень 1cv8>\conf\logcfg.xml по разрядности установленной платформы
     # --- остатки файловой установки (install-1c.ps1) — удаляются на шаге 0 ---
-    [string]      $FileIbDir   = 'C:\1c_bases\autoservice'
+    [string]      $FileIbDir   = 'D:\1c_bases\autoservice'
 )
 
 $ErrorActionPreference = 'Stop'

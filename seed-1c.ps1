@@ -18,7 +18,7 @@
   (для ролей кладовщика, главного механика, клиента и поставщика — версия v2.4 и новее).
 
 .EXAMPLE
-  .\seed-1c.ps1                                   # база из 1c-env.json или C:\1c_bases\autoservice
+  .\seed-1c.ps1                                   # база из 1c-env.json или D:\1c_bases\autoservice
   .\seed-1c.ps1 -IbDir D:\1c\test_v21
   .\seed-1c.ps1 -IbDir D:\1c\test_v21 -KeepSafeModeOff
   .\seed-1c.ps1 -ConnectionString 'Srvr="localhost";Ref="autoservice";Usr="Админ";Pwd=""'
@@ -51,7 +51,7 @@ try {
         if (-not $IbDir) {
             $envFile = Join-Path $Root '1c-env.json'
             if (Test-Path $envFile) { $IbDir = (Get-Content $envFile -Raw -Encoding UTF8 | ConvertFrom-Json).Infobase.Dir }
-            if (-not $IbDir) { $IbDir = 'C:\1c_bases\autoservice' }
+            if (-not $IbDir) { $IbDir = 'D:\1c_bases\autoservice' }
         }
         $ibFile = Join-Path $IbDir '1Cv8.1CD'
         if (-not (Test-Path $ibFile)) { throw "Файловая база не найдена: $ibFile" }
@@ -75,7 +75,12 @@ try {
     $psExe   = Join-Path $sysDir 'WindowsPowerShell\v1.0\powershell.exe'
     Ok "соединитель $bits-бит: $dll"
 
-    $tlbRoots = 'Registry::HKEY_CLASSES_ROOT\TypeLib', 'Registry::HKEY_CLASSES_ROOT\WOW6432Node\TypeLib', 'Registry::HKEY_CURRENT_USER\Software\Classes\TypeLib'
+    # Процесс с правами администратора (например, окно, оставленное install-1c.ps1) не видит COM-регистрации
+    # из HKCU — библиотека типов нужна в HKLM, иначе Connect падает с пустым сообщением.
+    $elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $tlbRoots = 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Classes\TypeLib', 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Classes\TypeLib'
+    if (-not $elevated) { $tlbRoots += 'Registry::HKEY_CURRENT_USER\Software\Classes\TypeLib' }
+    $regFn = if ($elevated) { 'RegisterTypeLib' } else { 'RegisterTypeLibForUser' }
     if (-not ($tlbRoots | Where-Object { Test-Path "$_\$TypeLibId" })) {
         # установщик 1С регистрирует класс, но не библиотеку типов — без неё вызовы объектов 1С не работают
         $regScript = Join-Path $env:TEMP 'seed-1c-regtlb.ps1'
@@ -85,18 +90,19 @@ using System; using System.Runtime.InteropServices;
 public static class TL {
   [DllImport("oleaut32.dll", CharSet = CharSet.Unicode)] public static extern int LoadTypeLibEx(string file, int regkind, out IntPtr lib);
   [DllImport("oleaut32.dll", CharSet = CharSet.Unicode)] public static extern int RegisterTypeLibForUser(IntPtr lib, string fullPath, string helpDir);
+  [DllImport("oleaut32.dll", CharSet = CharSet.Unicode)] public static extern int RegisterTypeLib(IntPtr lib, string fullPath, string helpDir);
 }
 '@
 `$lib = [IntPtr]::Zero
 `$hr = [TL]::LoadTypeLibEx('$dll', 2, [ref]`$lib)
-if (`$hr -eq 0) { `$hr = [TL]::RegisterTypeLibForUser(`$lib, '$dll', `$null) }
+if (`$hr -eq 0) { `$hr = [TL]::$regFn(`$lib, '$dll', `$null) }
 exit `$hr
 "@ | Set-Content $regScript -Encoding UTF8
         & $psExe -NoProfile -ExecutionPolicy Bypass -File $regScript
         $hr = $LASTEXITCODE
         Remove-Item $regScript -ErrorAction SilentlyContinue
         if ($hr -ne 0) { throw ("Не удалось зарегистрировать библиотеку типов comcntr.dll (код 0x{0:X8})" -f $hr) }
-        Ok 'библиотека типов comcntr.dll зарегистрирована для текущего пользователя (HKCU)'
+        Ok "библиотека типов comcntr.dll зарегистрирована $(if ($elevated) { 'для всех пользователей (HKLM)' } else { 'для текущего пользователя (HKCU)' })"
     } else {
         Ok 'библиотека типов зарегистрирована'
     }
@@ -111,7 +117,8 @@ exit `$hr
 
     function Invoke-Seed([string]$Mode, [string]$ReportName) {
         $report = Join-Path $work $ReportName
-        $cmdArgs = @('//nologo', $jsRun, $Mode, $connFile, $report)
+        # //E:JScript — не зависеть от сопоставления .js (его перехватывают редакторы/Node: «Отсутствует исполняющее ядро»)
+        $cmdArgs = @('//nologo', '//E:JScript', $jsRun, $Mode, $connFile, $report)
         if ($Mode -eq 'seed') { $cmdArgs += $DataFile }
         & $cscript @cmdArgs | Out-Host
         $code = $LASTEXITCODE
