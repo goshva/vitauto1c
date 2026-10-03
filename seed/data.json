@@ -1,0 +1,137 @@
+{
+  "_comment": "Демо-данные для АРМ закупок и продаж. Источник: index.html (DIRECTORIES, SAMPLE_ROWS). Заказы помечены номером клиента SEED-*.",
+
+  "statusMap": {
+    "_comment": "Статус матрицы -> значение перечисления Арм_СтатусыАРМ (решения от 01.10.2026). «Резервирование», «ОжидаемПоступление» и «Возврат» есть в расширении с v2.5. Ещё два статуса АРМ сопоставлены тем же статусам матрицы: «Собран» = Готово к отгрузке, «Завершено» = Закрыт. «ЗаблокированоФоном» — технический, пары в матрице нет.",
+    "new": "Черновик",
+    "in_work": "ВРаботе",
+    "partially_ordered": "ЧастичноЗаказано",
+    "ordered": "Заказано",
+    "paid": "Оплачено",
+    "in_transit": "ТоварВПути",
+    "awaiting_receipt": "ОжидаемПоступление",
+    "acceptance": "Приходуется",
+    "to_stock": "НаСкладе",
+    "reserve": "Резервирование",
+    "assembly": "Комплектуется",
+    "ready_to_ship": "Подготовлено",
+    "shipped": "Отгружено",
+    "return": "Возврат",
+    "closed": "Выполнено"
+  },
+
+  "adminUser": "Админ",
+
+  "roles": [
+    { "matrix": "manager",        "arm": "Менеджер",       "user": "Менеджер (seed)" },
+    { "matrix": "storekeeper",    "arm": "Кладовщик",      "user": "Кладовщик (seed)" },
+    { "matrix": "chief_mechanic", "arm": "ГлавныйМеханик", "user": "Главный механик (seed)" },
+    { "matrix": "admin",          "arm": "Администратор",  "user": "Администратор (seed)" },
+    { "matrix": "supplier",       "arm": "Поставщик",      "user": "Поставщик (seed)" },
+    { "matrix": "client",         "arm": "Клиент",         "user": "Клиент (seed)" },
+    { "matrix": null,             "arm": "Снабжение",      "user": "Снабжение (seed)" }
+  ],
+
+  "serviceTypes": ["Ремонт", "Услуга", "Инструмент", "Запчасть"],
+  "paymentForms": ["Безнал", "Наличные"],
+
+  "counterparties": [
+    { "name": "ООО «СтройТранс»", "contracts": ["Д-22/2026", "Д-23/2026 (сервис)"] },
+    { "name": "ИП Кетчерская",    "contracts": ["Д-05/2026"] },
+    { "name": "ООО «АвтоЛайн»",   "contracts": ["Д-31/2026", "Д-32/2026 (инструмент)"] },
+    { "name": "Частный клиент",   "contracts": [] },
+    { "name": "АЛЬЯНС",           "contracts": [] }
+  ],
+
+  "vehicles": [
+    { "gosnomer": "А590СЕ197", "brand": "КАМАЗ", "model": "65115",       "vin": "XTC651150R1234567", "engine": "740.30-260" },
+    { "gosnomer": "М141МН777", "brand": "ГАЗ",   "model": "3302 Бизнес", "vin": "X96330200R7654321", "engine": "УМЗ-4216" },
+    { "gosnomer": "Е427ЕВ777", "brand": "КАМАЗ", "model": "54115",       "vin": "XTC541150R9876543", "engine": "740.51-320" },
+    { "gosnomer": "О777ОО150", "brand": "МАЗ",   "model": "5440",        "vin": "Y3M544000R0011223", "engine": "ЯМЗ-6582" }
+  ],
+
+  "nomenclature": [
+    { "name": "Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ", "article": "7452-262 / 7472.3716-04", "code": "622563", "unit": "шт" },
+    { "name": "Крышка КАМАЗ редуктора среднего моста",     "article": "54115-2502209",           "code": "633603", "unit": "шт" },
+    { "name": "Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216",          "article": "4216.1005074",            "code": "640118", "unit": "шт" },
+    { "name": "Масло моторное 10W-40, 20 л",               "article": "M-10W40-20",              "code": "700211", "unit": "л" },
+    { "name": "Замена колодок (норма-час)",                "article": "SRV-BRAKE",               "code": "900010", "unit": "н/ч" }
+  ],
+
+  "orders": [
+    {
+      "clientNumber": "SEED-0141", "customer": "ООО «СтройТранс»", "contract": "Д-22/2026",
+      "rows": [
+        { "article": "7452-262", "name": "Фонарь задний КАМАЗ левый ТЕХАВТОСВЕТ", "unit": "шт", "qty": "1", "plate": "А590СЕ197", "territory": "СПАК", "urgency": "",
+          "status": "reserve", "nomenclature": "Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ", "quantity": 1, "cost": 1164.49, "coefficient": 1.15, "price": 2355.2,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 2048, "paid": "Оплачено", "shipTerritory": "КЕТЧЕРСКАЯ", "comment": "Стандартная отгрузка" },
+        { "article": "M-10W40-20", "name": "Масло моторное 10W-40 20л", "unit": "л", "qty": "20", "plate": "А590СЕ197", "territory": "СПАК", "urgency": "",
+          "status": "in_work", "serviceType": "Запчасть", "comment": "В работе: номенклатура подбирается" }
+      ]
+    },
+    {
+      "clientNumber": "SEED-0142", "customer": "Частный клиент", "contract": null,
+      "rows": [
+        { "article": "4216.1005074", "name": "Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216", "unit": "шт", "qty": "1", "plate": "М141МН777", "territory": "СПАК", "urgency": "срочно",
+          "status": "new", "serviceType": "Запчасть", "comment": "Ожидает опознания администратором, нужна фотофиксация" }
+      ]
+    },
+    {
+      "clientNumber": "SEED-0145", "customer": "ИП Кетчерская", "contract": "Д-05/2026",
+      "rows": [
+        { "article": "54115-2502209", "name": "Крышка КАМАЗ редуктора среднего моста", "unit": "шт", "qty": "1", "plate": "Е427ЕВ777", "territory": "АРМ", "urgency": "",
+          "status": "shipped", "nomenclature": "Крышка КАМАЗ редуктора среднего моста", "quantity": 1, "cost": 2417.43, "coefficient": 1.15, "price": 5520,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 4800, "paid": "Оплачено", "normHours": 2.5, "docSigned": true,
+          "aggregate": "Мост средний КАМАЗ 53212", "shipTerritory": "КЕТЧЕРСКАЯ", "comment": "Получено лично представителем клиента (САМИ)" },
+        { "article": "SRV-BRAKE", "name": "Замена колодок", "unit": "н/ч", "qty": "3", "plate": "Е427ЕВ777", "territory": "АРМ", "urgency": "",
+          "status": "closed", "nomenclature": "Замена колодок (норма-час)", "quantity": 3, "cost": 900, "coefficient": 1.5, "price": 1350,
+          "serviceType": "Ремонт", "paymentForm": "Безнал", "paid": "Оплачено", "normHours": 3, "docSigned": true, "comment": "Работы выполнены, заказ закрыт" }
+      ]
+    },
+    {
+      "clientNumber": "SEED-0150", "customer": "ООО «АвтоЛайн»", "contract": "Д-31/2026",
+      "rows": [
+        { "article": "7452-262", "name": "Фонарь задний КАМАЗ левый", "unit": "шт", "qty": "2", "plate": "О777ОО150", "territory": "СПАК", "urgency": "",
+          "status": "ordered", "nomenclature": "Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ", "quantity": 2, "cost": 1164.49, "coefficient": 1.15, "price": 2355.2,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 2048, "paid": "Счёт", "comment": "Заказано у поставщика" },
+        { "article": "54115-2502209", "name": "Крышка редуктора среднего моста", "unit": "шт", "qty": "1", "plate": "О777ОО150", "territory": "СПАК", "urgency": "срочно",
+          "status": "paid", "nomenclature": "Крышка КАМАЗ редуктора среднего моста", "quantity": 1, "cost": 2417.43, "coefficient": 1.15, "price": 5520,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 4800, "paid": "Оплачено", "comment": "Оплачено поставщику" },
+        { "article": "4216.1005074", "name": "Шкив ГАЗ-3302", "unit": "шт", "qty": "4", "plate": "М141МН777", "territory": "АРМ", "urgency": "",
+          "status": "in_transit", "nomenclature": "Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216", "quantity": 4, "cost": 850, "coefficient": 1.2, "price": 1800,
+          "serviceType": "Запчасть", "paymentForm": "Наличные", "supplier": "АЛЬЯНС", "rrc": 1500, "paid": "Постоплата", "comment": "Товар в пути" },
+        { "article": "M-10W40-20", "name": "Масло моторное 10W-40", "unit": "л", "qty": "40", "plate": "О777ОО150", "territory": "СПАК", "urgency": "",
+          "status": "acceptance", "nomenclature": "Масло моторное 10W-40, 20 л", "quantity": 40, "cost": 310, "coefficient": 1.1, "price": 462,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 420, "paid": "Оплачено", "comment": "Приёмка по УПД" },
+        { "article": "7452-262", "name": "Фонарь задний КАМАЗ левый (второй)", "unit": "шт", "qty": "1", "plate": "А590СЕ197", "territory": "АРМ", "urgency": "",
+          "status": "assembly", "nomenclature": "Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ", "quantity": 1, "cost": 1164.49, "coefficient": 1.15, "price": 2355.2,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 2048, "paid": "Оплачено", "comment": "В комплектации" },
+        { "article": "SRV-BRAKE", "name": "Замена колодок", "unit": "н/ч", "qty": "2", "plate": "О777ОО150", "territory": "АРМ", "urgency": "",
+          "status": "ready_to_ship", "nomenclature": "Замена колодок (норма-час)", "quantity": 2, "cost": 900, "coefficient": 1, "price": 1800,
+          "serviceType": "Услуга", "paymentForm": "Безнал", "rrc": 1800, "paid": "Оплачено", "normHours": 2, "comment": "Готово к отгрузке" }
+      ]
+    },
+    {
+      "clientNumber": "SEED-0151", "customer": "ООО «СтройТранс»", "contract": "Д-23/2026 (сервис)",
+      "rows": [
+        { "article": "4216.1005074", "name": "Шкив ГАЗ-3302 Бизнес", "unit": "шт", "qty": "6", "plate": "М141МН777", "territory": "СПАК", "urgency": "",
+          "status": "partially_ordered", "nomenclature": "Шкив ГАЗ-3302 Бизнес дв.УМЗ-4216", "quantity": 6, "cost": 850, "coefficient": 1.2, "price": 1800,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 1500, "paid": "Счёт", "comment": "Заказано 4 из 6" },
+        { "article": "54115-2502209", "name": "Крышка редуктора среднего моста КАМАЗ", "unit": "шт", "qty": "2", "plate": "А590СЕ197", "territory": "СПАК", "urgency": "",
+          "status": "to_stock", "nomenclature": "Крышка КАМАЗ редуктора среднего моста", "quantity": 2, "cost": 2417.43, "coefficient": 1.15, "price": 5520,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 4800, "paid": "Оплачено", "comment": "Принято, размещается на складе" }
+      ]
+    },
+    {
+      "clientNumber": "SEED-0152", "customer": "ИП Кетчерская", "contract": "Д-05/2026",
+      "rows": [
+        { "article": "M-10W40-20", "name": "Масло моторное 10W-40 (канистра 20 л)", "unit": "л", "qty": "20", "plate": "Е427ЕВ777", "territory": "АРМ", "urgency": "",
+          "status": "awaiting_receipt", "nomenclature": "Масло моторное 10W-40, 20 л", "quantity": 20, "cost": 310, "coefficient": 1.1, "price": 462,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 420, "paid": "Оплачено", "comment": "Поставщик отгрузил, ждём поступление" },
+        { "article": "7452-262", "name": "Фонарь задний КАМАЗ левый (возврат)", "unit": "шт", "qty": "1", "plate": "Е427ЕВ777", "territory": "АРМ", "urgency": "",
+          "status": "return", "nomenclature": "Фонарь задний КАМАЗ 24V левый ТЕХАВТОСВЕТ", "quantity": 1, "cost": 1164.49, "coefficient": 1.15, "price": 2355.2,
+          "serviceType": "Запчасть", "paymentForm": "Безнал", "supplier": "АЛЬЯНС", "rrc": 2048, "paid": "Оплачено", "docSigned": true, "comment": "Клиент вернул: не подошёл разъём" }
+      ]
+    }
+  ]
+}

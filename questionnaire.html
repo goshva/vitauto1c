@@ -208,11 +208,14 @@
 
   var STATUSES = [
     {id:'new', title:'Новый'},
+    {id:'in_work', title:'В работе'},
+    {id:'partially_ordered', title:'Частично заказано'},
     {id:'ordered', title:'Заказано у поставщика'},
     {id:'paid', title:'Оплачено'},
     {id:'in_transit', title:'В пути'},
     {id:'awaiting_receipt', title:'Ожидаем поступление'},
     {id:'acceptance', title:'Приемка'},
+    {id:'to_stock', title:'На склад'},
     {id:'reserve', title:'Резервирование'},
     {id:'assembly', title:'Комплектация'},
     {id:'ready_to_ship', title:'Готово к отгрузке'},
@@ -252,7 +255,6 @@
     {id:'code_aa', title:'Код А-А / код поставщика', group:'nomenclature'},
     {id:'unit', title:'Ед. изм.', group:'nomenclature'},
     {id:'qty', title:'Кол-во', group:'nomenclature', type:'decimal'},
-    {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
     {id:'stock_qty', title:'Кол-во в наличии на складе', group:'stock', type:'decimal'},
     {id:'reserve_qty', title:'Кол-во в резерве', group:'stock', type:'decimal'},
     {id:'ordered_in_transit_qty', title:'Кол-во заказанного в пути / свободное', group:'stock'},
@@ -263,6 +265,7 @@
     {id:'payment_form', title:'Форма оплаты', group:'payment'},
     {id:'rrc', title:'РРЦ', group:'margin_locked'},
     {id:'paid_status', title:'Оплачено (счёт, оплата, постоплата)', group:'payment'},
+    {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
     {id:'coefficient', title:'Коэфф', group:'margin_open'},
     {id:'extra_field_1', title:'Цена продажи', group:'pricing', type:'decimal'},
     {id:'extra_field_2', title:'Сумма продажи', group:'pricing', type:'decimal'},
@@ -795,7 +798,7 @@
         if (shown[code] || (depth && code === info.top)) return;
         shown[code] = true;
         var g = GROUPS_BY_CODE[code];
-        head += '<div class="nav-grp'+(depth ? ' sub' : '')+'"><span class="col-code">'+code+'</span>'+esc(g.title)+'</div>';
+        head += '<div class="nav-grp'+(depth ? ' sub' : '')+'"><span class="col-code">'+(window.VITAUTO_GROUP_LETTER ? window.VITAUTO_GROUP_LETTER(code) : code)+'</span>'+esc(g.title)+'</div>';
       });
       var done = 0;
       var dots = STATUSES.map(function(s, si){

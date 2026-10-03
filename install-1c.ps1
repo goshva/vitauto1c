@@ -4,17 +4,27 @@
   Файловый вариант: 1С:Предприятие 8.3.27.2342 (клиенты) + файловая база "Автосервис" из .dt.
   Без PostgreSQL и без сервера 1С. Клиент-серверный вариант (PostgreSQL) — install-1c-pgsql.ps1.
 
-  Шаги:
-    0. Полное удаление прошлой установки (процессы, MSI платформы, каталог базы, список баз)
+  Режимы (первый аргумент):
+    install  установка (по умолчанию)
+    setup    перед установкой спросить, куда ставить: архивы и логи, базу, технологический журнал
+             (показывает свободное место на дисках; каталоги, заданные ключами, не спрашиваются)
+    search   найти прошлые установки и артефакты на всех дисках (программы, службы, каталоги и архивы
+             установщика, файловые базы, кэши 1С), показать размер и предложить удалить;
+             -List — только показать. Базы данных удаляются только по номеру с подтверждением.
+
+  Шаги установки:
+    0. Проверка свободного места (до удаления, с учётом освобождаемого) и
+       полное удаление прошлой установки (процессы, MSI платформы, каталог базы, список баз)
        и всего, что осталось от клиент-серверной: PostgreSQL 1C и её службы, данные (C:\PGDATA15),
        кластер 1С (C:\srvinfo), служба сервера 1С, дистрибутивы PostgreSQL, коллектор pgtrace
     1. Проверка архивов (наличие, размер, целостность) -> докачка при необходимости -> распаковка
-    2. Тихая установка 1С (толстый/тонкий клиент + конфигуратор, без сервера)
+    2. Тихая установка 1С в -ProgramsDir\1cv8 (толстый/тонкий клиент + конфигуратор, без сервера)
     2б. Технологический журнал: logcfg.xml в conf по разрядности установленной платформы
     3. Создание файловой базы в -IbDir: из .dt (RestoreIB), .cf (шаблон) или копией 1Cv8.1CD
     3б. Подключение расширения (.cfe)
     4. Проверка (файл базы, вход конфигуратором) и записи ТЖ
 
+  Всё ставится на диск D: (архивы, программы, база, ТЖ); пути на других дисках отклоняются.
   Архивы по умолчанию сохраняются в -BaseDir, чтобы повторный запуск не качал их заново.
   Ключ -DeleteArchives удаляет их после распаковки.
   Трассировка — технологический журнал 1С. -NoTrace отключает настройку и проверку ТЖ.
@@ -22,10 +32,20 @@
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\install-1c.ps1
   powershell -ExecutionPolicy Bypass -File .\install-1c.ps1 -Force -DeleteArchives -IbDir D:\1c_bases\autoservice
+  .\install-1c.ps1 setup                 # выбрать каталоги и установить
+  .\install-1c.ps1 search -List          # показать, что занимает место
+  .\install-1c.ps1 search                # показать и выбрать, что удалить
 #>
 param(
-    [string]      $BaseDir     = $(if ($PSScriptRoot) { $PSScriptRoot } else { 'C:\soft\1c' }),
-    [string]      $IbDir       = 'C:\1c_bases\autoservice',   # каталог файловой базы (1Cv8.1CD)
+    # Режим: install — установка (по умолчанию); setup — сначала спросить, куда ставить;
+    #        search — найти прошлые установки и артефакты и предложить удалить (установка не выполняется)
+    [Parameter(Position = 0)]
+    [ValidateSet('install', 'setup', 'search')]
+    [string]      $Action      = 'install',
+    [switch]      $List,                            # для search: только показать найденное, ничего не удалять
+    [string]      $BaseDir     = $(if ($PSScriptRoot -like 'D:\*') { $PSScriptRoot } else { 'D:\1c' }),
+    [string]      $IbDir       = 'D:\1c_bases\autoservice',   # каталог файловой базы (1Cv8.1CD)
+    [string]      $ProgramsDir = 'D:\Program Files',   # куда ставить программы: платформа 1С (<...>\1cv8\<версия>) и 7-Zip
     [string]      $IbTitle     = 'Автосервис',      # имя в списке баз
     [switch]      $Force,                           # удалять прошлую установку без подтверждения
     [switch]      $DeleteArchives,                  # удалить архивы после распаковки
@@ -33,13 +53,13 @@ param(
     [SecureString]$IbPassword,                      # его пароль; при -IbUser без пароля будет запрошен
     [string]      $ExtensionFile,                    # путь к .cfe; не задан — последняя версия <имя>_vN.cfe рядом со скриптом; '' — не подключать
     [string]      $ExtensionName,                    # имя расширения в базе; по умолчанию — из имени файла
-    [double]      $EstDbGB       = 6,                 # оценка размера файловой базы (для проверки места)
+    [double]      $EstDbGB       = 3,                 # оценка размера файловой базы (для проверки места); фактически ~1,9 ГБ
     [switch]      $SkipSpaceCheck,                    # пропустить проверку свободного места на диске
     # --- технологический журнал 1С (logcfg.xml) ---
     [switch]      $NoTrace,                           # не настраивать и не проверять ТЖ
     [string]      $TechLogDir          = 'D:\1c\tj',  # каталог файлов ТЖ (HDD, не SSD с базой)
     [int]         $TechLogThresholdMs  = 200,         # логировать обращения к файловой СУБД дольше N мс
-    [string]      $LogcfgPath,                        # по умолчанию <корень 1cv8>\conf\logcfg.xml по разрядности установленной платформы
+    [string]      $LogcfgPath,                        # по умолчанию <корень 1cv8>\conf\logcfg.xml установленной платформы
     # --- остатки клиент-серверной установки (install-1c-pgsql.ps1) — удаляются на шаге 0 ---
     [string]      $PgDataDir   = 'C:\PGDATA15',
     [string]      $SrvInfoDir  = 'C:\srvinfo'
@@ -50,8 +70,10 @@ $ProgressPreference    = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # ---------- Запуск от администратора ----------
+$ScriptBound = $PSBoundParameters   # какие параметры заданы явно (для setup)
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+$listOnly  = $Action -eq 'search' -and $List   # просмотр найденного не требует прав администратора
+if (-not $listOnly -and -not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host 'Перезапуск с правами администратора...' -ForegroundColor Yellow
     $argList = @('-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
     foreach ($kv in $PSBoundParameters.GetEnumerator()) {
@@ -63,16 +85,25 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit
 }
 
+# Всё — только на диск D:. Остатки прошлых установок (Program Files на C:, PGDATA15, srvinfo) по-прежнему ищутся и удаляются.
+$TargetDrive = 'D:'
+function Assert-TargetDrive {
+    $paths = [ordered]@{ BaseDir = $BaseDir; IbDir = $IbDir; ProgramsDir = $ProgramsDir }
+    if (-not $NoTrace) { $paths.TechLogDir = $TechLogDir; if ($LogcfgPath) { $paths.LogcfgPath = $LogcfgPath } }
+    foreach ($kv in $paths.GetEnumerator()) {
+        $q = Split-Path -Qualifier $kv.Value -ErrorAction SilentlyContinue
+        if ($q -ne $TargetDrive) { throw "-$($kv.Key) = '$($kv.Value)': установка только на диск $TargetDrive" }
+    }
+    if (-not (Test-Path "$TargetDrive\")) { throw "Диск $TargetDrive не найден" }
+}
+# Корни, где может лежать 1cv8 / 7-Zip: наш каталог программ и стандартные Program Files (там — остатки прошлых установок)
+$ProgramRoots = @($ProgramsDir, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ } | Select-Object -Unique
+
 $PlatformVersion = '8.3.27.2342'
 $Sources = [ordered]@{
     Platform = @{ Url = 'https://disk.yandex.ru/d/WmdHaZZr45QoXA'; File = 'windows_8_3_27_2342.rar'; Dir = 'platform_8_3_27_2342' }
     Config   = @{ Url = 'https://disk.yandex.ru/d/xl9suLCSUGRpPA'; File = 'autoservice.zip';         Dir = 'config_autoservice' }
 }
-
-New-Item -ItemType Directory -Force -Path $BaseDir | Out-Null
-$LogDir = Join-Path $BaseDir 'logs'
-New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
-Start-Transcript -Path (Join-Path $LogDir ("install_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))) | Out-Null
 
 function Step($text) { Write-Host "`n=== $text ===" -ForegroundColor Cyan }
 function Ok($text)   { Write-Host "  [OK] $text" -ForegroundColor Green }
@@ -82,13 +113,13 @@ function Warn($text) { Write-Host "  [!]  $text" -ForegroundColor Yellow }
 #  Вспомогательные функции
 # =====================================================================
 function Get-7Zip {
-    $candidates = @("$env:ProgramFiles\7-Zip\7z.exe", "${env:ProgramFiles(x86)}\7-Zip\7z.exe")
+    $candidates = @($ProgramRoots | ForEach-Object { Join-Path $_ '7-Zip\7z.exe' })
     foreach ($c in $candidates) { if (Test-Path $c) { return $c } }
-    Write-Host '  7-Zip не найден, устанавливаю...'
-    $inst = Join-Path $env:TEMP '7z-x64.exe'
+    Write-Host "  7-Zip не найден, устанавливаю в $ProgramsDir\7-Zip..."
+    $inst = Join-Path $BaseDir '7z-x64.exe'
     & curl.exe -L --fail -o $inst 'https://www.7-zip.org/a/7z2409-x64.exe'
     if ($LASTEXITCODE -ne 0) { throw 'Не удалось скачать 7-Zip' }
-    Start-Process $inst -ArgumentList '/S' -Wait
+    Start-Process $inst -ArgumentList '/S', "/D=$ProgramsDir\7-Zip" -Wait
     Remove-Item $inst -Force
     if (-not (Test-Path $candidates[0])) { throw '7-Zip не установился' }
     return $candidates[0]
@@ -157,8 +188,9 @@ function Get-FreeGB([string]$Path) {
 }
 
 # Проверка свободного места перед установкой. Считает потребности по каждому диску
-# (архивы и распаковка на диске BaseDir, программы на системном, база на диске IbDir).
-function Assert-FreeSpace {
+# (архивы и распаковка на диске BaseDir, программы на диске ProgramsDir, база на диске IbDir).
+# $Reclaim: буква диска -> сколько ГБ освободится при удалении прошлой установки (проверка идёт до удаления).
+function Assert-FreeSpace([hashtable]$Reclaim = @{}) {
     Write-Host '  Оценка требуемого места на диске...'
     $need = @{}   # буква диска -> нужно ГБ
     function Add-Need([string]$path, [double]$gb) {
@@ -177,7 +209,7 @@ function Assert-FreeSpace {
         }
         Add-Need $BaseDir ($gb * 1.6)                # распакованное содержимое
     }
-    Add-Need $env:ProgramFiles 1.5                   # платформа 1С
+    Add-Need $ProgramsDir 1.5                        # платформа 1С
     Add-Need $IbDir $EstDbGB                         # файловая база
 
     $buffer = 2.0                                    # запас на журналы, temp, рост
@@ -185,11 +217,14 @@ function Assert-FreeSpace {
     foreach ($d in $need.Keys) {
         $req  = [math]::Round(($need[$d] + $buffer), 1)
         $free = Get-FreeGB "$d\"
-        if ($free -ge $req) { Ok "диск $d : нужно ~$req ГБ, свободно $free ГБ" }
-        else { Warn "диск $d : нужно ~$req ГБ, свободно только $free ГБ — не хватает $([math]::Round($req - $free,1)) ГБ"; $fail = $true }
+        $back = [math]::Round([double]$Reclaim[$d], 1)
+        $have = [math]::Round($free + $back, 1)
+        $backText = if ($back -gt 0) { " + освободится ~$back ГБ от прошлой установки" } else { '' }
+        if ($have -ge $req) { Ok "диск $d : нужно ~$req ГБ, свободно $free ГБ$backText" }
+        else { Warn "диск $d : нужно ~$req ГБ, свободно только $free ГБ$backText — не хватает $([math]::Round($req - $have,1)) ГБ"; $fail = $true }
     }
     if ($fail) {
-        throw "Недостаточно места на диске. Освободите место или задайте другой диск ключами -BaseDir/-IbDir, либо пропустите проверку ключом -SkipSpaceCheck."
+        throw "Недостаточно места на диске — прошлая установка НЕ удалена. Освободите место (.\install-1c.ps1 search), выберите другой диск (.\install-1c.ps1 setup или ключи -BaseDir/-IbDir) либо пропустите проверку ключом -SkipSpaceCheck."
     }
 }
 
@@ -206,7 +241,7 @@ function Get-UninstallEntries {
 }
 
 function Find-1CBin {
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+    foreach ($root in $ProgramRoots) {
         $b = Join-Path $root "1cv8\$PlatformVersion\bin"
         if (Test-Path (Join-Path $b '1cv8.exe')) { return $b }
     }
@@ -222,8 +257,8 @@ function Test-TechLogFresh([string]$Dir, [datetime]$Since) {
     return $false
 }
 
-# logcfg.xml читается из <корень 1cv8>\conf той разрядности, что и платформа:
-# 32-бит — Program Files (x86)\1cv8\conf, 64-бит — Program Files\1cv8\conf.
+# logcfg.xml читается из <корень 1cv8>\conf установленной платформы
+# (по умолчанию D:\Program Files\1cv8\conf; у старых установок — Program Files [(x86)]\1cv8\conf).
 # $Bin = ...\1cv8\<версия>\bin -> ...\1cv8\conf\logcfg.xml
 function Get-LogcfgPath([string]$Bin) {
     Join-Path (Split-Path -Parent (Split-Path -Parent $Bin)) 'conf\logcfg.xml'
@@ -232,7 +267,7 @@ function Get-LogcfgPath([string]$Bin) {
 # Удалить logcfg.xml и logcfg.xml.bak.*, записанные этими скриптами в других местах
 # (каталог conf другой разрядности платформа не читает). Чужие файлы не трогаем.
 function Remove-StrayLogcfg([string]$Keep) {
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+    foreach ($root in $ProgramRoots) {
         $conf = Join-Path $root '1cv8\conf'
         foreach ($f in Get-ChildItem $conf -Filter 'logcfg.xml*' -File -ErrorAction SilentlyContinue) {
             if ($f.FullName -eq $Keep) { continue }
@@ -293,7 +328,221 @@ function Find-LatestExtension([string]$Dir) {
     ($cands | Sort-Object Version -Descending | Select-Object -First 1).File
 }
 
+function Get-DirSizeGB([string]$Path) {
+    $sum = (Get-ChildItem -LiteralPath $Path -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
+    [math]::Round([double]$sum / 1GB, 2)
+}
+
 # =====================================================================
+#  Режим setup: выбор каталогов установки
+# =====================================================================
+# Спрашивает только те каталоги, которые не заданы ключами. Всё — только на диске D:.
+function Select-InstallDirs {
+    Step 'Куда устанавливать (setup)'
+    $drives = @([IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady })
+    Write-Host '  Диски:'
+    foreach ($d in $drives) {
+        Write-Host ("    {0}  свободно {1,7:N1} ГБ из {2,7:N1} ГБ" -f $d.Name.TrimEnd('\'), ($d.AvailableFreeSpace / 1GB), ($d.TotalSize / 1GB))
+    }
+    Write-Host "  Всё ставится на диск $TargetDrive; платформа 1С (~1,5 ГБ) — в $ProgramsDir\1cv8."
+    $best = $TargetDrive
+
+    function Read-Dir([string]$Title, [string]$Default) {
+        while ($true) {
+            $v = Read-Host "  $Title [$Default]"
+            if (-not $v) { $v = $Default }
+            $q = Split-Path -Qualifier $v -ErrorAction SilentlyContinue
+            if ($q -eq $TargetDrive) { return $v.TrimEnd('\') }
+            Warn "нужен полный путь на диске $TargetDrive, например $best\1c — получено: $v"
+        }
+    }
+    # значение по умолчанию: текущее, если оно на диске D:; иначе — запасное
+    function Get-Default([string]$Current, [string]$Fallback) {
+        $q = Split-Path -Qualifier $Current -ErrorAction SilentlyContinue
+        if ($q -eq $TargetDrive) { $Current } else { $Fallback }
+    }
+
+    if (-not $ScriptBound.ContainsKey('BaseDir')) {
+        $script:BaseDir = Read-Dir 'Архивы, распаковка и логи (до ~10 ГБ, подойдёт медленный диск)' "$best\1c"
+    }
+    if (-not $ScriptBound.ContainsKey('IbDir')) {
+        $script:IbDir = Read-Dir "Файловая база (~$EstDbGB ГБ, лучше быстрый диск)" (Get-Default $IbDir "$best\1c_bases\autoservice")
+    }
+    if (-not $NoTrace -and -not $ScriptBound.ContainsKey('TechLogDir')) {
+        $script:TechLogDir = Read-Dir 'Технологический журнал (не на диске с базой)' (Get-Default $TechLogDir (Join-Path $script:BaseDir 'tj'))
+    }
+    Ok "архивы и логи: $script:BaseDir"
+    Ok "база:          $script:IbDir"
+    if (-not $NoTrace) { Ok "журнал:        $script:TechLogDir" }
+}
+
+# =====================================================================
+#  Режим search: прошлые установки и артефакты
+# =====================================================================
+# Ищет на всех несъёмных дисках: программы 1С и PostgreSQL 1C, их службы, каталоги и архивы установщика,
+# файловые базы, кэши 1С. Показывает размер и предлагает удалить. Базы данных удаляются только по номеру.
+function Invoke-Search {
+    Step 'Поиск прошлых установок и артефактов (search)'
+    $items   = New-Object System.Collections.ArrayList
+    $claimed = New-Object System.Collections.Generic.List[string]   # каталоги, уже попавшие в список
+    function Add-Found([string]$Kind, [string]$Path, [double]$GB, [string]$Note, [bool]$Protected = $false, $Data = $null) {
+        [void]$items.Add([pscustomobject]@{ N = 0; Kind = $Kind; Path = $Path; GB = [math]::Round($GB, 2); Note = $Note; Protected = $Protected; Data = $Data })
+    }
+    function Test-Claimed([string]$Path) {
+        foreach ($c in $claimed) { if ($Path.StartsWith($c + '\', [StringComparison]::OrdinalIgnoreCase) -or $Path -ieq $c) { return $true } }
+        $false
+    }
+
+    # базы из списка баз: путь -> имя
+    $ibTitles = @{}
+    $v8i = "$env:APPDATA\1C\1CEStart\ibases.v8i"
+    if (Test-Path $v8i) {
+        $title = $null
+        foreach ($line in [IO.File]::ReadAllLines($v8i, [Text.Encoding]::UTF8)) {
+            if ($line -match '^\[(.+)\]\s*$') { $title = $Matches[1] }
+            elseif ($title -and $line -match '^Connect=File="?([^";]+)"?;') { $ibTitles[$Matches[1].TrimEnd('\')] = $title }
+        }
+    }
+
+    # программы и службы
+    $products = @(Get-UninstallEntries | Where-Object {
+        $_.DisplayName -match '^1[CС]' -or ($_.DisplayName -like 'PostgreSQL*' -and ($_.DisplayName -like '*1C*' -or $_.DisplayVersion -like '*1C*'))
+    })
+    foreach ($p in $products) { Add-Found 'программа' "$($p.DisplayName) $($p.DisplayVersion)" ([double]$p.EstimatedSize / 1MB) $p.InstallLocation $false $p }
+    foreach ($s in Get-CimInstance Win32_Service | Where-Object { $_.PathName -match 'ragent\.exe|PostgreSQL\\15[^\\]*1C' }) {
+        Add-Found 'служба' $s.Name 0 "$($s.State): $($s.PathName)" $false $s
+    }
+    # остатки в Program Files (и в -ProgramsDir) без записи об установке
+    foreach ($root in $ProgramRoots) {
+        foreach ($d in Get-ChildItem (Join-Path $root '1cv8') -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' }) {
+            if (-not ($products | Where-Object { $_.DisplayVersion -eq $d.Name })) { Add-Found 'остатки платформы' $d.FullName (Get-DirSizeGB $d.FullName) 'программа не зарегистрирована'; $claimed.Add($d.FullName) }
+        }
+        foreach ($d in Get-ChildItem (Join-Path $root 'PostgreSQL') -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue) {
+            if (-not ($products | Where-Object { $_.DisplayName -like 'PostgreSQL*' })) { Add-Found 'остатки PostgreSQL' $d.FullName (Get-DirSizeGB $d.FullName) 'программа не зарегистрирована'; $claimed.Add($d.FullName) }
+        }
+    }
+
+    # каталоги и файлы на дисках (до 4 уровней от корня, системные каталоги пропускаются)
+    $skipTop = 'Windows', 'Program Files', 'Program Files (x86)', 'ProgramData', 'Users', '$Recycle.Bin',
+               'System Volume Information', 'Recovery', 'PerfLogs', 'Documents and Settings', '$WinREAgent'
+    $dirRe   = '^(platform_\d|config_autoservice$|postgresql_15|PGDATA\d*$|srvinfo$)'
+    $fileRe  = '^(windows_.*\.rar|postgresql_.*\.zip|autoservice\.zip|.*\.dt)$'
+    foreach ($drive in [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady }) {
+        Write-Host "  поиск на $($drive.Name) ..."
+        $tops = @(Get-ChildItem -LiteralPath $drive.Name -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $skipTop -notcontains $_.Name })
+        $dirs = $tops + @($tops | ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -Directory -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue })
+        foreach ($d in $dirs) {
+            if (Test-Claimed $d.FullName) { continue }
+            if ($d.Name -match $dirRe) {
+                Add-Found 'каталог установщика' $d.FullName (Get-DirSizeGB $d.FullName) 'распаковка дистрибутива или данные PostgreSQL / кластера 1С'
+                $claimed.Add($d.FullName)
+            }
+            elseif (Test-Path -LiteralPath ([IO.Path]::Combine($d.FullName, '1Cv8.1CD'))) {
+                $t = $ibTitles[$d.FullName]
+                $note = if ($t) { "в списке баз: «$t»" } else { 'нет в списке баз (копия?)' }
+                Add-Found 'БАЗА ДАННЫХ' $d.FullName (Get-DirSizeGB $d.FullName) $note $true
+                $claimed.Add($d.FullName)
+            }
+            elseif ($d.Name -eq 'logs' -and (Get-ChildItem -LiteralPath $d.FullName -Filter 'install_*.log' -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+                Add-Found 'логи установки' $d.FullName (Get-DirSizeGB $d.FullName) ''
+                $claimed.Add($d.FullName)
+            }
+            else {
+                foreach ($f in Get-ChildItem -LiteralPath $d.FullName -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $fileRe }) {
+                    if ($f.Extension -eq '.dt' -and $f.Length -lt 50MB) { continue }
+                    Add-Found 'архив / выгрузка' $f.FullName ($f.Length / 1GB) ''
+                }
+            }
+        }
+    }
+    # кэши 1С текущего пользователя — пересоздаются платформой
+    foreach ($c in "$env:LOCALAPPDATA\1C\1cv8", "$env:APPDATA\1C\1cv8") {
+        if (Test-Path $c) { $gb = Get-DirSizeGB $c; if ($gb -ge 0.05) { Add-Found 'кэш 1С' $c $gb 'пересоздаётся при запуске 1С' } }
+    }
+
+    if (-not $items.Count) { Ok 'ничего не найдено'; return }
+
+    $n = 0
+    $sorted = @($items | Sort-Object GB -Descending)
+    foreach ($it in $sorted) { $it.N = ++$n }
+    Write-Host ''
+    Write-Host ("  {0,3}  {1,8}  {2,-20} {3}" -f '№', 'ГБ', 'Что', 'Где') -ForegroundColor Cyan
+    foreach ($it in $sorted) {
+        $color = if ($it.Protected) { 'Yellow' } else { 'Gray' }
+        Write-Host ("  {0,3}  {1,8:N2}  {2,-20} {3}" -f $it.N, $it.GB, $it.Kind, $it.Path) -ForegroundColor $color
+        if ($it.Note) { Write-Host ("                 {0}" -f $it.Note) -ForegroundColor DarkGray }
+    }
+    Write-Host ''
+    foreach ($g in $sorted | Where-Object { $_.Path -match '^[A-Za-z]:' } | Group-Object { $_.Path.Substring(0, 2).ToUpper() }) {
+        $all  = [math]::Round(($g.Group | Measure-Object GB -Sum).Sum, 1)
+        $safe = [math]::Round(($g.Group | Where-Object { -not $_.Protected } | Measure-Object GB -Sum).Sum, 1)
+        Write-Host "  Диск $($g.Name) найдено $all ГБ, из них без баз данных $safe ГБ; сейчас свободно $(Get-FreeGB "$($g.Name)\") ГБ"
+    }
+    if ($List) { Write-Host "`n  Режим -List: ничего не удалено." ; return }
+
+    Write-Host ''
+    Write-Host '  Что удалить? Номера через запятую или пробел; all — всё, кроме баз данных; Enter — ничего.' -ForegroundColor Cyan
+    Write-Host '  Базы данных (жёлтые) удаляются только по номеру, и это необратимо.' -ForegroundColor Yellow
+    $answer = if ($Force) { 'all' } else { Read-Host '  Удалить' }
+    if (-not $answer) { Write-Host '  Ничего не удалено.'; return }
+    $selected = if ($answer -match '^(all|все|всё)$') { @($sorted | Where-Object { -not $_.Protected }) }
+                else { $nums = [regex]::Matches($answer, '\d+') | ForEach-Object { [int]$_.Value }; @($sorted | Where-Object { $nums -contains $_.N }) }
+    if (-not $selected) { Write-Host '  Ничего не выбрано.'; return }
+    $bases = @($selected | Where-Object Protected)
+    if ($bases -and -not $Force) {
+        Write-Host '  Будут удалены БАЗЫ ДАННЫХ:' -ForegroundColor Red
+        $bases | ForEach-Object { Write-Host "    $($_.Path)  $($_.Note)" -ForegroundColor Red }
+        if ((Read-Host '  Введите «да», чтобы удалить и базы') -notmatch '^(да|yes)$') { $selected = @($selected | Where-Object { -not $_.Protected }); Warn 'базы данных оставлены' }
+    }
+
+    $before = @{}; foreach ($d in [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady }) { $before[$d.Name] = $d.AvailableFreeSpace }
+    $order = @{ 'служба' = 0; 'программа' = 1 }
+    foreach ($it in $selected | Sort-Object { if ($order.ContainsKey($_.Kind)) { $order[$_.Kind] } else { 2 } }) {
+        switch ($it.Kind) {
+            'служба' {
+                Stop-Service -Name $it.Data.Name -Force -ErrorAction SilentlyContinue
+                & sc.exe delete "$($it.Data.Name)" | Out-Null
+                Ok "служба удалена: $($it.Data.Name)"
+            }
+            'программа' {
+                if ($it.Data.PSChildName -match '^\{[0-9A-Fa-f-]+\}$') {
+                    $p = Start-Process msiexec.exe -ArgumentList "/x $($it.Data.PSChildName) /qn /norestart" -Wait -PassThru
+                    if ($p.ExitCode -in 0, 1605, 3010) { Ok "программа удалена: $($it.Path)" } else { Warn "msiexec /x вернул $($p.ExitCode): $($it.Path)" }
+                } else { Warn "не MSI-пакет, удалите вручную: $($it.Data.UninstallString)" }
+            }
+            default {
+                Remove-Item -LiteralPath $it.Path -Recurse -Force -ErrorAction SilentlyContinue
+                if (Test-Path -LiteralPath $it.Path) { Warn "не удалось удалить (файлы заняты?): $($it.Path)" } else { Ok "удалено: $($it.Path)" }
+                if ($it.Protected -and (Test-Path $v8i)) {
+                    # убрать базу из списка баз
+                    $text  = [IO.File]::ReadAllText($v8i, [Text.Encoding]::UTF8)
+                    $parts = [regex]::Split($text, '(?m)^(?=\[)')
+                    $kept  = $parts | Where-Object { $_ -notmatch "File=`"?$([regex]::Escape($it.Path))\\?`"?;" }
+                    if (@($kept).Count -ne @($parts).Count) { [IO.File]::WriteAllText($v8i, (-join $kept), (New-Object Text.UTF8Encoding $true)); Ok 'база убрана из списка баз' }
+                }
+            }
+        }
+    }
+    Write-Host ''
+    foreach ($d in [IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady }) {
+        $freed = ($d.AvailableFreeSpace - [double]$before[$d.Name]) / 1GB
+        Write-Host ("  {0} свободно {1:N1} ГБ (освобождено {2:N1} ГБ)" -f $d.Name.TrimEnd('\'), ($d.AvailableFreeSpace / 1GB), $freed) -ForegroundColor Green
+    }
+}
+
+# =====================================================================
+if ($Action -eq 'search') { Invoke-Search; exit }
+if ($Action -eq 'setup') {
+    Select-InstallDirs
+    $IbListPattern = "File=`"?$([regex]::Escape($IbDir.TrimEnd('\')))\\?`"?;"   # каталог базы мог измениться
+}
+Assert-TargetDrive
+
+New-Item -ItemType Directory -Force -Path $BaseDir | Out-Null
+$LogDir = Join-Path $BaseDir 'logs'
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+Start-Transcript -Path (Join-Path $LogDir ("install_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))) | Out-Null
+
 try {
     if (-not $PSBoundParameters.ContainsKey('ExtensionFile')) {
         $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
@@ -305,7 +554,7 @@ try {
     $SevenZip = Get-7Zip
 
     # =================================================================
-    Step '0. Удаление прошлой установки'
+    Step '0. Проверка места и удаление прошлой установки'
     # Файловый вариант PostgreSQL не использует: вместе с прошлой установкой удаляется всё,
     # что осталось от клиент-серверной (install-1c-pgsql.ps1): PostgreSQL 1C, её службы, данные,
     # каталог кластера 1С, дистрибутивы PostgreSQL и коллектор pgtrace.
@@ -321,6 +570,23 @@ try {
                Where-Object { $_ -and (Test-Path $_) }
     $pgArchives = @(Get-ChildItem $BaseDir -File -Filter 'postgresql_15*.zip' -ErrorAction SilentlyContinue)
     $pgtraceTask = (cmd /c 'schtasks /Query /TN pgtrace >nul 2>nul && echo yes') -eq 'yes'
+
+    # Место проверяем ДО удаления: если его не хватит, прошлая установка остаётся нетронутой.
+    # В расчёт идёт то, что освободится при удалении.
+    if ($SkipSpaceCheck) { Warn 'проверка свободного места пропущена (-SkipSpaceCheck)' }
+    else {
+        $reclaim = @{}
+        foreach ($d in $oldDirs) {
+            $q = (Split-Path -Qualifier $d).ToUpper()
+            $reclaim[$q] = [double]$reclaim[$q] + (Get-DirSizeGB $d)
+        }
+        $sysDrive = (Split-Path -Qualifier $env:ProgramFiles).ToUpper()
+        foreach ($prod in $oldProducts) {   # EstimatedSize — в КБ; диск — по InstallLocation, иначе системный
+            $q = if ($prod.InstallLocation) { (Split-Path -Qualifier $prod.InstallLocation).ToUpper() } else { $sysDrive }
+            $reclaim[$q] = [double]$reclaim[$q] + ([double]$prod.EstimatedSize / 1MB)
+        }
+        Assert-FreeSpace $reclaim
+    }
 
     if (-not ($oldProducts -or $oldServices -or $oldDirs -or $pgArchives -or $pgtraceTask)) {
         Ok 'следов прошлой установки нет'
@@ -371,10 +637,10 @@ try {
             Ok 'локальный пользователь postgres удалён'
         }
 
-        $leftovers = $oldDirs + @(
-            (Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName),
-            "$env:ProgramFiles\1cv8\$PlatformVersion", "${env:ProgramFiles(x86)}\1cv8\$PlatformVersion"
-        ) | Where-Object { $_ -and (Test-Path $_) }
+        $leftovers = @($oldDirs) +
+            @(Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName) +
+            @($ProgramRoots | ForEach-Object { Join-Path $_ "1cv8\$PlatformVersion" }) |
+            Where-Object { $_ -and (Test-Path $_) }
         foreach ($d in $leftovers) {
             Remove-Item $d -Recurse -Force -ErrorAction SilentlyContinue
             if (Test-Path $d) { Warn "не удалось удалить $d (файлы заняты?)" } else { Ok "удалён каталог $d" }
@@ -388,27 +654,29 @@ try {
     }
 
     # =================================================================
-    Step '1. Проверка свободного места и архивов'
-    if ($SkipSpaceCheck) { Warn 'проверка свободного места пропущена (-SkipSpaceCheck)' } else { Assert-FreeSpace }
+    Step '1. Проверка архивов'
     Write-Host '  -- Платформа 1С'
     $PlatformDir = Expand-Source $Sources.Platform
     Write-Host '  -- Конфигурация "Автосервис"'
     $ConfDir     = Expand-Source $Sources.Config
 
     # =================================================================
-    Step "2. Установка 1С:Предприятие $PlatformVersion (без сервера)"
+    $PlatformInstallDir = Join-Path $ProgramsDir "1cv8\$PlatformVersion"
+    Step "2. Установка 1С:Предприятие $PlatformVersion в $PlatformInstallDir (без сервера)"
     $msi1C = Get-ChildItem $PlatformDir -Recurse -Filter '1CEnterprise*.msi' | Select-Object -First 1
     if (-not $msi1C) { throw "MSI 1С не найден в $PlatformDir" }
     $msiDir = $msi1C.DirectoryName
     $mst = @('adminstallrelogon.mst', '1049.mst') | Where-Object { Test-Path (Join-Path $msiDir $_) }
     $transforms = if ($mst) { "TRANSFORMS=`"$($mst -join ';')`"" } else { '' }
     $args1C = "/qn $transforms DESIGNERALLCLIENTS=1 THICKCLIENT=1 THINCLIENTFILE=1 THINCLIENT=1 " +
-              "WEBSERVEREXT=0 SERVER=0 SERVERCLIENT=0 CONFREPOSSERVER=0 CONVERTER77=0 LANGUAGES=RU"
+              "WEBSERVEREXT=0 SERVER=0 SERVERCLIENT=0 CONFREPOSSERVER=0 CONVERTER77=0 LANGUAGES=RU " +
+              "INSTALLDIR=`"$PlatformInstallDir`""
     Push-Location $msiDir
     try { $code = Invoke-Msi '/i' $msi1C.FullName $args1C '1c_msi.log' } finally { Pop-Location }
     if ($code -notin 0, 3010) { throw "Установка 1С завершилась с кодом $code (см. logs\1c_msi.log)" }
     $Bin1C = Find-1CBin
     if (-not $Bin1C) { throw "1С установлена, но 1cv8.exe $PlatformVersion не найден" }
+    if ((Split-Path -Qualifier $Bin1C) -ne $TargetDrive) { Warn "1С установилась не на $TargetDrive (INSTALLDIR проигнорирован?): $Bin1C" }
     Ok "1С: $Bin1C"
 
     # =================================================================
@@ -419,7 +687,7 @@ try {
         & icacls $TechLogDir /grant '*S-1-5-32-545:(OI)(CI)M' /T /Q | Out-Null   # BUILTIN\Users
 
         if (-not $LogcfgPath) { $LogcfgPath = Get-LogcfgPath $Bin1C }
-        $bits = if ($Bin1C -like "${env:ProgramFiles(x86)}*") { 32 } else { 64 }
+        $bits = if ($msi1C.Name -match 'x86-64|x64') { 64 } else { 32 }
         Ok "платформа $bits-бит — logcfg.xml: $LogcfgPath"
         Remove-StrayLogcfg $LogcfgPath
 
@@ -580,7 +848,7 @@ try {
     else { Warn "нет файла базы $ibFile"; $allOk = $false }
 
     try {
-        $tmpCf = Join-Path $env:TEMP 'check_conn.cf'
+        $tmpCf = Join-Path $LogDir 'check_conn.cf'
         Invoke-1CIb "/DumpCfg `"$tmpCf`"" 'check'
         Remove-Item $tmpCf -ErrorAction SilentlyContinue
         Ok "1С: конфигуратор открыл базу $IbDir"
