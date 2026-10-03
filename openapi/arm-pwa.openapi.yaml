@@ -1,0 +1,1198 @@
+openapi: 3.0.3
+info:
+  title: Витавто АРМ
+  version: 2.7.0
+  description: |
+    Контракт PWA к действиям обработки `АС_АРМ2` расширения `АРМЗакупокИПродаж` v2.7.
+    HTTP-сервиса в расширении нет: это схема подключения, сервер ещё предстоит поставить перед базой 1С.
+
+    Сессия — пользователь информационной базы. Роль интерфейса берётся из регистра
+    `Арм_ПраваПользователей`. От роли зависит форма и набор команд:
+
+    | Роль | Экран | Команды |
+    |---|---|---|
+    | manager, storekeeper, chief_mechanic, admin, supplier, client | продажи + закупки | строки, правка ячеек по матрице, «В работе», «Подготовлено», заказ покупателя, заказ поставщику, отгрузка, загрузка |
+    | supply | снабжение | отметки и перевод статуса закупки |
+
+    Правка ячейки разрешена только если `МожноРедактироватьПолеАРМ` возвращает истину
+    (роль, статус строки, для режима «создатель» — автор). Иначе `403` и код `matrix_denied`.
+    Строка в статусе `locked_background` или с `locked=true` не меняется (`row_locked`).
+
+    Поля, которых нет в регистре `Арм_ДанныеЗакупокИПродаж` (артикул, код А-А, единица измерения
+    номенклатуры, номер шасси, дата и номер УПД, сумма себестоимости, сумма продажи, остаток),
+    в ответе есть, в `PATCH` — `403` `field_readonly`.
+  contact:
+    name: Витавто 1С
+servers:
+  - url: https://arm.example/api/arm/v1
+    description: PWA API перед базой 1С
+tags:
+  - name: session
+    description: Вход и роль интерфейса
+  - name: matrix
+    description: Колонки и права редактирования
+  - name: lines
+    description: Строки регистра Арм_ДанныеЗакупокИПродаж
+  - name: sales
+    description: Команды формы продаж
+  - name: supply
+    description: Команды формы снабжения
+  - name: documents
+    description: Документы, которые АРМ открывает из строки
+  - name: directories
+    description: Списки для полей «выбор»
+  - name: jobs
+    description: Фоновое проведение отмеченных строк («В работе»)
+security:
+  - bearerAuth: []
+paths:
+  /session:
+    post:
+      tags: [session]
+      summary: Войти пользователем информационной базы
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags: [session]
+      summary: Текущая сессия, роль и какой экран открывать
+      operationId: getSession
+      responses:
+        '200':
+          description: Текущий пользователь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: [session]
+      summary: Выйти
+      operationId: logout
+      responses:
+        '204':
+          description: Сессия закрыта
+  /matrix:
+    get:
+      tags: [matrix]
+      summary: Колонки матрицы для текущего экрана
+      description: |
+        Порядок, коды (А1…Т1), заголовки и тип поля. Для роли сессии у каждой колонки
+        маска по 15 статусам уровня «Заказ»: `+` можно, `c` только создатель, `.` нельзя.
+        PWA по этой маске рисует ячейку до ответа `PATCH`.
+      operationId: getMatrix
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Матрица колонок
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Matrix'
+        '304':
+          description: Не изменилась
+  /lines:
+    get:
+      tags: [lines]
+      summary: Список строк продаж, закупок или снабжения
+      operationId: listLines
+      parameters:
+        - name: view
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [sales, purchases, supply]
+          description: |
+            `sales` — таблица продаж. `purchases` — таблица закупок под ней.
+            `supply` — канбан снабжения (только роль supply).
+        - name: periodFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: periodTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: customerOrderId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Отбор после загрузки данных покупателя («ОбновитьСписокАРМ»)
+        - name: hideShipped
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: hideDeleted
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Скрыть вычеркнутые
+        - name: onlyWithPurchases
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: groupByCustomerOrder
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        '200':
+          description: Страница строк
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinePage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [lines]
+      summary: Добавить строки подбором номенклатуры
+      description: Команды «Добавить строки» в продажах и в закупках.
+      operationId: addLines
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddLinesRequest'
+      responses:
+        '201':
+          description: Созданные строки
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Line'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/LineId'
+    get:
+      tags: [lines]
+      summary: Одна строка
+      operationId: getLine
+      responses:
+        '200':
+          description: Строка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Line'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [lines]
+      summary: Записать одно поле строки
+      description: |
+        То же, что правка ячейки в форме продаж (`ЗаписатьПолеСтрокиАРМ`) и отдельные
+        обработчики выбора (номенклатура, партия, договор, поставщик, вид услуги,
+        форма оплаты, количество, цена, коэффициент, комментарий, дата и номер отгрузки).
+        После записи сервер пересчитывает сумму себестоимости, цену продажи и коэффициент
+        по формулам матрицы и возвращает строку целиком.
+      operationId: patchLineField
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldPatch'
+      responses:
+        '200':
+          description: Строка после записи и пересчёта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Line'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [lines]
+      summary: Вычеркнуть или удалить строку
+      description: Команды «Удалить строку» и «Удалить текущую строку».
+      operationId: deleteLine
+      responses:
+        '204':
+          description: Строка вычеркнута
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /lines/{lineId}/mark:
+    parameters:
+      - $ref: '#/components/parameters/LineId'
+    post:
+      tags: [lines]
+      summary: Переключить отметку строки
+      description: |
+        Флажок «поле выбора ячеек». Ставит автор отметки; снять чужую отметку нельзя.
+      operationId: toggleLineMark
+      responses:
+        '200':
+          description: Новое состояние отметки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Line'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /selection:
+    get:
+      tags: [lines]
+      summary: Сумма и количество по отмеченным строкам
+      operationId: selectionTotals
+      parameters:
+        - name: view
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [sales, purchases, supply]
+      responses:
+        '200':
+          description: Итоги выделения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelectionTotals'
+    post:
+      tags: [lines]
+      summary: Отметить все строки заказа
+      description: «Выделить все строки заказа» в продажах, закупках или снабжении.
+      operationId: markOrderLines
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [view, customerOrderId, marked]
+              properties:
+                view:
+                  type: string
+                  enum: [sales, purchases, supply]
+                customerOrderId:
+                  type: string
+                  format: uuid
+                marked:
+                  type: boolean
+      responses:
+        '200':
+          description: Сколько строк изменилось
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResult'
+  /sales/jobs:
+    post:
+      tags: [sales, jobs]
+      summary: «В работе» — фоновая обработка отмеченных строк
+      description: |
+        Берёт отмеченные ключи связи в статусах «Черновик», «В работе», «Собран».
+        Ставит интерфейсный замок и запускает фоновое задание. `allowSplit=false` —
+        первый запуск; если задание просит подтверждение сплита, PWA повторяет вызов
+        с `allowSplit=true` (диалог «В работе»).
+      operationId: startInWork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [allowSplit]
+              properties:
+                allowSplit:
+                  type: boolean
+      responses:
+        '202':
+          description: Задание поставлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/prepared:
+    post:
+      tags: [sales]
+      summary: «Подготовлено»
+      description: |
+        Отмеченные строки продажи в статусе «В работе», с номенклатурой, поставщиком,
+        количеством и ценой, без незавершённой закупки по тому же ключу связи,
+        переводятся в «Подготовлено». Иначе `409` «в строках есть незавершённые закупки».
+      operationId: markPrepared
+      responses:
+        '200':
+          description: Результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResult'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/customer-orders:
+    post:
+      tags: [sales, documents]
+      summary: Создать заказ покупателя
+      operationId: createCustomerOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerOrderDraft'
+      responses:
+        '201':
+          description: Документ создан, строки попали в регистр
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRef'
+  /sales/customer-orders/{documentId}/post:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [sales, documents]
+      summary: Провести заказ покупателя по отмеченным строкам
+      operationId: postCustomerOrder
+      responses:
+        '200':
+          description: Проведён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResult'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/customer-orders/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    delete:
+      tags: [sales, documents]
+      summary: Удалить заказ покупателя
+      operationId: deleteCustomerOrder
+      responses:
+        '204':
+          description: Удалён
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/supplier-orders:
+    post:
+      tags: [sales, documents]
+      summary: Создать заказ поставщику по отмеченным закупкам
+      operationId: createSupplierOrder
+      responses:
+        '201':
+          description: Заказ поставщику
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRef'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /sales/shipments:
+    post:
+      tags: [sales]
+      summary: Заполнить дату и номер отгрузки по заказу
+      operationId: fillShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerOrderId, shipmentDate, shipmentNumber]
+              properties:
+                customerOrderId:
+                  type: string
+                  format: uuid
+                shipmentDate:
+                  type: string
+                  format: date
+                shipmentNumber:
+                  type: string
+      responses:
+        '200':
+          description: Сколько строк обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /sales/imports:
+    post:
+      tags: [sales]
+      summary: Загрузить таблицу от покупателя
+      description: |
+        Форма «Загрузка данных». Колонки листа как в загрузке заказа покупателя:
+        номер клиента, срочность, госномер, территория, артикул, наименование, количество.
+        После успеха список продаж отбирается по созданному заказу.
+      operationId: importCustomerSheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerSheet'
+      responses:
+        '201':
+          description: Заказ и строки созданы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRef'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /supply/status:
+    post:
+      tags: [supply]
+      summary: Перевести отмеченные закупки в статус канбана
+      description: |
+        Кнопки формы снабжения. `assembled` при частичном приходе требует `receiptDate`
+        (вопрос «частичный приход» в форме).
+      operationId: setSupplyStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyStatusRequest'
+      responses:
+        '200':
+          description: Сколько позиций переведено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /jobs/{jobId}:
+    parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [jobs]
+      summary: Статус фонового задания «В работе»
+      description: PWA опрашивает, пока `state` не станет `done`, `need_split` или `failed`.
+      operationId: getJob
+      responses:
+        '200':
+          description: Состояние задания
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /documents/{kind}/{documentId}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [customer_order, supplier_order, receipt, shipment]
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [documents]
+      summary: Карточка документа, который АРМ открывает из строки
+      description: |
+        «Показать заказ покупателя», «заказ поставщику», «приходную» и «расходную накладную».
+        PWA показывает шапку и ссылку; проведение остаётся командами `/sales/...`.
+      operationId: getDocument
+      responses:
+        '200':
+          description: Документ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /directories/counterparties:
+    get:
+      tags: [directories]
+      summary: Заказчики и поставщики
+      operationId: listCounterparties
+      parameters:
+        - $ref: '#/components/parameters/Query'
+      responses:
+        '200':
+          description: Контрагенты
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NamedRef'
+  /directories/contracts:
+    get:
+      tags: [directories]
+      summary: Договоры выбранного контрагента
+      operationId: listContracts
+      parameters:
+        - name: ownerId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Только договоры этого владельца
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NamedRef'
+  /directories/nomenclature:
+    get:
+      tags: [directories]
+      summary: Поиск номенклатуры по наименованию, артикулу или коду А-А
+      operationId: searchNomenclature
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Найденные позиции
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NomenclatureItem'
+  /directories/batches:
+    get:
+      tags: [directories]
+      summary: Партии ФИФО для номенклатуры строки
+      operationId: listBatches
+      parameters:
+        - name: nomenclatureId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: customerOrderId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Партии
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BatchItem'
+  /directories/service-types:
+    get:
+      tags: [directories]
+      summary: Вид услуги
+      operationId: listServiceTypes
+      responses:
+        '200':
+          description: Ремонт, услуга, инструмент, запчасть и значения справочника
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NamedRef'
+  /directories/payment-forms:
+    get:
+      tags: [directories]
+      summary: Формы оплаты
+      operationId: listPaymentForms
+      responses:
+        '200':
+          description: Формы оплаты
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NamedRef'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Токен сеанса после `POST /session`. В 1С за ним стоит пользователь ИБ.
+  parameters:
+    LineId:
+      name: lineId
+      in: path
+      required: true
+      description: ИдентификаторЗаписи регистра
+      schema:
+        type: string
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Не разобран запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Нет сессии
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Роль или матрица не разрешает действие
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Нет строки или документа
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Замок фона, незавершённая закупка, пустая отметка, чужая галка
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [login, password]
+      properties:
+        login:
+          type: string
+          example: arm.manager
+        password:
+          type: string
+          format: password
+    Session:
+      type: object
+      required: [userName, role, screen, token]
+      properties:
+        token:
+          type: string
+        userName:
+          type: string
+          description: Наименование справочника Пользователи
+        login:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        screen:
+          type: string
+          enum: [sales, supply]
+          description: |
+            `sales` — форма продаж (все роли матрицы). `supply` — форма снабжения.
+    Role:
+      type: string
+      enum: [manager, storekeeper, chief_mechanic, admin, supplier, client, supply]
+    Problem:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - unauthorized
+            - matrix_denied
+            - field_readonly
+            - row_locked
+            - not_author
+            - unfinished_purchase
+            - nothing_marked
+            - need_split
+            - contract_owner
+            - not_found
+        message:
+          type: string
+        field:
+          type: string
+        status:
+          $ref: '#/components/schemas/LineStatus'
+    Matrix:
+      type: object
+      required: [role, columns, statuses]
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineStatus'
+          description: 15 статусов уровня «Заказ», в порядке маски
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatrixColumn'
+    MatrixColumn:
+      type: object
+      required: [id, field, code, title, dataType, rights]
+      properties:
+        id:
+          type: string
+          description: id колонки в index.html, например qty
+        field:
+          type: string
+          description: Имя поля регистра или заглушки, например Количество
+        code:
+          type: string
+          example: Н0
+        title:
+          type: string
+        dataType:
+          type: string
+          enum: [checkbox, number, date, text, select]
+        writable:
+          type: boolean
+          description: false, если поля нет в регистре
+        rights:
+          type: string
+          minLength: 15
+          maxLength: 15
+          description: 15 символов `+`, `c` или `.` по порядку statuses
+          example: '++.............'
+    LinePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Line'
+        nextCursor:
+          type: string
+          nullable: true
+    Line:
+      type: object
+      required: [id, operation, status, locked]
+      properties:
+        id:
+          type: string
+          description: ИдентификаторЗаписи
+        linkKey:
+          type: string
+          description: КлючСвязиСтрок
+        operation:
+          type: string
+          enum: [sale, purchase]
+        status:
+          $ref: '#/components/schemas/LineStatus'
+        locked:
+          type: boolean
+          description: СтрокаЗаблокирована, в том числе на время фона
+        deleted:
+          type: boolean
+        marked:
+          type: boolean
+        markedBy:
+          type: string
+          nullable: true
+        order:
+          type: number
+          description: Порядок, колонка № п/п
+        hasDeficit:
+          type: boolean
+        customerOrder:
+          $ref: '#/components/schemas/DocumentRef'
+        supplierOrder:
+          $ref: '#/components/schemas/DocumentRef'
+        receipt:
+          $ref: '#/components/schemas/DocumentRef'
+        shipmentDoc:
+          $ref: '#/components/schemas/DocumentRef'
+        signedOriginal:
+          type: boolean
+        shipmentDate:
+          type: string
+          format: date
+          nullable: true
+        shipmentNumber:
+          type: string
+        orderDate:
+          type: string
+          format: date
+          nullable: true
+        internalOrderNumber:
+          type: string
+        clientOrderNumber:
+          type: string
+        customer:
+          $ref: '#/components/schemas/NamedRef'
+        contract:
+          $ref: '#/components/schemas/NamedRef'
+        serviceType:
+          $ref: '#/components/schemas/NamedRef'
+        brand:
+          type: string
+        model:
+          type: string
+        aggregate:
+          type: string
+        plate:
+          type: string
+        chassis:
+          type: string
+          readOnly: true
+        vin:
+          type: string
+        engine:
+          type: string
+        urgency:
+          type: string
+        vehiclePlate:
+          type: string
+        territory:
+          type: string
+        factName:
+          type: string
+        factArticle:
+          type: string
+        factQty:
+          type: string
+        factUnit:
+          type: string
+        nomenclature:
+          $ref: '#/components/schemas/NomenclatureItem'
+        quantity:
+          type: number
+        normHours:
+          type: number
+        stockQty:
+          type: number
+          readOnly: true
+        reserveQty:
+          type: number
+          readOnly: true
+        inTransitQty:
+          type: string
+          readOnly: true
+        batch:
+          $ref: '#/components/schemas/BatchItem'
+        costPrice:
+          type: number
+        costSum:
+          type: number
+          readOnly: true
+        paymentForm:
+          $ref: '#/components/schemas/NamedRef'
+        rrc:
+          type: number
+        paid:
+          type: string
+        coefficient:
+          type: number
+        salePrice:
+          type: number
+        saleSum:
+          type: number
+          readOnly: true
+        supplier:
+          $ref: '#/components/schemas/NamedRef'
+        receiptDate:
+          type: string
+          format: date
+          nullable: true
+        updDate:
+          type: string
+          format: date
+          nullable: true
+          readOnly: true
+        updNumber:
+          type: string
+          readOnly: true
+        supplierShipTerritory:
+          type: string
+        comment:
+          type: string
+    LineStatus:
+      type: string
+      description: |
+        Статусы матрицы и технические статусы АРМ.
+        `prepared` покрывает Подготовлено и Собран. `closed` покрывает Выполнено и Завершено.
+      enum:
+        - new
+        - in_work
+        - partially_ordered
+        - ordered
+        - paid
+        - in_transit
+        - awaiting_receipt
+        - acceptance
+        - to_stock
+        - reserve
+        - assembly
+        - ready_to_ship
+        - shipped
+        - return
+        - closed
+        - locked_background
+    FieldPatch:
+      type: object
+      required: [field, value]
+      properties:
+        field:
+          type: string
+          description: Имя поля регистра, как в матрице (`Количество`, `Договор`, `Номенклатура`, …)
+          example: Количество
+        value:
+          description: Скаляр, uuid ссылки или boolean. Для очистки ссылки — null.
+          nullable: true
+    AddLinesRequest:
+      type: object
+      required: [view, nomenclatureIds]
+      properties:
+        view:
+          type: string
+          enum: [sales, purchases]
+        customerOrderId:
+          type: string
+          format: uuid
+          description: К какому заказу добавить. Для закупки — копирование продажи-аналога.
+        sourceLineId:
+          type: string
+          description: Строка продажи, с которой копируется закупка аналога
+        nomenclatureIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    SelectionTotals:
+      type: object
+      properties:
+        count:
+          type: integer
+        quantity:
+          type: number
+        saleSum:
+          type: number
+        costSum:
+          type: number
+    CommandResult:
+      type: object
+      required: [processed, total]
+      properties:
+        processed:
+          type: integer
+        total:
+          type: integer
+        message:
+          type: string
+    Job:
+      type: object
+      required: [id, state]
+      properties:
+        id:
+          type: string
+        state:
+          type: string
+          enum: [running, need_split, done, failed]
+        message:
+          type: string
+        processed:
+          type: integer
+    CustomerOrderDraft:
+      type: object
+      required: [customerId]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+          nullable: true
+        clientOrderNumber:
+          type: string
+        date:
+          type: string
+          format: date
+    CustomerSheet:
+      type: object
+      required: [rows]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+          nullable: true
+        rows:
+          type: array
+          items:
+            type: object
+            required: [name, quantity]
+            properties:
+              clientNumber:
+                type: string
+              urgency:
+                type: string
+              plate:
+                type: string
+              territory:
+                type: string
+              article:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: string
+    SupplyStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [paid, in_transit, acceptance, to_stock, assembly, assembled]
+          description: |
+            Оплачено, Товар в пути, Приходуется, На складе, Комплектуется, Собран.
+        receiptDate:
+          type: string
+          format: date
+          description: Обязательна, если приход частичный и status=assembled
+        partialReceipt:
+          type: boolean
+          default: false
+    DocumentRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [customer_order, supplier_order, receipt, shipment]
+        number:
+          type: string
+        date:
+          type: string
+          format: date
+        posted:
+          type: boolean
+    DocumentCard:
+      allOf:
+        - $ref: '#/components/schemas/DocumentRef'
+        - type: object
+          properties:
+            counterparty:
+              $ref: '#/components/schemas/NamedRef'
+            contract:
+              $ref: '#/components/schemas/NamedRef'
+            comment:
+              type: string
+    NamedRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    NomenclatureItem:
+      allOf:
+        - $ref: '#/components/schemas/NamedRef'
+        - type: object
+          properties:
+            article:
+              type: string
+            code:
+              type: string
+              description: Код А-А
+            unit:
+              type: string
+    BatchItem:
+      allOf:
+        - $ref: '#/components/schemas/NamedRef'
+        - type: object
+          properties:
+            available:
+              type: number
+            costPrice:
+              type: number
+            supplier:
+              $ref: '#/components/schemas/NamedRef'
