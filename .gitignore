@@ -25,3 +25,6 @@ srvinfo/
 
 # сведения о машине от preflight-1c.ps1
 1c-env.json
+
+# данные сервиса API процессов (api/README.md)
+api/data/

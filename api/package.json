@@ -1,0 +1,12 @@
+{
+  "name": "vitauto-process-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REST API (OpenAPI/Swagger) процессов Витавто с правами ролей по матрице",
+  "main": "server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

@@ -84,6 +84,10 @@
 
 Логи установки — в `<BaseDir>\logs`.
 
+## API процессов и прав
+
+[api/](api/README.md) — REST-сервис (OpenAPI, Swagger UI): заказы идут по сценариям `process.html` с проверкой прав ролей по матрице `index.html`; запись настроек прав, процессов и пользователей API. Node.js 20+, без зависимостей: `cd api; npm start` → `http://127.0.0.1:8787/docs`, `npm test`. С базой 1С пока не связан.
+
 ## Исходники и сравнение версий расширения
 
 - [unpack-cfe.ps1](unpack-cfe.ps1) — распаковывает `.cfe` в `src\<имя файла>` через [v8unpack](https://github.com/saby-integration/v8unpack).

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<point xmlns="http://v8.1c.ru/8.2/virtual-resource-system" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" base="/vitauto" ib="File=&quot;D:\1c\test_fresh&quot;;Usr=&quot;Админ&quot;;Pwd=&quot;&quot;;">
+	<httpServices publishByDefault="true" publishExtensionsByDefault="true"/>
+</point>
