@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Открытые задачи Витавто АРМ</title>
+<style>
+  :root {
+    --ink: #1a1f24;
+    --muted: #5c6570;
+    --line: #d8dde3;
+    --bg: #f3f5f7;
+    --card: #ffffff;
+    --ok: #1f6b3a;
+    --ok-bg: #e8f5ec;
+    --warn: #8a5a00;
+    --warn-bg: #fff3d6;
+    --bad: #9b1c1c;
+    --bad-bg: #fde8e8;
+    --info: #1a4a7a;
+    --info-bg: #e8f0f8;
+    --accent: #0d3b66;
+    --done: #3d4a3f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    background: linear-gradient(145deg, #1e3a2f 0%, #2d5a45 50%, #3a7a58 100%);
+    color: #fff;
+    padding: 2rem 1.5rem 1.75rem;
+  }
+  header .wrap { max-width: 1000px; margin: 0 auto; }
+  header h1 {
+    margin: 0 0 .4rem;
+    font-size: 1.65rem;
+    font-weight: 650;
+    letter-spacing: -.02em;
+  }
+  header p { margin: 0; opacity: .9; font-size: .95rem; }
+  header .meta {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .75rem;
+    font-size: .82rem;
+  }
+  header .chip {
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.28);
+    padding: .25rem .6rem;
+    border-radius: 4px;
+  }
+  main { max-width: 1000px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
+  nav.toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  nav.toc h2 {
+    margin: 0 0 .5rem;
+    font-size: .95rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  nav.toc ol { margin: 0; padding-left: 1.25rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: .65rem;
+    margin-bottom: 1.25rem;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: .85rem 1rem;
+  }
+  .stat .n {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -.03em;
+  }
+  .stat .l { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+  .stat.open .n { color: var(--bad); }
+  .stat.accept .n { color: var(--warn); }
+  .stat.part .n { color: var(--info); }
+  .stat.done .n { color: var(--ok); }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.25rem 1.35rem;
+    margin-bottom: 1rem;
+  }
+  section h2 {
+    margin: 0 0 .75rem;
+    font-size: 1.15rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: .5rem;
+  }
+  section h3 { margin: 1rem 0 .4rem; font-size: 1rem; }
+  p { margin: .4rem 0 .7rem; }
+  ul, ol { margin: .3rem 0 .8rem; padding-left: 1.3rem; }
+  li { margin: .28rem 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+    margin: .5rem 0 1rem;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: .45rem .55rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef1f4; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: .86em;
+    background: #eef1f4;
+    padding: .05em .3em;
+    border-radius: 3px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 650;
+    padding: .15rem .45rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge-open { background: var(--bad-bg); color: var(--bad); }
+  .badge-accept { background: var(--warn-bg); color: var(--warn); }
+  .badge-part { background: var(--info-bg); color: var(--info); }
+  .badge-done { background: var(--ok-bg); color: var(--ok); }
+  .badge-none { background: #eee; color: var(--muted); }
+  .prio {
+    background: #f7f3ea;
+    border: 1px solid #e5d9c0;
+    border-radius: 8px;
+    padding: 1rem 1.15rem;
+  }
+  .prio h3 { margin: 0 0 .5rem; color: var(--warn); }
+  .prio ol { margin-bottom: 0; }
+  footer {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 1.5rem 2rem;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  a.file { color: var(--accent); }
+  @media (max-width: 640px) {
+    table { display: block; overflow-x: auto; }
+  }
+  @media print {
+    body { background: #fff; }
+    nav.toc { display: none; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Открытые задачи Витавто АРМ</h1>
+    <p>Сводка по файлам <code>tasks/</code> и задачам на других ветках. Без внедрений — реестр для планирования.</p>
+    <div class="meta">
+      <span class="chip">Репо goshva/vitauto1c</span>
+      <span class="chip">Текущая ветка просмотра: dev</span>
+      <span class="chip">Дата: 05.10.2026</span>
+      <span class="chip">Связанный аудит: process-api-audit.html</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="summary">
+    <div class="stat open"><div class="n">10</div><div class="l">не сделано<br>(код / продукт)</div></div>
+    <div class="stat accept"><div class="n">4</div><div class="l">код есть,<br>приёмка висит</div></div>
+    <div class="stat part"><div class="n">4</div><div class="l">частично /<br>на согласовании</div></div>
+    <div class="stat done"><div class="n">3</div><div class="l">по сути закрыто<br>(для ориентира)</div></div>
+  </div>
+
+  <nav class="toc">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#open">Не сделано (код / продукт)</a></li>
+      <li><a href="#accept">Сделано в коде, не закрыта приёмка</a></li>
+      <li><a href="#part">Частично / на согласовании</a></li>
+      <li><a href="#done">Уже можно считать закрытыми</a></li>
+      <li><a href="#backlog">Короткий бэклог «что дальше»</a></li>
+      <li><a href="#index">Индекс файлов задач</a></li>
+    </ol>
+  </nav>
+
+  <section id="open">
+    <h2>1. Не сделано <span class="badge badge-open">код / продукт</span></h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Задача</th>
+          <th>Где</th>
+          <th>Что осталось</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><b>Номер отгрузки — системное заполнение</b></td>
+          <td>ветка <code>task/shipment-number-system-fill</code><br><code>tasks/shipment-number-system-fill.md</code></td>
+          <td>Все критерии приёмки <code>[ ]</code>. Ручной ввод ещё жив. На <code>process-api</code> API наоборот требует ручной <code>shipmentNumber</code> — конфликт с каноном матрицы (RO).</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><b>HTTP API АРМ (исходная постановка)</b></td>
+          <td>ветка <code>api</code><br><code>tasks/arm-pwa-api.md</code></td>
+          <td>Спека 29 операций. Реализация ушла в <code>process-api</code> (v2.9), но задача не закрыта; контракт 2.7 и код 2.9 разъехались.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><b>Права ролей × статусов</b> (не только админ)</td>
+          <td><code>admin-columns-matrix.md</code>, <code>seed-local-db.md</code></td>
+          <td>Явно вынесено в «отдельные задачи». В коде whitelist в основном для администратора.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><b>Заглушки матрицы с данными</b></td>
+          <td><code>admin-columns-matrix.md</code></td>
+          <td>№ шасси, кол-во в резерве / в пути, дата и № УПД — «в следующей задаче», в регистре не хранятся.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><b>Очистка договора при смене заказчика</b></td>
+          <td><code>contract-filter-by-customer.md</code></td>
+          <td>Вопрос постановщику: очищать автоматически или предупреждать. Предложено отдельной задачей.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><b>Переходы в новые статусы из формы</b></td>
+          <td><code>matrix-statuses-codes-formulas.md</code></td>
+          <td>Резервирование / Ожидаем поступление / Возврат ставит только seed; из формы нельзя. На <code>process-api</code> частично закрыто API <code>transition</code>, в тонком клиенте — нет.</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><b>Процессный seed</b> (шаг 3)</td>
+          <td><code>seed-local-db.md</code></td>
+          <td>Статусы выставлены принудительно. ЗП / ПН / РН реальными операциями АРМ не создаются.</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><b>Учётные записи seed для входа</b></td>
+          <td><code>seed-local-db.md</code></td>
+          <td>Есть элементы «… (seed)» с ролью АРМ, без логинов 1С. На <code>process-api</code> появились <code>arm.*</code> — только на той ветке.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><b>Ед. изм. (шт/л, dropdown)</b></td>
+          <td>вне scope <code>price-qty-sum.md</code>; файла задачи нет</td>
+          <td>Из диалога 02.10.2026. Отдельной постановки в <code>tasks/</code> нет.</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td><b>Бинарная логика А3 → unlock строки</b></td>
+          <td>файла задачи нет; анализ в сессии</td>
+          <td>В форме unlock по «Документ подписан оригинал» не wired. В API v2.9 — только gate на <code>closed</code> из <code>shipped</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="accept">
+    <h2>2. Сделано в коде, не закрыта приёмка <span class="badge badge-accept">UI / ИБ</span></h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Задача</th>
+          <th>Статус внедрения</th>
+          <th>Что не закрыто</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><b>price-qty-sum</b> (v2.8)</td>
+          <td>код в <code>dev</code> (PR #4)</td>
+          <td>Ручная приёмка в ИБ после LoadCfg — в задаче: «ещё вручную по чеклисту».</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><b>admin-columns-matrix</b> (v2.1–v2.3)</td>
+          <td>код есть</td>
+          <td>Все ☐ в таблице 50 колонок; UI-чеклист п.1–6 не отмечен.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><b>contract-filter-by-customer</b> (v2.2)</td>
+          <td>код есть</td>
+          <td>Приёмка UI п.1–11 вручную на тестовой базе.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><b>check-from-install</b></td>
+          <td>install/seed гоняли локально</td>
+          <td>Главное — <b>шаг 5: форма АРМ в предприятии</b> (5.1–5.14) — «не проверено ни разу».</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="part">
+    <h2>3. Частично / на согласовании <span class="badge badge-part">частично</span></h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Задача</th>
+          <th>Ветка / файл</th>
+          <th>Остаток</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><b>arm-api-process-coverage</b></td>
+          <td><code>process-api</code><br><code>tasks/arm-api-process-coverage.md</code></td>
+          <td>Заявлено 11/11 API, но stub: уведомления, УПД, P1, G1≠заказ-наряд, <code>supplier-orders</code> 501.</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><b>arm-api-processes-manual-check</b></td>
+          <td><code>process-api</code><br><code>tasks/arm-api-processes-manual-check.md</code></td>
+          <td>Ручная пошаговая приёмка в PWA — критерии не отмечены выполненными.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><b>Аудит process-api</b></td>
+          <td>локально<br><a class="file" href="process-api-audit.html">process-api-audit.html</a></td>
+          <td>На согласование владельцу. Merge / правки без явного ок не делать.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><b>matrix-statuses-codes-formulas</b></td>
+          <td><code>dev</code> (документ)</td>
+          <td>Открытые вопросы: два статуса АРМ на один матричный; опросник новых статусов; переходы из формы (см. §1 п.6).</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="done">
+    <h2>4. Уже можно считать закрытыми <span class="badge badge-done">ориентир</span></h2>
+    <p>По коду/содержимому репо, не по формальной отметке «ГОТОВО» в каждом чеклисте:</p>
+    <ul>
+      <li><b>Матричный seed</b> (<code>seed-local-db</code> шаг 1) — работает: 6 заказов, 15 строк АРМ.</li>
+      <li><b>v2.5–v2.7</b> (статусы, Н0 кол-во, скрытие «Есть дефицит») — в <code>dev</code>.</li>
+      <li><b>v2.8 price×qty</b> — код влит в <code>dev</code> (приёмка UI всё ещё в §2).</li>
+    </ul>
+  </section>
+
+  <section id="backlog">
+    <h2>5. Короткий бэклог «что дальше»</h2>
+    <div class="prio">
+      <h3>Приоритет</h3>
+      <ol>
+        <li><b>Блокеры продукта:</b> номер отгрузки (system-fill) ↔ конфликт с API <code>shipments</code>.</li>
+        <li><b>Согласование:</b> merge <code>process-api</code> / единый OpenAPI (см. <a class="file" href="process-api-audit.html">аудит</a>).</li>
+        <li><b>Приёмка UI:</b> check-from-install шаг 5, price-qty-sum, admin-columns, contract-filter.</li>
+        <li><b>Продуктовые дыры:</b> УПД / резерв / в пути; права не-админов; ед. изм.; unlock А3; процессный seed.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="index">
+    <h2>6. Индекс файлов задач</h2>
+    <h3>На ветке <code>dev</code></h3>
+    <table>
+      <thead>
+        <tr><th>Файл</th><th>Категория в этом отчёте</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>tasks/admin-columns-matrix.md</code></td><td><span class="badge badge-accept">приёмка</span> + дыры §1</td></tr>
+        <tr><td><code>tasks/check-from-install.md</code></td><td><span class="badge badge-accept">приёмка</span></td></tr>
+        <tr><td><code>tasks/contract-filter-by-customer.md</code></td><td><span class="badge badge-accept">приёмка</span> + §1 п.5</td></tr>
+        <tr><td><code>tasks/matrix-statuses-codes-formulas.md</code></td><td><span class="badge badge-part">частично</span></td></tr>
+        <tr><td><code>tasks/price-qty-sum.md</code></td><td><span class="badge badge-accept">приёмка</span></td></tr>
+        <tr><td><code>tasks/seed-local-db.md</code></td><td>шаг 1 <span class="badge badge-done">ок</span>; шаги 3+ <span class="badge badge-open">открыто</span></td></tr>
+        <tr><td><code>tasks/process-api-audit.html</code></td><td><span class="badge badge-part">согласование</span> (локально)</td></tr>
+        <tr><td><code>tasks/open-tasks.html</code></td><td>этот реестр</td></tr>
+      </tbody>
+    </table>
+    <h3>Только на других ветках</h3>
+    <table>
+      <thead>
+        <tr><th>Файл</th><th>Ветка</th><th>Категория</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>tasks/arm-pwa-api.md</code></td><td><code>api</code></td><td><span class="badge badge-open">не закрыта</span></td></tr>
+        <tr><td><code>tasks/shipment-number-system-fill.md</code></td><td><code>task/shipment-number-system-fill</code></td><td><span class="badge badge-open">не сделано</span></td></tr>
+        <tr><td><code>tasks/arm-api-process-coverage.md</code></td><td><code>process-api</code></td><td><span class="badge badge-part">частично</span></td></tr>
+        <tr><td><code>tasks/arm-api-processes-manual-check.md</code></td><td><code>process-api</code></td><td><span class="badge badge-part">приёмка PWA</span></td></tr>
+      </tbody>
+    </table>
+    <h3>Без файла задачи (из диалогов / анализа)</h3>
+    <ul>
+      <li>Ед. изм. (шт/л) — §1 п.9</li>
+      <li>Бинарная логика А3 unlock — §1 п.10</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  Источники: tasks/* на dev; origin/api, origin/task/shipment-number-system-fill, origin/process-api.
+  Реестр подготовлен 05.10.2026. Внедрений не выполнялось.
+  Связано: <a href="process-api-audit.html">process-api-audit.html</a>.
+</footer>
+
+</body>
+</html>
