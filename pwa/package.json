@@ -1,0 +1,28 @@
+{
+  "name": "vitauto-arm-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Тестовое PWA для REST API АРМ (контракт openapi/arm-pwa.openapi.yaml, HTTP-сервис 1С Арм_API)",
+  "type": "module",
+  "scripts": {
+    "api": "powershell -NoProfile -ExecutionPolicy Bypass -File ../tools/arm-api-1c/start.ps1",
+    "dev": "vite",
+    "dev:test": "vite --mode test",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pinia": "^3.0.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/test-utils": "^2.5.1",
+    "happy-dom": "^20.14.5",
+    "vite": "^7.0.0",
+    "vite-plugin-pwa": "^1.0.0",
+    "vitest": "^5.0.3"
+  }
+}
