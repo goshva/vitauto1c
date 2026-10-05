@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>План работ fix/open-tasks — на согласование</title>
+<style>
+  :root {
+    --ink: #1a1f24; --muted: #5c6570; --line: #d8dde3; --bg: #f3f5f7; --card: #fff;
+    --ok: #1f6b3a; --ok-bg: #e8f5ec; --warn: #8a5a00; --warn-bg: #fff3d6;
+    --bad: #9b1c1c; --bad-bg: #fde8e8; --info: #1a4a7a; --info-bg: #e8f0f8; --accent: #0d3b66;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  header {
+    background: linear-gradient(145deg, #1a3d4a 0%, #2a5f6e 50%, #3a7f8e 100%);
+    color: #fff; padding: 2rem 1.5rem 1.75rem;
+  }
+  header .wrap, main, footer { max-width: 960px; margin: 0 auto; }
+  header h1 { margin: 0 0 .35rem; font-size: 1.55rem; font-weight: 650; letter-spacing: -.02em; }
+  header p { margin: 0; opacity: .92; font-size: .95rem; }
+  header .meta { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .45rem .7rem; font-size: .8rem; }
+  header .chip { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); padding: .2rem .55rem; border-radius: 4px; }
+  main { padding: 1.2rem 1.5rem 2.5rem; }
+  .verdict {
+    border-left: 4px solid var(--accent); background: var(--info-bg);
+    padding: .95rem 1.1rem; border-radius: 0 8px 8px 0; margin-bottom: 1rem;
+  }
+  nav.toc, section {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin-bottom: .9rem;
+  }
+  nav.toc h2 { margin: 0 0 .45rem; font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  section h2 { margin: 0 0 .65rem; font-size: 1.12rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+  nav.toc ol { margin: 0; padding-left: 1.2rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h3 { margin: .9rem 0 .35rem; font-size: 1rem; }
+  p, ul, ol { margin: .3rem 0 .65rem; }
+  li { margin: .22rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: .45rem 0 .85rem; }
+  th, td { border: 1px solid var(--line); padding: .4rem .5rem; text-align: left; vertical-align: top; }
+  th { background: #eef1f4; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: .86em; background: #eef1f4; padding: .05em .28em; border-radius: 3px; }
+  .badge { display: inline-block; font-size: .7rem; font-weight: 650; padding: .12rem .4rem; border-radius: 3px; white-space: nowrap; }
+  .b-p0 { background: var(--bad-bg); color: var(--bad); }
+  .b-p1 { background: var(--warn-bg); color: var(--warn); }
+  .b-p2 { background: var(--info-bg); color: var(--info); }
+  .b-ok { background: var(--ok-bg); color: var(--ok); }
+  .b-out { background: #eee; color: var(--muted); }
+  .step {
+    border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; margin: .55rem 0; background: #fafbfc;
+  }
+  .step h3 { margin: 0 0 .35rem; display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+  .ask {
+    background: var(--warn-bg); border: 1px solid #e5d9c0; border-radius: 8px; padding: .9rem 1.05rem;
+  }
+  .ask h3 { margin-top: 0; color: var(--warn); }
+  .stop { background: var(--bad-bg); border: 1px solid #f0c0c0; border-radius: 8px; padding: .9rem 1.05rem; }
+  .stop h3 { margin-top: 0; color: var(--bad); }
+  footer { padding: 0 1.5rem 2rem; font-size: .8rem; color: var(--muted); }
+  a.file { color: var(--accent); }
+  @media print { nav.toc { display: none; } .step { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>План работ · ветка fix/open-tasks</h1>
+    <p>Закрыть баги и недоработки АРМ. На согласование. Внедрений нет.</p>
+    <div class="meta">
+      <span class="chip">ветка fix/open-tasks ← dev (df7ad43 / v2.8)</span>
+      <span class="chip">process-api = lab, не прод</span>
+      <span class="chip">05.10.2026</span>
+      <span class="chip"><a class="file" href="open-tasks.html" style="color:#fff">open-tasks.html</a></span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="verdict">
+    <b>Цель ветки:</b> закрыть всё «повислое» в прод-контуре тонкого клиента АРМ
+    (приёмка + баги + недоработки матрицы/seed), <b>не трогая</b> lab-контур <code>process-api</code>.
+    <br>
+    Работы идут пачками на <code>fix/open-tasks</code>. Владелец одобрил значения по умолчанию («закрывай без остановок»).
+    <br>
+    <b>Статус 05.10.2026:</b> пачки 2, 3, 4a, 4b внедрены в <code>src/АРМЗакупокИПродаж_v2.10/</code> (CFE <code>v2.10</code>);
+    пачка 4c — постановка (<code>units-of-measure.md</code>); пачка 5 отложена (<code>open-tasks-pack5-deferred.md</code>);
+    <b>пачка 0 (приёмка UI) — вручную, ещё не пройдена</b>; <code>process-api</code> по-прежнему вне scope.
+    Итоговая приёмка — на тестовой ИБ с <code>АРМЗакупокИПродаж_v2.10.cfe</code>.
+  </div>
+
+  <nav class="toc">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#frames">Рамки</a></li>
+      <li><a href="#order">Порядок пачек</a></li>
+      <li><a href="#pack0">Пачка 0 — приёмка</a></li>
+      <li><a href="#pack1">Пачка 1 — hotfix приёмки</a></li>
+      <li><a href="#pack2">Пачка 2 — номер отгрузки</a></li>
+      <li><a href="#pack3">Пачка 3–5 — остальное</a></li>
+      <li><a href="#decide">Принятые решения</a></li>
+      <li><a href="#stop">Ограничения</a></li>
+    </ol>
+  </nav>
+
+  <section id="frames">
+    <h2>1. Рамки</h2>
+    <table>
+      <thead><tr><th></th><th>Да</th><th>Нет</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>База</b></td>
+          <td><code>fix/open-tasks</code> от <code>dev</code> (v2.8 + seed)</td>
+          <td><code>process-api</code>, <code>basdev</code>, <code>master</code>, старые feature</td>
+        </tr>
+        <tr>
+          <td><b>Клиент</b></td>
+          <td>Тонкий клиент / форма <code>АС_АРМ2</code></td>
+          <td>PWA и Node API как прод</td>
+        </tr>
+        <tr>
+          <td><b>ИБ для приёмки</b></td>
+          <td>Тестовая копия (напр. <code>D:\1c\test_fresh</code> / autoservice test)</td>
+          <td>Боевая без отдельного ок</td>
+        </tr>
+        <tr>
+          <td><b>Артефакт</b></td>
+          <td>Правки src + новый <code>_vN.cfe</code> + diff + пометка в tasks</td>
+          <td>Склейка всего списка в один непрозрачный релиз</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="order">
+    <h2>2. Порядок пачек (сводка)</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Пачка</th><th>Приоритет</th><th>Результат</th><th>Оценка объёма</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>0</td>
+          <td>Приёмка UI (4 чеклиста) — <b>вручную, не пройдена</b></td>
+          <td><span class="badge b-p0">P0</span></td>
+          <td>Отчёт: ок / баг / не проверено</td>
+          <td>1 сессия руками, без кода</td>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>Hotfix найденного в пачке 0</td>
+          <td><span class="badge b-p0">P0</span></td>
+          <td>Патчи в ветке + повторная приёмка</td>
+          <td>по факту багов</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Номер отгрузки — system-fill <b>(сделано в v2.10)</b></td>
+          <td><span class="badge b-p0">P0</span></td>
+          <td>Матрица RO соблюдена; ручного ввода нет</td>
+          <td>средняя (форма + регистр + источник номера)</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Статусы из формы (резерв / ожидаем / возврат) <b>(MVP для админа, v2.10)</b></td>
+          <td><span class="badge b-p1">P1</span></td>
+          <td>Не только seed ставит статусы</td>
+          <td>средняя+</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Мелочи продукта: договор (<b>сделано</b>), А3 unlock (<b>минимум в коде</b>), ед.изм. (только постановка)</td>
+          <td><span class="badge b-p1">P1</span></td>
+          <td>Отдельные мини-задачи / коммиты</td>
+          <td>малая–средняя каждая</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Поля-заглушки + права ролей + seed процессный <b>(отложено)</b></td>
+          <td><span class="badge b-p2">P2</span></td>
+          <td>УПД/резерв/путь; ACL; seed шаг 3</td>
+          <td>крупные — дробить</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="pack0">
+    <h2>3. Пачка 0 — приёмка (без кода)</h2>
+    <div class="step">
+      <h3>Подготовка ИБ</h3>
+      <ol>
+        <li>Закрыть сеансы 1С на тестовой базе.</li>
+        <li>LoadCfg <code>АРМЗакупокИПродаж_v2.8.cfe</code> с <code>dev</code> / этой ветки.</li>
+        <li>Safe mode расширения выключен; <code>seed-1c.ps1 -KeepSafeModeOff</code> при необходимости (15 строк).</li>
+        <li>Вход: Админ + роль интерфейса Администратор.</li>
+      </ol>
+    </div>
+    <div class="step">
+      <h3>Чеклисты (пройти и зафиксировать)</h3>
+      <table>
+        <thead><tr><th>Файл</th><th>Шаги</th><th>Критерий закрытия</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>check-from-install.md</code></td>
+            <td>шаг 5: 5.1–5.14</td>
+            <td>Таблица «работает / не работает / не проверено»</td>
+          </tr>
+          <tr>
+            <td><code>price-qty-sum.md</code></td>
+            <td>п.1–5 (кол-во, dblclick, цены, итог выделения)</td>
+            <td>Все 5 — ок или заведены баги</td>
+          </tr>
+          <tr>
+            <td><code>admin-columns-matrix.md</code></td>
+            <td>UI п.1–6</td>
+            <td>☐ отмечены или список дефектов</td>
+          </tr>
+          <tr>
+            <td><code>contract-filter-by-customer.md</code></td>
+            <td>п.1–11</td>
+            <td>То же</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><b>Выход пачки 0:</b> короткий отчёт (md/html/лог) + список багов с приоритетом → вход в пачку 1.</p>
+    </div>
+  </section>
+
+  <section id="pack1">
+    <h2>4. Пачка 1 — hotfix приёмки</h2>
+    <div class="step">
+      <h3>Правила</h3>
+      <ul>
+        <li>Править только подтверждённые дефекты пачки 0.</li>
+        <li>Один логический баг — один коммит (или явная группа в сообщении).</li>
+        <li>После фикса — точечная регрессия затронутого чеклиста.</li>
+        <li>Новый <code>.cfe</code> + <code>diff</code> при изменении расширения (нумерация принята: <b>v2.10</b>).</li>
+      </ul>
+      <p>Если пачка 0 без багов — пачка 1 пропускается.</p>
+    </div>
+  </section>
+
+  <section id="pack2">
+    <h2>5. Пачка 2 — номер отгрузки <span class="badge b-p0">блокер матрицы</span> · внедрено в v2.10</h2>
+    <div class="step">
+      <h3>Цель</h3>
+      <p>Колонка «Номер отгрузки» (В2) — только чтение у всех ролей; значение появляется <b>системно</b>, без ручного ввода в АРМ.</p>
+      <h3>Работы</h3>
+      <ol>
+        <li>Зафиксировать источник номера (рекомендация задачи: номер расходной накладной при записи/проведении).</li>
+        <li>Запись в <code>НомерОтгрузки</code> регистра по строкам заказа.</li>
+        <li>UI: убрать/заблокировать ручной ввод номера (кнопка «Заполнить дату и номер…» — только дата или действие «сформировать отгрузку»).</li>
+        <li>Приёмка по чеклисту <code>shipment-number-system-fill.md</code> (перенести описание в эту ветку при старте работ).</li>
+      </ol>
+      <h3>Принято (владелец)</h3>
+      <ul>
+        <li>Источник номера: <code>РасходнаяНакладная.Номер</code> (пишется при проведении РН в фоне).</li>
+        <li>Дата отгрузки остаётся ручной.</li>
+        <li>Приёмка по чеклисту <code>shipment-number-system-fill.md</code> — вручную на ИБ.</li>
+      </ul>
+      <p><span class="badge b-out">вне scope</span> Править контракт lab <code>process-api</code> / PWA — отдельная работа разрабов lab, не эта пачка.</p>
+    </div>
+  </section>
+
+  <section id="pack3">
+    <h2>6. Пачки 3–5 — остальной backlog</h2>
+
+    <div class="step">
+      <h3>Пачка 3 · Статусы из формы <span class="badge b-p1">P1</span> · MVP внедрён в v2.10</h3>
+      <ul>
+        <li>Резервирование / Ожидаем поступление / Возврат — кнопки для администратора (отмеченные строки продаж или текущая); кнопки создаются программно в группе статусов.</li>
+        <li>Матрица роль×статус не вводилась (отложено).</li>
+        <li>Не копировать слепо API <code>/lines/transition</code> из lab — канон = матрица + process.html + ок владельца.</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <h3>Пачка 4 · Точечные недоработки <span class="badge b-p1">P1</span></h3>
+      <table>
+        <thead><tr><th>Тема</th><th>Действие</th><th>Сначала</th></tr></thead>
+        <tbody>
+          <tr><td>Очистка договора при смене заказчика</td><td>Автоочистка — <b>сделано в v2.10</b></td><td>приёмка UI</td></tr>
+          <tr><td>Unlock по А3</td><td>Минимум в коде (сброс автора строки); правило — <code>unlock-a3-doc-signed.md</code></td><td>приёмка UI</td></tr>
+          <tr><td>Ед. изм. шт/л</td><td>Постановка — <code>units-of-measure.md</code>; кода нет</td><td>объём и решение по хранению</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="step">
+      <h3>Пачка 5 · Крупные темы <span class="badge b-p2">P2</span> — дробить</h3>
+      <ul>
+        <li><b>Заглушки данных:</b> УПД, кол-во в резерве, в пути, № шасси — поля + откуда брать.</li>
+        <li><b>Права не-админов:</b> editable по роли×статусу (сейчас whitelist админа).</li>
+        <li><b>Seed:</b> процессный шаг 3; учётные записи для входа под ролями (не путать с lab <code>arm.*</code>).</li>
+      </ul>
+      <p><b>Отложено.</b> Список — <code>open-tasks-pack5-deferred.md</code>. Каждая тема — отдельный мини-план.</p>
+    </div>
+  </section>
+
+  <section id="decide">
+    <h2>7. Принятые решения</h2>
+    <div class="ask">
+      <h3>Значения по умолчанию (одобрено владельцем)</h3>
+      <ul>
+        <li>CFE: <code>v2.10</code> (не конфликтует с lab v2.9).</li>
+        <li>Номер отгрузки из <code>РасходнаяНакладная.Номер</code>; дата ручная.</li>
+        <li>Порядок: пачка 2 → 3 → 4; пачка 5 отложена.</li>
+        <li>Пачка 0 (приёмка UI) — вручную на тестовой ИБ с v2.10.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="stop">
+    <div class="stop">
+      <h3>8. Ограничения</h3>
+      <ul>
+        <li>LoadCfg на боевую — только по отдельному ок</li>
+        <li>Merge <code>fix/open-tasks</code> → <code>dev</code> / <code>master</code> / <code>basdev</code> не выполняется</li>
+        <li><code>process-api</code> не трогаем и не тянем в эту ветку</li>
+        <li>Канон матрицы не меняем без отдельного решения</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Критерий «ветка закрыта»</h2>
+    <ul>
+      <li>Пачка 0: все 4 чеклиста пройдены, открытых блокеров приёмки нет (или приняты как wontfix).</li>
+      <li>Пачки 1–2: сделаны и приняты (или пачка 1 пуста).</li>
+      <li>Пачки 3–5: либо сделаны по ок, либо явно вынесены в новые задачи/ветки с датой.</li>
+      <li>Реестр <a class="file" href="open-tasks.html">open-tasks.html</a> обновлён: закрытое помечено.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  Ветка <code>fix/open-tasks</code> @ origin.
+  Связано: <a href="fix-open-tasks.md">fix-open-tasks.md</a>,
+  <a href="open-tasks.html">open-tasks.html</a>,
+  <a href="close-open-tasks-plan.html">close-open-tasks-plan.html</a>.
+  План · 05.10.2026 · pack 2/3/4a/4b в v2.10; pack 0 вручную; pack 5 отложен.
+</footer>
+
+</body>
+</html>

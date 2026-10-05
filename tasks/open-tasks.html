@@ -182,8 +182,9 @@
     <p>Сводка по файлам <code>tasks/</code> и задачам на других ветках. Без внедрений — реестр для планирования.</p>
     <div class="meta">
       <span class="chip">Репо goshva/vitauto1c</span>
-      <span class="chip">Текущая ветка просмотра: dev</span>
+      <span class="chip">Ветка: fix/open-tasks (CFE v2.10)</span>
       <span class="chip">Дата: 05.10.2026</span>
+      <span class="chip">process-api: вне scope</span>
       <span class="chip">Связанный аудит: process-api-audit.html</span>
     </div>
   </div>
@@ -192,8 +193,8 @@
 <main>
 
   <div class="summary">
-    <div class="stat open"><div class="n">10</div><div class="l">не сделано<br>(код / продукт)</div></div>
-    <div class="stat accept"><div class="n">4</div><div class="l">код есть,<br>приёмка висит</div></div>
+    <div class="stat open"><div class="n">6</div><div class="l">не сделано<br>(код / продукт)</div></div>
+    <div class="stat accept"><div class="n">8</div><div class="l">код есть,<br>приёмка висит</div></div>
     <div class="stat part"><div class="n">4</div><div class="l">частично /<br>на согласовании</div></div>
     <div class="stat done"><div class="n">3</div><div class="l">по сути закрыто<br>(для ориентира)</div></div>
   </div>
@@ -212,6 +213,7 @@
 
   <section id="open">
     <h2>1. Не сделано <span class="badge badge-open">код / продукт</span></h2>
+    <p><b>Статус v2.10 (ветка <code>fix/open-tasks</code>):</b> пункты 1, 5, 6, 10 внедрены в коде <code>src/АРМЗакупокИПродаж_v2.10/</code> и ждут ручной приёмки (pack 0). Пункт 9 — заведена постановка без кода. Пункты 3, 4, 7, 8 отложены (pack 5, <code>open-tasks-pack5-deferred.md</code>). <code>process-api</code> по-прежнему вне scope.</p>
     <table>
       <thead>
         <tr>
@@ -226,7 +228,7 @@
           <td>1</td>
           <td><b>Номер отгрузки — системное заполнение</b></td>
           <td>ветка <code>task/shipment-number-system-fill</code><br><code>tasks/shipment-number-system-fill.md</code></td>
-          <td>Все критерии приёмки <code>[ ]</code>. Ручной ввод ещё жив. На <code>process-api</code> API наоборот требует ручной <code>shipmentNumber</code> — конфликт с каноном матрицы (RO).</td>
+          <td><span class="badge badge-accept">v2.10: код готов</span> Источник = <code>РасходнаяНакладная.Номер</code>, ручной ввод отключён, дата остаётся ручной. Критерии приёмки <code>[ ]</code> — проверка на ИБ. API <code>process-api</code> (ручной <code>shipmentNumber</code>) не трогаем.</td>
         </tr>
         <tr>
           <td>2</td>
@@ -238,49 +240,49 @@
           <td>3</td>
           <td><b>Права ролей × статусов</b> (не только админ)</td>
           <td><code>admin-columns-matrix.md</code>, <code>seed-local-db.md</code></td>
-          <td>Явно вынесено в «отдельные задачи». В коде whitelist в основном для администратора.</td>
+          <td><span class="badge badge-none">отложено (pack 5)</span> Явно вынесено в «отдельные задачи». В коде whitelist в основном для администратора. В v2.10 матрица роль×статус не вводилась.</td>
         </tr>
         <tr>
           <td>4</td>
           <td><b>Заглушки матрицы с данными</b></td>
           <td><code>admin-columns-matrix.md</code></td>
-          <td>№ шасси, кол-во в резерве / в пути, дата и № УПД — «в следующей задаче», в регистре не хранятся.</td>
+          <td><span class="badge badge-none">отложено (pack 5)</span> № шасси, кол-во в резерве / в пути, дата и № УПД — «в следующей задаче», в регистре не хранятся.</td>
         </tr>
         <tr>
           <td>5</td>
           <td><b>Очистка договора при смене заказчика</b></td>
           <td><code>contract-filter-by-customer.md</code></td>
-          <td>Вопрос постановщику: очищать автоматически или предупреждать. Предложено отдельной задачей.</td>
+          <td><span class="badge badge-accept">v2.10: код готов</span> При смене заказчика (админ, <code>ЗаписатьПолеСтрокиАРМ</code>) договор другого владельца очищается автоматически. Нужна приёмка UI.</td>
         </tr>
         <tr>
           <td>6</td>
           <td><b>Переходы в новые статусы из формы</b></td>
           <td><code>matrix-statuses-codes-formulas.md</code></td>
-          <td>Резервирование / Ожидаем поступление / Возврат ставит только seed; из формы нельзя. На <code>process-api</code> частично закрыто API <code>transition</code>, в тонком клиенте — нет.</td>
+          <td><span class="badge badge-accept">v2.10: код готов (MVP)</span> Кнопки «Статус: резервирование / ожидаем поступление / возврат» для администратора (добавляются программно в группу статусов). Матрица роль×статус не делалась. Нужна приёмка UI.</td>
         </tr>
         <tr>
           <td>7</td>
           <td><b>Процессный seed</b> (шаг 3)</td>
           <td><code>seed-local-db.md</code></td>
-          <td>Статусы выставлены принудительно. ЗП / ПН / РН реальными операциями АРМ не создаются.</td>
+          <td><span class="badge badge-none">отложено (pack 5)</span> Статусы выставлены принудительно. ЗП / ПН / РН реальными операциями АРМ не создаются.</td>
         </tr>
         <tr>
           <td>8</td>
           <td><b>Учётные записи seed для входа</b></td>
           <td><code>seed-local-db.md</code></td>
-          <td>Есть элементы «… (seed)» с ролью АРМ, без логинов 1С. На <code>process-api</code> появились <code>arm.*</code> — только на той ветке.</td>
+          <td><span class="badge badge-none">отложено (pack 5)</span> Есть элементы «… (seed)» с ролью АРМ, без логинов 1С.</td>
         </tr>
         <tr>
           <td>9</td>
           <td><b>Ед. изм. (шт/л, dropdown)</b></td>
-          <td>вне scope <code>price-qty-sum.md</code>; файла задачи нет</td>
-          <td>Из диалога 02.10.2026. Отдельной постановки в <code>tasks/</code> нет.</td>
+          <td><code>tasks/units-of-measure.md</code></td>
+          <td>Заведена постановка (stub), кода нет.</td>
         </tr>
         <tr>
           <td>10</td>
           <td><b>Бинарная логика А3 → unlock строки</b></td>
-          <td>файла задачи нет; анализ в сессии</td>
-          <td>В форме unlock по «Документ подписан оригинал» не wired. В API v2.9 — только gate на <code>closed</code> из <code>shipped</code>.</td>
+          <td><code>tasks/unlock-a3-doc-signed.md</code></td>
+          <td><span class="badge badge-accept">v2.10: минимум в коде</span> При <code>ДокументПодписанОригинал = Истина</code> (админ) у строки очищаются <code>АвторСтроки</code> и отметка. Полное правило — в постановке.</td>
         </tr>
       </tbody>
     </table>
@@ -381,10 +383,10 @@
     <div class="prio">
       <h3>Приоритет</h3>
       <ol>
-        <li><b>Блокеры продукта:</b> номер отгрузки (system-fill) ↔ конфликт с API <code>shipments</code>.</li>
-        <li><b>Согласование:</b> merge <code>process-api</code> / единый OpenAPI (см. <a class="file" href="process-api-audit.html">аудит</a>).</li>
-        <li><b>Приёмка UI:</b> check-from-install шаг 5, price-qty-sum, admin-columns, contract-filter.</li>
-        <li><b>Продуктовые дыры:</b> УПД / резерв / в пути; права не-админов; ед. изм.; unlock А3; процессный seed.</li>
+        <li><b>Приёмка UI (pack 0, вручную):</b> CFE v2.10 на ИБ — check-from-install шаг 5, номер отгрузки из РН, кнопки статусов, очистка договора, unlock А3, price-qty-sum, admin-columns, contract-filter.</li>
+        <li><b>Отложено (pack 5):</b> УПД / резерв qty / права ролей / seed шаг 3 — <code>open-tasks-pack5-deferred.md</code>.</li>
+        <li><b>Постановки без кода:</b> ед. изм. (шт/л), полное правило unlock А3.</li>
+        <li><b>Вне scope:</b> <code>process-api</code> (аудит <a class="file" href="process-api-audit.html">process-api-audit.html</a> — справочно).</li>
       </ol>
     </div>
   </section>
@@ -405,6 +407,11 @@
         <tr><td><code>tasks/seed-local-db.md</code></td><td>шаг 1 <span class="badge badge-done">ок</span>; шаги 3+ <span class="badge badge-open">открыто</span></td></tr>
         <tr><td><code>tasks/process-api-audit.html</code></td><td><span class="badge badge-part">согласование</span> (локально)</td></tr>
         <tr><td><code>tasks/open-tasks.html</code></td><td>этот реестр</td></tr>
+        <tr><td><code>tasks/shipment-number-system-fill.md</code></td><td><span class="badge badge-accept">v2.10 код; приёмка</span></td></tr>
+        <tr><td><code>tasks/unlock-a3-doc-signed.md</code></td><td><span class="badge badge-part">минимум в коде</span></td></tr>
+        <tr><td><code>tasks/units-of-measure.md</code></td><td><span class="badge badge-open">постановка</span></td></tr>
+        <tr><td><code>tasks/open-tasks-pack5-deferred.md</code></td><td><span class="badge badge-none">отложено</span></td></tr>
+        <tr><td><code>tasks/fix-open-tasks.md</code>, <code>tasks/fix-open-tasks-workplan.html</code></td><td>назначение ветки / план</td></tr>
       </tbody>
     </table>
     <h3>Только на других ветках</h3>
@@ -414,23 +421,17 @@
       </thead>
       <tbody>
         <tr><td><code>tasks/arm-pwa-api.md</code></td><td><code>api</code></td><td><span class="badge badge-open">не закрыта</span></td></tr>
-        <tr><td><code>tasks/shipment-number-system-fill.md</code></td><td><code>task/shipment-number-system-fill</code></td><td><span class="badge badge-open">не сделано</span></td></tr>
         <tr><td><code>tasks/arm-api-process-coverage.md</code></td><td><code>process-api</code></td><td><span class="badge badge-part">частично</span></td></tr>
         <tr><td><code>tasks/arm-api-processes-manual-check.md</code></td><td><code>process-api</code></td><td><span class="badge badge-part">приёмка PWA</span></td></tr>
       </tbody>
     </table>
-    <h3>Без файла задачи (из диалогов / анализа)</h3>
-    <ul>
-      <li>Ед. изм. (шт/л) — §1 п.9</li>
-      <li>Бинарная логика А3 unlock — §1 п.10</li>
-    </ul>
   </section>
 
 </main>
 
 <footer>
   Источники: tasks/* на dev; origin/api, origin/task/shipment-number-system-fill, origin/process-api.
-  Реестр подготовлен 05.10.2026. Внедрений не выполнялось.
+  Реестр обновлён 05.10.2026: pack 2/3/4a/4b внедрены в v2.10 на ветке fix/open-tasks; pack 0 (приёмка) — вручную; pack 5 отложен; process-api вне scope.
   Связано: <a href="process-api-audit.html">process-api-audit.html</a>.
 </footer>
 
