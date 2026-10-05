@@ -1,0 +1,1223 @@
+{
+ "source": "column-matrix (2).json",
+ "canon": [
+  "manager",
+  "order"
+ ],
+ "role_bits": {
+  "manager": 1,
+  "storekeeper": 2,
+  "chief_mechanic": 4,
+  "admin": 8,
+  "supplier": 16,
+  "client": 32
+ },
+ "status_map": [
+  [
+   "new",
+   [
+    "Черновик"
+   ]
+  ],
+  [
+   "in_work",
+   [
+    "ВРаботе"
+   ]
+  ],
+  [
+   "partially_ordered",
+   [
+    "ЧастичноЗаказано"
+   ]
+  ],
+  [
+   "ordered",
+   [
+    "Заказано"
+   ]
+  ],
+  [
+   "paid",
+   [
+    "Оплачено"
+   ]
+  ],
+  [
+   "in_transit",
+   [
+    "ТоварВПути"
+   ]
+  ],
+  [
+   "awaiting_receipt",
+   [
+    "ОжидаемПоступление"
+   ]
+  ],
+  [
+   "acceptance",
+   [
+    "Приходуется"
+   ]
+  ],
+  [
+   "to_stock",
+   [
+    "НаСкладе"
+   ]
+  ],
+  [
+   "reserve",
+   [
+    "Резервирование"
+   ]
+  ],
+  [
+   "assembly",
+   [
+    "Комплектуется"
+   ]
+  ],
+  [
+   "ready_to_ship",
+   [
+    "Подготовлено",
+    "Собран"
+   ]
+  ],
+  [
+   "shipped",
+   [
+    "Отгружено"
+   ]
+  ],
+  [
+   "return",
+   [
+    "Возврат"
+   ]
+  ],
+  [
+   "closed",
+   [
+    "Выполнено",
+    "Завершено"
+   ]
+  ]
+ ],
+ "field_map": [
+  [
+   "cell_select",
+   "ОтметкаСтроки"
+  ],
+  [
+   "row_number",
+   "Порядок"
+  ],
+  [
+   "doc_signed_original",
+   "ДокументПодписанОригинал"
+  ],
+  [
+   "shipment_date",
+   "ДатаОтгрузки"
+  ],
+  [
+   "shipment_number",
+   "НомерОтгрузки"
+  ],
+  [
+   "order_date",
+   "ДатаЗаказа"
+  ],
+  [
+   "order_internal_number",
+   "НомерЗаказа"
+  ],
+  [
+   "order_client_number",
+   "НомерЗаказаКлиента"
+  ],
+  [
+   "customer",
+   "Покупатель"
+  ],
+  [
+   "contract",
+   "Договор"
+  ],
+  [
+   "service_type",
+   "ВидУслуги"
+  ],
+  [
+   "brand_fact",
+   "Марка"
+  ],
+  [
+   "model_fact",
+   "Модель"
+  ],
+  [
+   "aggregate_fact",
+   "Агрегат"
+  ],
+  [
+   "gosnomer_fact",
+   "Госномер"
+  ],
+  [
+   "grz_fact",
+   "НомерШасси"
+  ],
+  [
+   "vin_fact",
+   "VIN"
+  ],
+  [
+   "engine_fact",
+   "Двигатель"
+  ],
+  [
+   "urgency_fact",
+   "СрочностьКлиента"
+  ],
+  [
+   "vehicle_plate_fact",
+   "ГРЗКлиента"
+  ],
+  [
+   "territory_fact",
+   "ТерриторияКлиента"
+  ],
+  [
+   "name_fact",
+   "НоменклатураКлиента"
+  ],
+  [
+   "article_fact",
+   "АртикулКлиента"
+  ],
+  [
+   "qty_fact",
+   "КоличествоКлиента"
+  ],
+  [
+   "unit_fact",
+   "ЕдиницаИзмеренияКлиента"
+  ],
+  [
+   "name",
+   "Номенклатура"
+  ],
+  [
+   "article",
+   "НоменклатураАртикул"
+  ],
+  [
+   "code_aa",
+   "НоменклатураАС_КодАвтоАльянс"
+  ],
+  [
+   "unit",
+   "НоменклатураЕдиницаИзмерения"
+  ],
+  [
+   "qty",
+   "Количество"
+  ],
+  [
+   "stock_qty",
+   "ОстатокДляСтроки"
+  ],
+  [
+   "reserve_qty",
+   "КоличествоВРезерве"
+  ],
+  [
+   "ordered_in_transit_qty",
+   "КоличествоВПути"
+  ],
+  [
+   "batch_fifo",
+   "Партия"
+  ],
+  [
+   "line_status",
+   "СтатусСтроки"
+  ],
+  [
+   "price",
+   "СебестоимостьЕдиницы"
+  ],
+  [
+   "sum",
+   "Себестоимость"
+  ],
+  [
+   "payment_form",
+   "ФормаОплаты"
+  ],
+  [
+   "rrc",
+   "РРЦ"
+  ],
+  [
+   "paid_status",
+   "Оплачено"
+  ],
+  [
+   "qty_norm_hours_client",
+   "КоличествоНормаЧас"
+  ],
+  [
+   "coefficient",
+   "Коэффициент"
+  ],
+  [
+   "extra_field_1",
+   "Цена"
+  ],
+  [
+   "extra_field_2",
+   "Сумма"
+  ],
+  [
+   "supplier",
+   "Поставщик"
+  ],
+  [
+   "receipt_date",
+   "ДатаПоступления"
+  ],
+  [
+   "upd_date",
+   "ДатаУПД"
+  ],
+  [
+   "upd_number",
+   "НомерУПД"
+  ],
+  [
+   "supplier_ship_territory",
+   "ТерриторияОтгрузкиПоставщиком"
+  ],
+  [
+   "comment",
+   "КомментарийКСтроке"
+  ]
+ ],
+ "masks": {
+  "new": {
+   "cell_select": 63,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 13,
+   "order_internal_number": 0,
+   "order_client_number": 15,
+   "customer": 15,
+   "contract": 15,
+   "service_type": 15,
+   "brand_fact": 14,
+   "model_fact": 15,
+   "aggregate_fact": 15,
+   "gosnomer_fact": 15,
+   "grz_fact": 1,
+   "vin_fact": 15,
+   "engine_fact": 15,
+   "urgency_fact": 13,
+   "vehicle_plate_fact": 13,
+   "territory_fact": 13,
+   "name_fact": 13,
+   "article_fact": 13,
+   "qty_fact": 13,
+   "unit_fact": 13,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 7,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 13,
+   "sum": 0,
+   "payment_form": 15,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "in_work": {
+   "cell_select": 63,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 13,
+   "order_internal_number": 0,
+   "order_client_number": 15,
+   "customer": 15,
+   "contract": 15,
+   "service_type": 15,
+   "brand_fact": 14,
+   "model_fact": 15,
+   "aggregate_fact": 15,
+   "gosnomer_fact": 15,
+   "grz_fact": 1,
+   "vin_fact": 15,
+   "engine_fact": 15,
+   "urgency_fact": 13,
+   "vehicle_plate_fact": 13,
+   "territory_fact": 13,
+   "name_fact": 13,
+   "article_fact": 13,
+   "qty_fact": 13,
+   "unit_fact": 13,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 7,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 13,
+   "sum": 0,
+   "payment_form": 15,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "partially_ordered": {
+   "cell_select": 13,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 13,
+   "sum": 0,
+   "payment_form": 15,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "ordered": {
+   "cell_select": 13,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 13,
+   "sum": 0,
+   "payment_form": 15,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "paid": {
+   "cell_select": 29,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "in_transit": {
+   "cell_select": 29,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "awaiting_receipt": {
+   "cell_select": 13,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 13,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "acceptance": {
+   "cell_select": 10,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 2,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 11,
+   "sum": 0,
+   "payment_form": 10,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 3,
+   "receipt_date": 2,
+   "upd_date": 2,
+   "upd_number": 2,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "to_stock": {
+   "cell_select": 10,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 2,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 11,
+   "sum": 0,
+   "payment_form": 10,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 3,
+   "receipt_date": 2,
+   "upd_date": 2,
+   "upd_number": 2,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "reserve": {
+   "cell_select": 15,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 15,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 0,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "assembly": {
+   "cell_select": 10,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 2,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 13,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 0,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "ready_to_ship": {
+   "cell_select": 10,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 15,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 15,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 13,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 15,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 0,
+   "paid_status": 15,
+   "coefficient": 13,
+   "extra_field_1": 13,
+   "extra_field_2": 0,
+   "supplier": 0,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "shipped": {
+   "cell_select": 10,
+   "row_number": 0,
+   "doc_signed_original": 15,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 0,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 0,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 0,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 0,
+   "paid_status": 15,
+   "coefficient": 0,
+   "extra_field_1": 0,
+   "extra_field_2": 0,
+   "supplier": 0,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "return": {
+   "cell_select": 15,
+   "row_number": 0,
+   "doc_signed_original": 15,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 0,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 0,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 0,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 0,
+   "paid_status": 15,
+   "coefficient": 0,
+   "extra_field_1": 0,
+   "extra_field_2": 0,
+   "supplier": 0,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  },
+  "closed": {
+   "cell_select": 15,
+   "row_number": 0,
+   "doc_signed_original": 0,
+   "shipment_date": 0,
+   "shipment_number": 0,
+   "order_date": 0,
+   "order_internal_number": 0,
+   "order_client_number": 0,
+   "customer": 0,
+   "contract": 0,
+   "service_type": 0,
+   "brand_fact": 0,
+   "model_fact": 0,
+   "aggregate_fact": 0,
+   "gosnomer_fact": 0,
+   "grz_fact": 0,
+   "vin_fact": 0,
+   "engine_fact": 0,
+   "urgency_fact": 0,
+   "vehicle_plate_fact": 0,
+   "territory_fact": 0,
+   "name_fact": 0,
+   "article_fact": 0,
+   "qty_fact": 0,
+   "unit_fact": 0,
+   "name": 0,
+   "article": 0,
+   "code_aa": 0,
+   "unit": 0,
+   "qty": 0,
+   "qty_norm_hours_client": 13,
+   "stock_qty": 0,
+   "reserve_qty": 0,
+   "ordered_in_transit_qty": 0,
+   "batch_fifo": 0,
+   "line_status": 1,
+   "price": 0,
+   "sum": 0,
+   "payment_form": 0,
+   "rrc": 0,
+   "paid_status": 15,
+   "coefficient": 0,
+   "extra_field_1": 0,
+   "extra_field_2": 0,
+   "supplier": 0,
+   "receipt_date": 0,
+   "upd_date": 0,
+   "upd_number": 0,
+   "supplier_ship_territory": 63,
+   "comment": 63
+  }
+ },
+ "ignored_creator": [
+  [
+   "partially_ordered",
+   "contract"
+  ],
+  [
+   "ordered",
+   "contract"
+  ],
+  [
+   "paid",
+   "contract"
+  ],
+  [
+   "in_transit",
+   "contract"
+  ],
+  [
+   "awaiting_receipt",
+   "contract"
+  ],
+  [
+   "acceptance",
+   "contract"
+  ],
+  [
+   "to_stock",
+   "contract"
+  ],
+  [
+   "reserve",
+   "contract"
+  ],
+  [
+   "assembly",
+   "contract"
+  ],
+  [
+   "ready_to_ship",
+   "contract"
+  ]
+ ],
+ "tab_divergences_vs_manager": {
+  "storekeeper": {
+   "cells": 55,
+   "examples": [
+    "new/grz_fact: manager=1 storekeeper=0",
+    "new/article: manager=0 storekeeper=15",
+    "new/code_aa: manager=0 storekeeper=15",
+    "new/unit: manager=0 storekeeper=15",
+    "new/qty: manager=7 storekeeper=0"
+   ]
+  },
+  "chief_mechanic": {
+   "cells": 55,
+   "examples": [
+    "new/grz_fact: manager=1 chief_mechanic=0",
+    "new/article: manager=0 chief_mechanic=15",
+    "new/code_aa: manager=0 chief_mechanic=15",
+    "new/unit: manager=0 chief_mechanic=15",
+    "new/qty: manager=7 chief_mechanic=0"
+   ]
+  },
+  "admin": {
+   "cells": 55,
+   "examples": [
+    "new/grz_fact: manager=1 admin=0",
+    "new/article: manager=0 admin=15",
+    "new/code_aa: manager=0 admin=15",
+    "new/unit: manager=0 admin=15",
+    "new/qty: manager=7 admin=0"
+   ]
+  },
+  "supplier": {
+   "cells": 55,
+   "examples": [
+    "new/grz_fact: manager=1 supplier=0",
+    "new/article: manager=0 supplier=15",
+    "new/code_aa: manager=0 supplier=15",
+    "new/unit: manager=0 supplier=15",
+    "new/qty: manager=7 supplier=0"
+   ]
+  },
+  "client": {
+   "cells": 55,
+   "examples": [
+    "new/grz_fact: manager=1 client=0",
+    "new/article: manager=0 client=15",
+    "new/code_aa: manager=0 client=15",
+    "new/unit: manager=0 client=15",
+    "new/qty: manager=7 client=0"
+   ]
+  }
+ },
+ "admin_fields": [
+  "VIN",
+  "Агрегат",
+  "АртикулКлиента",
+  "ВидУслуги",
+  "ГРЗКлиента",
+  "Госномер",
+  "ДатаЗаказа",
+  "ДатаОтгрузки",
+  "Двигатель",
+  "Договор",
+  "ДокументПодписанОригинал",
+  "ЕдиницаИзмеренияКлиента",
+  "Количество",
+  "КоличествоКлиента",
+  "КоличествоНормаЧас",
+  "КомментарийКСтроке",
+  "Коэффициент",
+  "Марка",
+  "Модель",
+  "Номенклатура",
+  "НоменклатураКлиента",
+  "НомерЗаказаКлиента",
+  "Оплачено",
+  "ОтметкаСтроки",
+  "Партия",
+  "Покупатель",
+  "Поставщик",
+  "РРЦ",
+  "СебестоимостьЕдиницы",
+  "СрочностьКлиента",
+  "ТерриторияКлиента",
+  "ТерриторияОтгрузкиПоставщиком",
+  "ФормаОплаты",
+  "Цена"
+ ]
+}
