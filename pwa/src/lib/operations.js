@@ -11,6 +11,8 @@ export const OPERATIONS = [
   { group: 'Строки', method: 'PATCH', path: '/lines/{lineId}', body: { field: 'КомментарийКСтроке', value: 'из консоли' } },
   { group: 'Строки', method: 'DELETE', path: '/lines/{lineId}', note: 'вычеркнуть строку' },
   { group: 'Строки', method: 'POST', path: '/lines/{lineId}/mark' },
+  { group: 'Строки', method: 'POST', path: '/lines/transition', body: { view: 'sales', to: 'reserve' },
+    note: 'переход процесса для отмеченных строк: reserve, assembly, ready_to_ship, shipped, acceptance, return, closed' },
   { group: 'Выделение', method: 'GET', path: '/selection', query: { view: 'sales' } },
   { group: 'Выделение', method: 'POST', path: '/selection', body: { view: 'sales', customerOrderId: '{customerOrderId}', marked: true } },
   { group: 'Продажи', method: 'POST', path: '/sales/jobs', body: { allowSplit: false } },

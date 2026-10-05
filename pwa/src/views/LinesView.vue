@@ -7,8 +7,9 @@ import { useLinesStore } from '../stores/lines';
 import { useToastStore } from '../stores/toast';
 import { api, post } from '../api';
 import { fieldInfo, valueOf, display, STATUS_TITLES } from '../lib/columns';
-import { load as loadPref, save as savePref } from '../storage';
+import { useColumnsStore, STAGES } from '../stores/columns';
 import RefPicker from '../components/RefPicker.vue';
+import ColumnChooser from '../components/ColumnChooser.vue';
 import AppModal from '../components/AppModal.vue';
 import JobDialog from '../components/JobDialog.vue';
 
@@ -18,33 +19,26 @@ const session = useSessionStore();
 const matrix = useMatrixStore();
 const lines = useLinesStore();
 const toast = useToastStore();
+const columnsPref = useColumnsStore();
 
 const view = computed(() => route.params.view);
 const userName = computed(() => session.user && session.user.userName);
 
-// ---------- колонки
-const COMPACT = ['НомерЗаказаКлиента', 'Покупатель', 'Договор', 'НоменклатураКлиента', 'Номенклатура', 'НоменклатураАртикул',
-  'Количество', 'ОстатокДляСтроки', 'Партия', 'СебестоимостьЕдиницы', 'Себестоимость', 'РРЦ', 'Коэффициент', 'Цена', 'Сумма',
-  'Поставщик', 'ДатаОтгрузки', 'НомерОтгрузки', 'ДатаПоступления', 'КомментарийКСтроке'];
-const shown = ref(loadPref('columns', null));
+// ---------- колонки (настройка — по роли и списку, см. stores/columns.js)
 const chooser = ref(false);
-const visibleColumns = computed(() => {
-  const skip = ['ОтметкаСтроки', 'СтатусСтроки'];
-  const cols = matrix.columns.filter(c => !skip.includes(c.field));
-  const set = shown.value || COMPACT;
-  return cols.filter(c => set.includes(c.field));
+const isEmpty = (line, c) => {
+  const v = valueOf(line, c.field);
+  return v === undefined || v === null || v === '' || v === 0 || v === false;
+};
+const visibleColumns = computed(() => columnsPref.visible(session.role, view.value, matrix.columns, lines.items, isEmpty));
+const columnsMode = computed(() => {
+  const p = columnsPref.pref(session.role, view.value);
+  if (p.mode === 'stage') {
+    const st = STAGES.find(s => s.id === p.stage);
+    return st ? `этап ${st.id}` : '';
+  }
+  return { compact: 'основные', all: 'все', mine: 'редактируемые', custom: 'свой набор' }[p.mode] + (p.hideEmpty ? ', без пустых' : '');
 });
-function toggleColumn(field) {
-  const set = new Set(shown.value || COMPACT);
-  set.has(field) ? set.delete(field) : set.add(field);
-  shown.value = [...set];
-  savePref('columns', shown.value);
-}
-function presetColumns(kind) {
-  shown.value = kind === 'all' ? matrix.columns.map(c => c.field) : kind === 'mine'
-    ? matrix.columns.filter(c => c.writable && c.rights.includes('+')).map(c => c.field) : null;
-  savePref('columns', shown.value);
-}
 
 // ---------- загрузка
 async function reload() {
@@ -219,20 +213,37 @@ async function createOrder() {
 const addFor = ref(null);
 function openAdd() {
   if (view.value === 'sales') addFor.value = { customerOrderId: currentOrder.value.id, title: `Строки в заказ ${currentOrder.value.number}` };
-  else addFor.value = { sourceLineId: current.value.id, title: 'Закупка к строке ' + (current.value.factName || current.value.id) };
+  else openAddPurchase();
+}
+// закупка к текущей строке (продажи или закупки): та же связка строк, что у исходной
+function openAddPurchase() {
+  addFor.value = { purchase: true, sourceLineId: current.value.id, title: 'Закупка к строке ' + (current.value.factName || current.value.id) };
 }
 async function addLines(items) {
   const a = addFor.value;
   addFor.value = null;
   if (!items || !items.length) return;
-  const body = view.value === 'sales'
-    ? { view: 'sales', customerOrderId: a.customerOrderId, nomenclatureIds: items.map(i => i.id) }
-    : { view: 'purchases', sourceLineId: a.sourceLineId, nomenclatureIds: items.map(i => i.id) };
-  await run(() => post('/lines', body), r => `Добавлено строк: ${r.length}`);
+  const body = a.purchase
+    ? { view: 'purchases', sourceLineId: a.sourceLineId, nomenclatureIds: items.map(i => i.id) }
+    : { view: 'sales', customerOrderId: a.customerOrderId, nomenclatureIds: items.map(i => i.id) };
+  await run(() => post('/lines', body), r => `Добавлено строк: ${r.length}${a.purchase ? ' (список «Закупки»)' : ''}`);
 }
 
+// переходы процессов (POST /lines/transition) — к отмеченным строкам списка, по ролям, как в Арм_API.ПереходыПроцессов
+const TRANSITIONS = [
+  { to: 'reserve', title: 'Зарезервировать', node: 'M3', roles: ['manager', 'admin'], views: ['sales'] },
+  { to: 'assembly', title: 'На комплектацию', node: 'M9 / M10 / G3', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'] },
+  { to: 'ready_to_ship', title: 'Собрано', node: 'K3', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'] },
+  { to: 'shipped', title: 'Самовывоз', node: 'N4', roles: ['manager', 'admin'], views: ['sales', 'purchases'] },
+  { to: 'acceptance', title: 'Принять по УПД', node: 'K1', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'] },
+  { to: 'return', title: 'Возврат', node: 'N3 / M16 / K6', roles: ['manager', 'storekeeper', 'admin'], views: ['sales', 'purchases'] },
+  { to: 'closed', title: 'Закрыть', node: 'M15 / K7 / G9', roles: ['manager', 'storekeeper', 'admin', 'chief_mechanic'], views: ['sales', 'purchases'] }
+];
+const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value)));
+const transition = t => run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`);
+
 // снабжение
-const SUPPLY = [['paid', 'Оплачено'], ['in_transit', 'В пути'], ['acceptance', 'Приёмка'], ['to_stock', 'На склад'], ['assembly', 'Комплектуется'], ['assembled', 'Собран']];
+const SUPPLY =[['paid', 'Оплачено'], ['in_transit', 'В пути'], ['acceptance', 'Приёмка'], ['to_stock', 'На склад'], ['assembly', 'Комплектуется'], ['assembled', 'Собран']];
 const partial = ref(null);
 async function supplyStatus(status, extra = {}) {
   busy.value = true;
@@ -275,7 +286,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         <button class="link" @click="lines.filters.customerOrderId = ''">×</button></label>
       <button class="primary" :disabled="lines.loading" @click="reload">{{ lines.loading ? 'Загрузка…' : 'Обновить' }}</button>
       <button class="link" @click="lines.resetFilters()">сбросить</button>
-      <button @click="chooser = true">Колонки ({{ visibleColumns.length }})</button>
+      <button @click="chooser = true" title="Какие поля показывать">Колонки ({{ visibleColumns.length }}<template v-if="columnsMode">: {{ columnsMode }}</template>)</button>
     </div>
 
     <div class="toolbar" v-if="view === 'sales'">
@@ -284,6 +295,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <button :disabled="busy" @click="prepared" title="POST /sales/prepared">Подготовлено</button>
       <button :disabled="busy" @click="openNewOrder" title="POST /sales/customer-orders">Новый заказ</button>
       <button :disabled="busy || !currentOrder" @click="openAdd" title="POST /lines">Добавить строки</button>
+      <button :disabled="busy || !current" @click="openAddPurchase" title="POST /lines view=purchases, sourceLineId — текущая строка">Закупка к строке</button>
       <button :disabled="busy || !currentOrder" @click="openShipment" title="POST /sales/shipments">Отгрузка</button>
       <button :disabled="busy || !currentOrder" @click="postOrder" title="POST /sales/customer-orders/{id}/post">Провести заказ</button>
       <button :disabled="busy || !currentOrder" class="danger" @click="deleteOrder" title="DELETE /sales/customer-orders/{id}">Удалить заказ</button>
@@ -291,10 +303,17 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <button :disabled="busy" @click="supplierOrder" title="POST /sales/supplier-orders">Заказать поставщику</button>
     </div>
     <div class="toolbar" v-else-if="view === 'purchases'">
+      <button :disabled="busy" @click="startJob()" title="POST /sales/jobs — по отмеченным закупкам создаётся заказ поставщику">В работе</button>
+      <label><input type="checkbox" v-model="allowSplit" /> разрешить сплит</label>
       <button :disabled="busy || !current" @click="openAdd" title="POST /lines view=purchases">Добавить закупку к строке</button>
       <button :disabled="busy || !current" class="danger" @click="strikeLine" title="DELETE /lines/{id}">Вычеркнуть</button>
     </div>
-    <div class="toolbar" v-else>
+    <div class="toolbar" v-if="view !== 'supply' && transitions.length">
+      <span class="muted">Отмеченные строки →</span>
+      <button v-for="t in transitions" :key="t.to" :disabled="busy" @click="transition(t)"
+              :title="`POST /lines/transition ${t.to} — узлы ${t.node}`">{{ t.title }}</button>
+    </div>
+    <div class="toolbar" v-if="view === 'supply'">
       <span class="muted">Отмеченные закупки →</span>
       <button v-for="[code, title] in SUPPLY" :key="code" :disabled="busy" @click="supplyStatus(code)" :title="'POST /supply/status ' + code">{{ title }}</button>
     </div>
@@ -370,7 +389,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
     <JobDialog v-if="job" :job="job" @close="jobClosed" @split="job = null; startJob(true)" />
 
     <AppModal v-if="shipment" title="Отгрузка по заказу" @close="shipment = null">
-      <p class="muted">Заказ {{ currentOrder && currentOrder.number }}: строки с партией в статусах «Новый»/«В работе».</p>
+      <p class="muted">Заказ {{ currentOrder && currentOrder.number }}: строки «Готово к отгрузке» и «Возврат», а также строки с партией в «Новый» / «В работе».</p>
       <label>Дата <input type="date" v-model="shipment.shipmentDate" /></label>
       <label>Номер <input v-model="shipment.shipmentNumber" /></label>
       <template #actions>
@@ -403,19 +422,6 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       </template>
     </AppModal>
 
-    <AppModal v-if="chooser" title="Колонки матрицы" @close="chooser = false">
-      <div class="row">
-        <button @click="presetColumns('compact')">Основные</button>
-        <button @click="presetColumns('mine')">Редактируемые ролью</button>
-        <button @click="presetColumns('all')">Все</button>
-      </div>
-      <div class="list">
-        <label v-for="c in matrix.columns" :key="c.id" class="item">
-          <input type="checkbox" :checked="(shown || COMPACT).includes(c.field)" @change="toggleColumn(c.field)" />
-          <span class="code" style="color: var(--accent)">{{ c.code }}</span> {{ c.title }}
-          <span class="muted">{{ c.field }}{{ c.writable ? '' : ' · чтение' }}</span>
-        </label>
-      </div>
-    </AppModal>
+    <ColumnChooser v-if="chooser" :role="session.role" :view="view" :columns="matrix.columns" @close="chooser = false" />
   </section>
 </template>

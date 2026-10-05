@@ -98,6 +98,79 @@ function catalogItem(catName, name, fill) {
 }
 function trySet(obj, prop, value) { try { obj[prop] = value; return true; } catch (e) { return false; } }
 
+// Тип, счета учёта и ставка НДС номенклатуры: их ставит форма УНФ, а без них приходные и расходные накладные
+// не проводятся («Журнал проводок: не заполнены оба счёта»). Через COM заполняем как у элемента из формы.
+// Меняет только пустые реквизиты; возвращает true, если что-то заполнено.
+var NOM_ACCOUNTS = { "СчетУчетаЗапасов": "Сырье и материалы", "СчетУчетаЗатрат": "Коммерческие расходы" };
+function accountByName(name) {
+    var charts = md.ChartsOfAccounts;
+    for (var i = 0; i < charts.Count(); i++) {
+        var ref = conn.ChartsOfAccounts[charts.Get(i).Name].FindByDescription(name, true);
+        if (!ref.IsEmpty()) return ref;
+    }
+    return null;
+}
+function isEmptyValue(v) { try { return v === undefined || v === null || v === "" || v.IsEmpty(); } catch (e) { return !v; } }
+function accountsDefaults(obj, map) {
+    var changed = false;
+    for (var f in map) {
+        var a = accountByName(map[f]);
+        if (a && isEmptyValue(obj[f]) && trySet(obj, f, a)) changed = true;
+    }
+    return changed;
+}
+// Значение реквизита по представлению: элемент справочника по наименованию или значение перечисления по синониму.
+function valueByPresentation(objMd, attr, presentation) {
+    var a = objMd.Attributes.Find(attr);
+    if (!a) return null;
+    var types = a.Type.Types();
+    for (var i = 0; i < types.Count(); i++) {
+        var m = md.FindByType(types.Get(i));
+        if (!m) continue;
+        var kind = m.FullName().split(".")[0];
+        if (kind == "Справочник" || kind == "Catalog") {
+            var ref = conn.Catalogs[m.Name].FindByDescription(presentation, true);
+            if (!ref.IsEmpty()) return ref;
+        } else if (kind == "Перечисление" || kind == "Enum") {
+            for (var j = 0; j < m.EnumValues.Count(); j++) {
+                var v = conn.Enums[m.Name][m.EnumValues.Get(j).Name];
+                if (str(v) == presentation) return v;
+            }
+        }
+    }
+    return null;
+}
+// Реквизиты номенклатуры, которые форма УНФ ставит при создании (как у элемента, введённого вручную)
+var NOM_FORM_DEFAULTS = {
+    "НаправлениеДеятельности": "Основное направление", "Склад": "Основной склад", "МетодОценки": "По средней",
+    "СпособПополнения": "Закупка", "ВидМаркировки": "Не маркируется", "ТипСрокаДействия": "Без ограничения срока",
+    "ВидСтавкиНДС": "Общая"
+};
+var nomTemplate = null;
+function nomenclatureDefaults(obj, n) {
+    var changed = false;
+    function setIfEmpty(prop, value) { if (value && isEmptyValue(obj[prop]) && trySet(obj, prop, value)) changed = true; }
+    var objMd = md.Catalogs.Номенклатура;
+    setIfEmpty("ТипНоменклатуры", enumValue("ТипыНоменклатуры", n.type || "Запас"));
+    // всё, что даёт Заполнить() у нового элемента
+    if (!nomTemplate) { nomTemplate = conn.Catalogs.Номенклатура.CreateItem(); try { nomTemplate.Fill(undefined); } catch (e) { } }
+    for (var i = 0; i < objMd.Attributes.Count(); i++) {
+        var a = objMd.Attributes.Get(i).Name;
+        if (a == "ТипНоменклатуры") continue;
+        if (!isEmptyValue(nomTemplate[a])) setIfEmpty(a, nomTemplate[a]);
+    }
+    if (accountsDefaults(obj, NOM_ACCOUNTS)) changed = true;
+    for (var f in NOM_FORM_DEFAULTS) setIfEmpty(f, valueByPresentation(objMd, f, NOM_FORM_DEFAULTS[f]));
+    setIfEmpty("ПризнакПредметаРасчета", valueByPresentation(objMd, "ПризнакПредметаРасчета", n.type == "Работа" || n.type == "Услуга" ? "Работа" : "Товар"));
+    setIfEmpty("НаименованиеПолное", n.name);
+    return changed;
+}
+// Счета расчётов контрагента — как у контрагентов, созданных в УНФ: без них накладные не проводятся.
+var COUNTERPARTY_ACCOUNTS = {
+    "СчетУчетаРасчетовСПокупателем": "Расчеты с покупателями", "СчетУчетаАвансовПокупателя": "Расчеты по авансам полученным",
+    "СчетУчетаРасчетовСПоставщиком": "Расчеты с поставщиками", "СчетУчетаАвансовПоставщику": "Расчеты по авансам выданным"
+};
+
 if (mode != "seed") { fail("неизвестный режим: " + mode); finish(2); }
 
 var data;
@@ -133,10 +206,19 @@ try {
     for (var i = 0; i < data.paymentForms.length; i++) paymentForms[data.paymentForms[i]] = catalogItem("Арм_ФормыОплаты", data.paymentForms[i]);
     ok("виды услуг: " + data.serviceTypes.length + ", формы оплаты: " + data.paymentForms.length);
 
-    var nContracts = 0;
+    var nContracts = 0, cpRepaired = 0;
     for (var i = 0; i < data.counterparties.length; i++) {
         var c = data.counterparties[i];
-        var k = catalogItem("Контрагенты", c.name);
+        var k = catalogItem("Контрагенты", c.name, function (obj) {
+            try { obj.Fill(undefined); } catch (e) { }
+            accountsDefaults(obj, COUNTERPARTY_ACCOUNTS);
+        });
+        // созданные прежними версиями seed — без счетов расчётов: дозаполнить
+        var kObj = k.GetObject();
+        if (accountsDefaults(kObj, COUNTERPARTY_ACCOUNTS)) {
+            try { kObj.Write(); } catch (e) { kObj.DataExchange.Load = true; kObj.Write(); }
+            cpRepaired++;
+        }
         counterparties[c.name] = k;
         for (var j = 0; j < c.contracts.length; j++) {
             var cname = c.contracts[j];
@@ -155,20 +237,29 @@ try {
             contracts[c.name + "|" + cname] = d; nContracts++;
         }
     }
-    ok("контрагенты: " + data.counterparties.length + ", договоры: " + nContracts);
+    ok("контрагенты: " + data.counterparties.length + ", договоры: " + nContracts + (cpRepaired ? ", дозаполнены счета расчётов: " + cpRepaired : ""));
 
+    var nomRepaired = 0;
     for (var i = 0; i < data.nomenclature.length; i++) {
         var n = data.nomenclature[i];
         nomenclature[n.name] = catalogItem("Номенклатура", n.name, function (obj) {
+            try { obj.Fill(undefined); } catch (e) { }
             trySet(obj, "Артикул", n.article);
             trySet(obj, "АС_КодАвтоАльянс", n.code);
             try {
                 var unit = conn.Catalogs["КлассификаторЕдиницИзмерения"].FindByDescription(n.unit, true);
                 if (!unit.IsEmpty()) trySet(obj, "ЕдиницаИзмерения", unit);
             } catch (e) { }
+            nomenclatureDefaults(obj, n);
         });
+        // созданные прежними версиями seed — без типа и счетов: дозаполнить
+        var cur = nomenclature[n.name].GetObject();
+        if (nomenclatureDefaults(cur, n)) {
+            try { cur.Write(); } catch (e) { cur.DataExchange.Load = true; cur.Write(); }
+            nomRepaired++;
+        }
     }
-    ok("номенклатура: " + data.nomenclature.length);
+    ok("номенклатура: " + data.nomenclature.length + (nomRepaired ? ", дозаполнены тип/счета/НДС: " + nomRepaired : ""));
 
     // ------------------------------------------------------------ 2. пользователи и роли интерфейса
     log("2. Пользователи и роли интерфейса");

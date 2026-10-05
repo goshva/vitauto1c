@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: АРМ — переходы процессов (дополнение к arm-pwa.openapi.yaml)
+  version: 2.9.0
+  description: |
+    Операции HTTP-сервиса 1С `Арм_API` (расширение АРМЗакупокИПродаж v2.9) сверх контракта `arm-pwa.openapi.yaml`.
+    Закрывают переходы статусов из `process.html`, для которых в АРМ нет команды формы.
+    Базовый путь и аутентификация — как в основном контракте (`/api/arm/v1`, `Authorization: Bearer <token>`).
+
+    Изменения поведения существующих операций в v2.9:
+    - `POST /lines` с `view=purchases` создаёт закупку с признаком ручной правки (как подбор в форме),
+      иначе пересчёт остатков после прихода пересоздаёт её строкой «Черновик»;
+    - `POST /sales/shipments` заполняет дату и номер отгрузки также у строк «Готово к отгрузке» (M12)
+      и «Возврат» (M19 — корректировка ведомости);
+    - `POST /sales/jobs`: заказ покупателя получает состояние «В работе» своего вида заказа
+      (в v2.8 ставилось состояние заказа поставщику и проведение падало).
+  license:
+    name: Proprietary
+servers:
+  - url: /api/arm/v1
+security:
+  - bearer: []
+paths:
+  /lines/transition:
+    post:
+      operationId: transitionLines
+      summary: Переход процесса для отмеченных строк
+      description: |
+        Переводит строки, отмеченные текущим пользователем в списке `view`, в статус `to`, если переход из их статуса
+        разрешён роли. Строки, для которых перехода нет, пропускаются (перечислены в `message`).
+        Для `view=purchases` связанная строка продажи (тот же ключ связи и исходный статус) переходит вместе с закупкой.
+        Отметка снимается. Закрыть отгруженную строку можно только с «Документ подписан оригинал».
+
+        | to | статус АРМ | из статусов | роли | узлы process.html |
+        |---|---|---|---|---|
+        | reserve | Резервирование | new, in_work | manager, admin | M3 |
+        | assembly | Комплектуется | reserve, to_stock, acceptance | manager, admin | M9 |
+        | assembly | Комплектуется | ready_to_ship | manager, admin, chief_mechanic | M10 (отклонение), G3 |
+        | assembly | Комплектуется | return | manager, admin | C3 (повторная комплектация) |
+        | ready_to_ship | Собран | assembly | storekeeper, manager, admin | K3 |
+        | shipped | Отгружено | paid, in_transit | manager, admin | N4 (самовывоз) |
+        | acceptance | Приходуется | shipped | storekeeper, admin | K1 после самовывоза |
+        | return | Возврат | shipped, ordered, paid, in_transit, to_stock, closed | manager, storekeeper, admin | N3, M16, K6 |
+        | closed | Выполнено | shipped, ready_to_ship, return | manager, storekeeper, admin | M15, K7 |
+        | closed | Выполнено | assembly | chief_mechanic, admin | G9 |
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [view, to]
+              properties:
+                view:
+                  type: string
+                  enum: [sales, purchases]
+                to:
+                  type: string
+                  enum: [reserve, assembly, ready_to_ship, shipped, acceptance, return, closed]
+      responses:
+        '200':
+          description: Переход применён хотя бы к одной строке
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed: { type: integer, description: Строк выбранного вида, перешедших в статус }
+                  total: { type: integer, description: Отмеченных строк вида }
+                  message: { type: string, description: Узлы процесса или пропущенные строки }
+        '400':
+          description: Неверные view или to
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: Нет сессии
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Переход недоступен роли (`matrix_denied`) или роль supply
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: Нет отмеченных строк (`nothing_marked`) или ни одна не может перейти (`transition_denied`)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  schemas:
+    Problem:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [unauthorized, matrix_denied, nothing_marked, transition_denied, bad_request]
+        message: { type: string }
+        field: { type: string }
+        status: { type: string, description: Код цели перехода }

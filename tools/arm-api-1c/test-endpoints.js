@@ -24,16 +24,17 @@ function rec(op, kind, r, expect, note = '') {
 const check = (op, r, cond, what) => { if (!cond) console.log(`     ! ${op}: ${what}`); return cond; };
 
 function fixture(id, status) {
-  const fs = require('fs'), cp = require('child_process'), dir = __dirname;
-  fs.writeFileSync(dir + '/fx-status.u.js', Buffer.from('\ufeff' + fs.readFileSync(dir + '/fx-status.js', 'utf8'), 'utf16le'));
-  cp.execFileSync('C:/Windows/SysWOW64/cscript.exe', ['//nologo', '//E:JScript', dir + '/fx-status.u.js', dir + '/fx-status.txt', id, status]);
-  return fs.readFileSync(dir + '/fx-status.txt', 'utf16le').trim();
+  const fs = require('fs'), cp = require('child_process'), dir = __dirname, tmp = require('os').tmpdir();
+  fs.writeFileSync(tmp + '/fx-status.u.js', Buffer.from('\ufeff' + fs.readFileSync(dir + '/fx-status.js', 'utf8'), 'utf16le'));
+  cp.execFileSync('C:/Windows/SysWOW64/cscript.exe', ['//nologo', '//E:JScript', tmp + '/fx-status.u.js', tmp + '/fx-status.txt', id, status]);
+  return fs.readFileSync(tmp + '/fx-status.txt', 'utf16le').trim();
 }
 
 (async () => {
   // --- сессии
   const login = async l => call('POST', '/session', { body: { login: l, password: '1' } });
   let r = rec('POST /session', 'write', await login('arm.manager'), [200]);
+  const r0 = r;
   const M = r.json && r.json.token;
   check('POST /session', r, r.json && r.json.role === 'manager' && r.json.screen === 'sales', 'role/screen ' + JSON.stringify(r.json));
   const bad = await call('POST', '/session', { body: { login: 'arm.manager', password: 'нет' } });
@@ -65,7 +66,7 @@ function fixture(id, status) {
   r = rec('GET /lines', 'read', await call('GET', '/lines?view=sales&limit=100', { token: M }), [200]);
   const lines = (r.json && r.json.items) || [];
   console.log(`     строк продаж: ${lines.length}; статусы: ${[...new Set(lines.map(l => l.status))].join(', ')}`);
-  for (const l of lines) if (l.marked && l.markedBy === 'API arm.manager') await call('POST', `/lines/${l.id}/mark`, { token: M });
+  for (const l of lines) if (l.marked && l.markedBy === (r0.json && r0.json.userName)) await call('POST', `/lines/${l.id}/mark`, { token: M });
   const anyLine = lines[0];
   rec('GET /lines/{lineId}', 'read', await call('GET', '/lines/' + (anyLine && anyLine.id), { token: M }), [200]);
   const withOrder = lines.find(l => l.customerOrder);

@@ -133,11 +133,94 @@ describe('PWA против 1С', () => {
     w.unmount();
   });
 
+  it('колонки: этап процесса, скрытие поля, отдельно по спискам, сохранение', async ({ skip }) => {
+    if (!reachable) skip();
+    const { STAGES } = await import('../src/stores/columns');
+    await useSessionStore().login('arm.manager', '1');
+    const w = await mountAt('/lines/sales');
+    const lines = useLinesStore();
+    await until(() => lines.items.length > 0 && w.findAll('thead th').length > 2);
+    const heads = () => w.findAll('thead th').slice(2).map(th => th.text());
+    const compact = heads();
+    expect(compact.length).toBeGreaterThan(10);
+
+    // чекбокс открывает настройку
+    await w.findAll('button').find(b => b.text().startsWith('Колонки')).trigger('click');
+    await flushPromises();
+    const modal = () => w.find('.modal');
+    expect(modal().text()).toMatch(/Этап процесса/);
+
+    // этап M4 «Заказ поставщику»: только его колонки
+    const m4 = STAGES.find(s => s.id === 'M4');
+    await modal().find('select').setValue('M4');
+    await flushPromises();
+    const matrix = useMatrixStore();
+    const expected = matrix.columns.filter(c => m4.columns.includes(c.id) && !['cell_select', 'line_status'].includes(c.id))
+      .map(c => c.code + c.title);
+    expect(heads()).toEqual(expected);
+
+    // скрыть одну колонку галочкой
+    const victim = matrix.columns.find(c => c.id === 'supplier');
+    const box = modal().findAll('.list label').find(l => l.text().includes(victim.title));
+    await box.find('input').trigger('change');
+    await flushPromises();
+    expect(heads()).not.toContain(victim.code + victim.title);
+    expect(heads().length).toBe(expected.length - 1);
+
+    // «скрывать пустые» не увеличивает набор
+    const before = heads().length;
+    await modal().findAll('input[type=checkbox]')[0].setValue(true);
+    await flushPromises();
+    expect(heads().length).toBeLessThanOrEqual(before);
+    await modal().findAll('input[type=checkbox]')[0].setValue(false);
+
+    // настройка хранится по роли и списку
+    const saved = JSON.parse(localStorage.getItem('arm.columns.v2'));
+    expect(saved['manager.sales'].mode).toBe('custom');
+    expect(saved['manager.purchases']).toBeUndefined();
+    await w.findAll('.modal button').find(b => b.text() === 'Закрыть').trigger('click');
+
+    await router.push('/lines/purchases');
+    await until(() => router.currentRoute.value.params.view === 'purchases' && !lines.loading);
+    await until(() => heads().length > 0 || lines.items.length === 0);
+    // в закупках своя настройка — по умолчанию «основные», как было в продажах до изменений
+    expect(heads()).toEqual(compact);
+
+    await router.push('/lines/sales');
+    await until(() => router.currentRoute.value.params.view === 'sales' && !lines.loading);
+    expect(heads()).toEqual(expected.filter(h => h !== victim.code + victim.title));
+    w.unmount();
+  });
+
+  it('переходы процессов: кнопки по роли, без отметок — 409 nothing_marked', async ({ skip }) => {
+    if (!reachable) skip();
+    const { useToastStore } = await import('../src/stores/toast');
+    const names = w => w.findAll('.toolbar').find(t => t.text().startsWith('Отмеченные строки')).findAll('button').map(b => b.text());
+
+    await useSessionStore().login('arm.storekeeper', '1');
+    let w = await mountAt('/lines/sales');
+    await until(() => w.findAll('button').some(b => b.text() === 'Собрано'));
+    expect(names(w)).toEqual(['Собрано', 'Принять по УПД', 'Возврат', 'Закрыть']);
+    w.unmount();
+
+    await useSessionStore().login('arm.manager', '1');
+    w = await mountAt('/lines/sales');
+    await until(() => w.findAll('button').some(b => b.text() === 'Зарезервировать'));
+    expect(names(w)).toEqual(['Зарезервировать', 'На комплектацию', 'Собрано', 'Самовывоз', 'Возврат', 'Закрыть']);
+    // свои отметки снять, затем «Зарезервировать» без отмеченных строк
+    const lines = useLinesStore();
+    for (const l of [...lines.items]) if (l.marked && l.markedBy === useSessionStore().user.userName) await lines.toggleMark(l);
+    await w.findAll('button').find(b => b.text() === 'Зарезервировать').trigger('click');
+    await until(() => useToastStore().items.some(t => /nothing_marked/.test(t.text)));
+    expect(useLogStore().entries.some(e => e.method === 'POST' && e.url.endsWith('/lines/transition') && e.status === 409)).toBe(true);
+    w.unmount();
+  });
+
   it('консоль: smoke всех операций чтения', async ({ skip }) => {
     if (!reachable) skip();
     await useSessionStore().login('arm.manager', '1');
     const w = await mountAt('/console');
-    expect(w.findAll('.op')).toHaveLength(29);
+    expect(w.findAll('.op')).toHaveLength(30);
     await w.findAll('button').find(b => b.text() === 'Запустить').trigger('click');
     const text = await until(() => (w.text().match(/успешно (\d+) из (\d+)/) || null));
     await until(() => !w.findAll('.chip').some(c => c.text() === '…'), 60000);

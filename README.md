@@ -88,6 +88,21 @@
 
 [api/](api/README.md) — REST-сервис (OpenAPI, Swagger UI): заказы идут по сценариям `process.html` с проверкой прав ролей по матрице `index.html`; запись настроек прав, процессов и пользователей API. Node.js 20+, без зависимостей: `cd api; npm start` → `http://127.0.0.1:8787/docs`, `npm test`. С базой 1С пока не связан.
 
+## HTTP API АРМ в 1С (v2.9) и PWA
+
+Расширение `АРМЗакупокИПродаж_v2.9.cfe` публикует HTTP-сервис `Арм_API`: контракт `openapi/arm-pwa.openapi.yaml`
+(ветка `api`) плюс переходы процессов `POST /lines/transition` ([openapi/arm-pwa-process.openapi.yaml](openapi/arm-pwa-process.openapi.yaml)).
+Все 11 сценариев `process.html` проходят только запросами API — проверка
+[tasks/arm-api-process-coverage.md](tasks/arm-api-process-coverage.md), ручная проверка по шагам —
+[tasks/arm-api-processes-manual-check.md](tasks/arm-api-processes-manual-check.md).
+
+- [tools/arm-api-1c/](tools/arm-api-1c/README.md) — публикация на Apache, установка в рабочую базу (`deploy-prod.ps1`),
+  автотесты API: все операции (`test-endpoints.js`) и сквозные сценарии (`e2e-processes.js`).
+- [pwa/](pwa/README.md) — тестовое PWA (Vue 3, Pinia, Vue Router): строки АРМ по матрице роли, команды и переходы
+  процессов, настройка видимых полей, консоль API. `npm run api && npm run dev` → `http://127.0.0.1:5173`.
+
+Пользователи API (пароль `1`): `arm.manager`, `arm.storekeeper`, `arm.supply`, `arm.admin`, `arm.mechanic`.
+
 ## Исходники и сравнение версий расширения
 
 - [unpack-cfe.ps1](unpack-cfe.ps1) — распаковывает `.cfe` в `src\<имя файла>` через [v8unpack](https://github.com/saby-integration/v8unpack).
