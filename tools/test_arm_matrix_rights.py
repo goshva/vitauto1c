@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Тесты ACL «роль × статус × поле» (T-map + T01 + T02 wiring) для расширения АРМ v2.11.
+"""Тесты ACL «роль × статус × поле» (T-map + T01 + T02 wiring + хвосты H01–H05) для расширения АРМ v2.12.
 
 Запуск (из корня репо, без внешних зависимостей):
     python tools/test_arm_matrix_rights.py            # все тесты
@@ -31,6 +31,7 @@ import generate_arm_matrix_rights as G  # noqa: E402
 ROOT = G.ROOT
 EXT = G.EXT_DIR
 V210 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.10')
+V211 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.11')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -38,6 +39,7 @@ REG_RIGHTS = os.path.join(EXT, 'InformationRegister', 'Арм_ПраваПоль
 STATUS_ENUM_JSON = os.path.join(EXT, 'Enum', 'Арм_СтатусыАРМ', 'Enum.json')
 ROLE_ENUM_JSON = os.path.join(EXT, 'Enum', 'Арм_РолиИнтерфейса', 'Enum.json')
 STATUS_MAP_MD = os.path.join(ROOT, 'tasks', 'status-map-matrix-arm.md')
+OAN = os.path.join(EXT, 'CommonModule', 'Арм_ОбщегоНазначенияАРМ', 'CommonModule.obj.bsl')
 
 
 def read(path):
@@ -624,31 +626,25 @@ class TestWiring(unittest.TestCase):
         for name in ('ПересчитатьЦеныСтрокиАРМ', 'БазаЦеныПродажиАРМ'):
             self.assertEqual(procedure_text(self.form, name), procedure_text(self.v210, name), name)
 
-    def test_v211_vs_v210_only_expected_files_changed(self):
+    def test_v212_vs_v211_only_expected_files_changed(self):
         changed = []
         for dp, _dn, fn in os.walk(EXT):
             for f in fn:
                 p = os.path.join(dp, f)
                 rel = os.path.relpath(p, EXT)
-                q = os.path.join(V210, rel)
+                q = os.path.join(V211, rel)
                 if not os.path.isfile(q) or read_bytes(p) != read_bytes(q):
                     changed.append(rel.replace('\\', '/'))
         expected_prefix = ('CommonModule/' + G.MODULE_NAME + '/',)
         allowed = {
-            'ConfigurationExtension.json',
             'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl',
-            'DataProcessor/АС_АРМ2/Form/ФормаСнабжение/Form.obj.bsl',
-            'InformationRegister/Арм_ПраваПользователей/InformationRegister.mgr.bsl',
-            # T05/T07/T08: поля регистра и вспомогательные процедуры общего модуля АРМ
             'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
-            'InformationRegister/Арм_ДанныеЗакупокИПродаж/InformationRegister.json',
         }
-        # *.elem.json - шум повторной распаковки (v8unpack) формами, которые мы не правим; ловим только код/метаданные
         unexpected = [c for c in changed if c not in allowed and not c.startswith(expected_prefix)
                       and not c.endswith('.elem.json')]
-        self.assertEqual(unexpected, [], 'в v2.11 изменено больше, чем заявлено')
+        self.assertEqual(unexpected, [], 'в v2.12 изменено больше, чем заявлено: %s' % unexpected)
 
-    # -------------------------------------------------------------- T05..T09 (v2.11 pack 2)
+    # -------------------------------------------------------------- T05..T09 (v2.11 pack 2) + H01–H05 (v2.12)
     def test_stub_fields_are_register_resources(self):
         reg_path = os.path.join(EXT, 'InformationRegister', 'Арм_ДанныеЗакупокИПродаж', 'InformationRegister.json')
         data = json.loads(read(reg_path))
@@ -665,7 +661,7 @@ class TestWiring(unittest.TestCase):
         self.assertEqual(len(uuids), len(set(uuids)), 'дубли идентификаторов ресурсов')
 
     def test_acl_input_fields_consistent(self):
-        expected = ['НомерШасси', 'КоличествоВРезерве', 'КоличествоВПути', 'ДатаУПД', 'НомерУПД']
+        expected = ['НомерШасси', 'КоличествоВРезерве', 'КоличествоВПути', 'ДатаУПД', 'НомерУПД', 'ДатаПоступления']
         self.assertEqual(G.ACL_INPUT_FIELDS, expected)
         form_fn = ''.join(string_literals(function_body(self.form, 'ПоляВводаПоACL')))
         self.assertEqual(form_fn.split(','), expected)
@@ -683,10 +679,57 @@ class TestWiring(unittest.TestCase):
         self.assertNotIn('Заглушка', desc)
 
     def test_upd_from_pn_is_runtime_checked(self):
-        oan = read(os.path.join(EXT, 'CommonModule', 'Арм_ОбщегоНазначенияАРМ', 'CommonModule.obj.bsl'))
+        oan = read(OAN)
         fn = procedure_text(oan, 'ЗаполнитьУПДИзПриходнойЕслиЕсть')
         self.assertIn('Метаданные.Документы', fn)            # реквизит ищется в метаданных, не жёстко
         self.assertEqual(oan.count('ЗаполнитьУПДИзПриходнойЕслиЕсть(ЗаписьПН)'), 2)   # два места привязки ПН
+        # H04 / D13=A: one-shot, не затирает уже заполненные
+        self.assertIn('ЗначениеЗаполнено(ЗаписьРегистра.ДатаУПД)', fn)
+        self.assertIn('ЗначениеЗаполнено(ЗаписьРегистра.НомерУПД)', fn)
+        self.assertIn('D13=A', oan)  # политика зафиксирована в комментарии модуля
+
+    def test_h01_receipt_date_on_sales_acl_path(self):
+        """H01: ДатаПоступления (S2) — общий ACL-ввод на продажах, не mute."""
+        self.assertIn('ДатаПоступления', G.ACL_INPUT_FIELDS)
+        self.assertIn('|ДатаПоступления|', procedure_text(self.form, 'ОписаниеКолонокПоМатрице'))
+        body = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
+        self.assertIn('ПоляВводаПоACL()', body)
+
+    def test_h01_a1_personal_mark_d11a(self):
+        """H01 / D11=A: А1 — личная отметка автора, без матричного ACL."""
+        body = procedure_text(self.form, 'ИнвертироватьФлагНаСервере')
+        self.assertIn('АвторСтроки', body)
+        self.assertIn('D11=A', body)
+        self.assertNotIn('ОтказПоПравам', body)
+        self.assertNotIn('МожноРедактироватьПоле', body)
+
+    def test_h02_status_transition_whitelist(self):
+        """H02 / D12=A: whitelist from→to для трёх MVP-кнопок."""
+        fn = procedure_text(self.form, 'ДопустимПереходСтатусаМВП')
+        self.assertIn('Выполнено', fn)
+        self.assertIn('Завершено', fn)
+        self.assertIn('Резервирование', fn)
+        self.assertIn('ОжидаемПоступление', fn)
+        self.assertIn('Возврат', fn)
+        server = procedure_text(self.form, 'УстановитьСтатусСтрокАдминистраторомНаСервере')
+        self.assertIn('ДопустимПереходСтатусаМВП(', server)
+        self.assertLess(server.index('ДопустимПереходСтатусаМВП'), server.index('Набор.Записать()'))
+
+    def test_h03_supply_d10a_role_whitelist(self):
+        """H03 / D10=A: цепочка снабжения — ролевой whitelist, не матрица line_status."""
+        oan = read(OAN)
+        self.assertIn('D10=A', oan)
+        chain = procedure_text(oan, 'ИзменитьСтатусыВРегистреСнабжения')
+        self.assertIn('ОтказРолиСнабжения()', chain)
+        self.assertIn('ЦелевойСтатус', chain)
+        self.assertNotIn('МожноРедактироватьПоле', chain)
+
+    def test_h05_creator_still_deferred(self):
+        """H05 / D1c′=A: creator (128) отложен; в ACL-модуле нет маппинга на АвторСтроки."""
+        mod = read(os.path.join(EXT, 'CommonModule', G.MODULE_NAME, 'CommonModule.obj.bsl'))
+        head = mod.split('Функция МожноРедактироватьПоле')[0]
+        self.assertIn('D1c', head)
+        self.assertNotIn('АвторСтроки', procedure_text(mod, 'МожноРедактироватьПоле'))
 
     def test_a3_toggle_non_admin_path(self):
         """T06: А3 правится не-админом через ACL; Истина чистит автора и отметку без привязки к роли."""
