@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>История АРМЗакупокИПродаж: v1 → v2.11</title>
+<style>
+  :root {
+    --ink: #1a1f24;
+    --muted: #5c6570;
+    --line: #d8dde3;
+    --bg: #f3f5f7;
+    --card: #fff;
+    --ok: #1f6b3a;
+    --ok-bg: #e8f5ec;
+    --warn: #8a5a00;
+    --warn-bg: #fff3d6;
+    --info: #1a4a7a;
+    --info-bg: #e8f0f8;
+    --accent: #0d3b66;
+    --skip: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.55 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    background: linear-gradient(135deg, #1a2f3d 0%, #0d3b66 45%, #1a6a9a 100%);
+    color: #fff;
+    padding: 2rem 1.5rem 1.75rem;
+  }
+  header .wrap, main, footer { max-width: 960px; margin: 0 auto; }
+  header h1 { margin: 0 0 .45rem; font-size: 1.6rem; font-weight: 650; letter-spacing: -.02em; }
+  header p { margin: 0; opacity: .92; max-width: 46em; }
+  header .meta {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .75rem;
+    font-size: .82rem;
+  }
+  .chip {
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.28);
+    padding: .25rem .6rem;
+    border-radius: 4px;
+  }
+  main { padding: 1.25rem 1.5rem 3rem; }
+  nav.toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  nav.toc h2 {
+    margin: 0 0 .5rem;
+    font-size: .9rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  nav.toc ol { margin: 0; padding-left: 1.25rem; columns: 2; column-gap: 2rem; }
+  nav.toc li { break-inside: avoid; margin: .2rem 0; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  .intro {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.15rem 1.3rem;
+    margin-bottom: 1rem;
+  }
+  .ver {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.15rem 1.3rem;
+    margin-bottom: .85rem;
+  }
+  .ver h2 {
+    margin: 0 0 .55rem;
+    font-size: 1.15rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .5rem .75rem;
+  }
+  .ver h2 .fromto {
+    font-weight: 650;
+    letter-spacing: -.01em;
+  }
+  .ver .src {
+    font-size: .82rem;
+    color: var(--muted);
+    margin: 0 0 .65rem;
+  }
+  .ver ul { margin: .25rem 0 .4rem; padding-left: 1.25rem; }
+  .ver li { margin: .28rem 0; }
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 650;
+    padding: .15rem .45rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .b-prod { background: var(--ok-bg); color: var(--ok); }
+  .b-lab { background: var(--warn-bg); color: var(--warn); }
+  .b-doc { background: var(--info-bg); color: var(--info); }
+  .b-gap { background: #eee; color: var(--skip); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+    margin: .6rem 0 0;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: .4rem .5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef1f4; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: .86em;
+    background: #eef1f4;
+    padding: .05em .3em;
+    border-radius: 3px;
+  }
+  .note {
+    border-left: 3px solid var(--warn);
+    background: var(--warn-bg);
+    padding: .75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    margin: .75rem 0 0;
+    font-size: .92rem;
+  }
+  footer {
+    padding: 0 1.5rem 2.5rem;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  @media (max-width: 700px) {
+    nav.toc ol { columns: 1; }
+  }
+  @media print {
+    body { background: #fff; }
+    nav.toc { display: none; }
+    .ver { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>История расширения АРМЗакупокИПродаж</h1>
+    <p>Отдельный документ: что появилось в каждой версии от <code>АРМЗакупокИПродаж_v1.cfe</code> до <code>АРМЗакупокИПродаж_v2.11.cfe</code>. Язык — для согласования и онбординга, не замена diff.</p>
+    <div class="meta">
+      <span class="chip">Репо goshva/vitauto1c</span>
+      <span class="chip">Обработка АС_АРМ2</span>
+      <span class="chip">Дата: 06.10.2026</span>
+      <span class="chip">v2.9 = lab, не эта линия</span>
+      <span class="chip">tip продукта: v2.12 (хвосты H01–H05)</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="intro">
+    <p><b>Линия продукта</b> — файлы <code>АРМЗакупокИПродаж_vN.cfe</code> в корне репозитория и исходники <code>src/АРМЗакупокИПродаж_vN/</code>.</p>
+    <p><b>Не путать с v2.9:</b> номер «2.9» занят лабораторной веткой <code>process-api</code> (HTTP API / PWA). В продуктовую цепочку v1…v2.8 → <b>v2.10</b> → <b>v2.11</b> он не входит.</p>
+    <p>Где нет файла <code>diff/…md</code>, формулировки восстановлены из задач в <code>tasks/</code> — помечено бейджем «из задачи».</p>
+
+    <table>
+      <thead><tr><th>Файл .cfe</th><th>Кратко</th></tr></thead>
+      <tbody>
+        <tr><td><code>v1</code></td><td>Базовый АРМ до матричных колонок</td></tr>
+        <tr><td><code>v2.0</code></td><td>Колонки по матрице на экране (в т.ч. заглушки)</td></tr>
+        <tr><td><code>v2.1</code> / <code>v2.1.1</code></td><td>Админ правит поля матрицы; inline в 2.1.1</td></tr>
+        <tr><td><code>v2.2</code> / <code>v2.3</code></td><td>Договор только своего заказчика; 2.3 = склейка с админом</td></tr>
+        <tr><td><code>v2.4</code></td><td>Роли: кладовщик, механик, клиент, поставщик</td></tr>
+        <tr><td><code>v2.5</code></td><td>Новые статусы: резерв / ожидаем / возврат</td></tr>
+        <tr><td><code>v2.6</code> / <code>v2.7</code></td><td>Коды колонок, формулы цены; убрана «Есть дефицит» с экрана</td></tr>
+        <tr><td><code>v2.8</code></td><td>Суммы при смене количества</td></tr>
+        <tr><td><code>v2.10</code></td><td>Номер отгрузки из РН; статусы-кнопки; договор; А3</td></tr>
+        <tr><td><code>v2.11</code></td><td>Права по матрице (ACL); заглушки→поля; ед.изм.</td></tr>
+        <tr><td><code>v2.12</code></td><td>Хвосты: S2 ввод, А1 D11, whitelist статусов, D10 снабжение, УПД one-shot</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <nav class="toc">
+    <h2>По версиям</h2>
+    <ol>
+      <li><a href="#v20">v1 → v2.0</a></li>
+      <li><a href="#v21">v2.0 → v2.1</a></li>
+      <li><a href="#v211">v2.1 → v2.1.1</a></li>
+      <li><a href="#v22">v2.1 → v2.2</a></li>
+      <li><a href="#v23">v2.2 → v2.3</a></li>
+      <li><a href="#v24">v2.3 → v2.4</a></li>
+      <li><a href="#v25">v2.4 → v2.5</a></li>
+      <li><a href="#v26">v2.5 → v2.6</a></li>
+      <li><a href="#v27">v2.6 → v2.7</a></li>
+      <li><a href="#v28">v2.7 → v2.8</a></li>
+      <li><a href="#v29">про v2.9 (не продукт)</a></li>
+      <li><a href="#v210">v2.8 → v2.10</a></li>
+      <li><a href="#v211">v2.10 → v2.11</a></li>
+      <li><a href="#v212">v2.11 → v2.12</a></li>
+      <li><a href="#now">Что умеет tip суммарно</a></li>
+    </ol>
+  </nav>
+
+  <article class="ver" id="v20">
+    <h2><span class="fromto">v1 → v2.0</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/АРМЗакупокИПродаж_v1__v2.0.md</code></p>
+    <ul>
+      <li>Таблица продаж начинает строить колонки <b>по матрице прав</b>: заголовки, порядок, только просмотр там, где в матрице нельзя править.</li>
+      <li>Поля, которых ещё нет в данных, показываются как <b>заглушки</b> (подсказка, что колонка зарезервирована).</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v21">
+    <h2><span class="fromto">v2.0 → v2.1</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.0__v2.1.md</code>, задача <code>admin-columns-matrix.md</code></p>
+    <ul>
+      <li>Роль интерфейса <b>«Администратор»</b>: открывается форма продаж, можно менять разрешённые поля матрицы (двойной щелчок → ввод).</li>
+      <li>В регистр добавлены реальные поля вместо части заглушек: документ подписан, марка/модель/агрегат/госномер/VIN/двигатель, норма-час, РРЦ, оплачено, территория отгрузки поставщиком и др.</li>
+      <li>Договор и № п/п берутся из данных, а не из пустых констант.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v211">
+    <h2><span class="fromto">v2.1 → v2.1.1</span> <span class="badge b-doc">из задачи</span></h2>
+    <p class="src">Отдельного diff в репо нет — <code>tasks/admin-columns-matrix.md</code></p>
+    <ul>
+      <li>Админ правит разрешённые колонки <b>прямо в ячейке</b> (не только через диалог двойного щелчка).</li>
+      <li>Исправлен заголовок «№ Шасси».</li>
+      <li>Для администратора при выборе ячейки не действует жёсткий фильтр «только В работе / Собран / Черновик».</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v22">
+    <h2><span class="fromto">v2.1 → v2.2</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.1__v2.2.md</code>, <code>contract-filter-by-customer.md</code></p>
+    <ul>
+      <li>Колонка «Договор с заказчиком»: в списке только договоры <b>выбранного заказчика</b>.</li>
+      <li>Без заказчика — предупреждение «сначала выберите заказчика».</li>
+      <li>При записи чужого договора — отказ с текстом ошибки.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v23">
+    <h2><span class="fromto">v2.2 → v2.3</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.2__v2.3.md</code> (склейка admin + договор)</p>
+    <ul>
+      <li>В одной версии собраны: inline-правка админа (как v2.1.1) <b>и</b> фильтр договора по заказчику (как v2.2).</li>
+      <li>Это «каноническая» точка после двух параллельных веток задач.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v24">
+    <h2><span class="fromto">v2.3 → v2.4</span> <span class="badge b-doc">из задачи</span></h2>
+    <p class="src">Diff CFE нет — <code>seed-local-db.md</code> / появление ролей</p>
+    <ul>
+      <li>В перечислении ролей интерфейса: <b>кладовщик, главный механик, клиент, поставщик</b> (помимо менеджера/админа/снабжения).</li>
+      <li>Для них открывается форма продаж; полноценные права «роль × статус» появятся позже (v2.11).</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v25">
+    <h2><span class="fromto">v2.4 → v2.5</span> <span class="badge b-doc">из задачи</span></h2>
+    <p class="src">Diff CFE нет — <code>matrix-statuses-codes-formulas.md</code></p>
+    <ul>
+      <li>В статусах строки АРМ добавлены значения под расширенную матрицу (15 статусов): <b>«Ожидаем поступление»</b>, <b>«Резервирование»</b>, <b>«Возврат»</b>.</li>
+      <li>Кнопок перехода в UI ещё нет — статусы может выставлять seed / поздние версии.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v26">
+    <h2><span class="fromto">v2.5 → v2.6</span> <span class="badge b-doc">из задачи</span></h2>
+    <p class="src">Diff CFE нет — <code>matrix-statuses-codes-formulas.md</code> § v2.6</p>
+    <ul>
+      <li>Порядок колонок как в матрице (норма-час перед «Коэфф»).</li>
+      <li>В заголовках — <b>коды матрицы</b> (Е4, Р2…).</li>
+      <li><b>Цена продажи</b> = РРЦ × коэффициент, иначе себестоимость × коэффициент; коэффициент — множитель (1,15), не проценты «+15».</li>
+      <li>Сумма себестоимости = цена × количество; сумма продажи — с учётом нормы-часа или количества.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v27">
+    <h2><span class="fromto">v2.6 → v2.7</span> <span class="badge b-doc">из задачи</span></h2>
+    <p class="src">Diff CFE нет — <code>matrix-statuses-codes-formulas.md</code> § v2.7</p>
+    <ul>
+      <li>Колонка «Есть дефицит» <b>убрана с экрана</b> (в матрице её нет); подсветка дефицитных строк и отбор «только с закупками» остаются.</li>
+      <li>Заголовок «Кол-во» с кодом <b>Н0</b>.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v28">
+    <h2><span class="fromto">v2.7 → v2.8</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.7__v2.8.md</code>, <code>price-qty-sum.md</code></p>
+    <ul>
+      <li>При смене <b>количества</b> (в том числе двойным щелчком) сразу пересчитываются суммы себестоимости и продажи.</li>
+      <li>Итог по выделенным строкам — сумма продажи (кол-во × цена), а не сумма «цен за штуку».</li>
+      <li>При фиксации партии в регистр пишется цена за единицу, затем пересчёт сумм.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v29">
+    <h2><span class="fromto">v2.9</span> <span class="badge b-lab">не продукт</span></h2>
+    <div class="note">
+      Номер <b>v2.9</b> относится к лабораторной ветке <code>process-api</code> (HTTP-сервис АРМ, PWA, e2e).
+      В корне репозитория <b>нет</b> продуктового <code>АРМЗакупокИПродаж_v2.9.cfe</code> в линии «тонкий клиент».
+      Следующий продуктовый шаг после v2.8 — сразу <b>v2.10</b>.
+    </div>
+  </article>
+
+  <article class="ver" id="v210">
+    <h2><span class="fromto">v2.8 → v2.10</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.8__v2.10.md</code>, <code>patch-notes-v2.10.md</code></p>
+    <ul>
+      <li><b>Номер отгрузки</b> заполняется системой из номера расходной накладной; ручной ввод убран; в диалоге остаётся только дата.</li>
+      <li>Кнопки статусов <b>Резервирование / Ожидаем поступление / Возврат</b> (MVP, изначально для администратора).</li>
+      <li>Смена <b>заказчика</b> очищает договор, если он не принадлежит новому контрагенту.</li>
+      <li>Галка <b>«Документ подписан оригинал»</b> снимает автора строки и отметку (минимум unlock по А3).</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v211">
+    <h2><span class="fromto">v2.10 → v2.11</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.10__v2.11.md</code>, <code>patch-notes-v2.11.md</code>; тесты <code>tools/test_arm_matrix_rights.py</code> (71)</p>
+    <ul>
+      <li><b>Права по матрице</b> (роль × статус строки × поле): модуль <code>Арм_МатрицаПрав</code>, генерация из <code>default-matrix.js</code>. Нет записи роли — править нельзя.</li>
+      <li>Администратор сохраняет широкий whitelist полей <b>без привязки к статусу</b> (как в v2.1.1); номер отгрузки и статус «из ячейки» не правятся.</li>
+      <li>Кнопки MVP-статусов доступны <b>менеджеру и администратору</b>.</li>
+      <li>Пять бывших заглушек стали полями регистра: № шасси, кол-во в резерве, кол-во в пути, дата и № УПД.</li>
+      <li>«Ед. изм. (ФАКТ)» — выпадающий список: шт, компл, л, кг, м, н/ч.</li>
+      <li>Минимальная проверка обязательных полей при смене статуса (без поломки проведения документов).</li>
+      <li>На форме снабжения — запрет чужим ролям жать цепочку/отметки.</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="v212">
+    <h2><span class="fromto">v2.11 → v2.12</span> <span class="badge b-prod">продукт</span></h2>
+    <p class="src">Источник: <code>diff/…v2.11__v2.12.md</code>, <code>patch-notes-v2.12.md</code>; тесты 76 OK</p>
+    <ul>
+      <li><b>H01:</b> «Дата получения» (S2) вводится на продажах по ACL; А1 — личная отметка автора (D11=A).</li>
+      <li><b>H02:</b> whitelist переходов для 3 кнопок статусов (из закрытых / в тот же — отказ).</li>
+      <li><b>H03:</b> цепочка снабжения остаётся ролевым whitelist (D10=A), не матрица line_status.</li>
+      <li><b>H04:</b> УПД из ПН — one-shot без затирания ручных; Н2/Н3 не трогали.</li>
+      <li><b>H05:</b> бит creator по-прежнему отложен (docs).</li>
+    </ul>
+  </article>
+
+  <article class="ver" id="now">
+    <h2><span class="fromto">Итог: что умеет текущий tip v2.12</span></h2>
+    <ul>
+      <li>Рабочий стол продаж/закупок с колонками и кодами матрицы.</li>
+      <li>Формулы цены и сумм; пересчёт при смене количества.</li>
+      <li>Админ и (по матрице) другие роли правят поля с серверной проверкой прав.</li>
+      <li>Договор привязан к заказчику; отгрузка даёт системный номер РН.</li>
+      <li>Статусы резерв / ожидаем / возврат — кнопками (MVP), не полной схемой process.html.</li>
+      <li>Новые учётные колонки (шасси, резерв, путь, УПД) и ед.изм. факта.</li>
+    </ul>
+    <div class="note">
+      <b>Не закрыто приёмкой в предприятии:</b> LoadCfg v2.11 на тестовую ИБ и ручной прогон формы.
+      Merge в <code>dev</code> — отдельное решение. Полные возвраты, печать ведомости, механик, процессный seed — вне этой линейки версий (есть только планы в <code>tasks/</code>).
+    </div>
+  </article>
+
+</main>
+
+<footer>
+  Документ собран 06.10.2026 по <code>diff/</code>, <code>tasks/patch-notes-*.md</code> и задачам матрицы.
+  При расхождении с кодом приоритет у соответствующего <code>.cfe</code> / <code>src/…_vN/</code> и свежего <code>diff-cfe.ps1</code>.
+</footer>
+
+</body>
+</html>

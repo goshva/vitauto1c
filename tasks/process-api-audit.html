@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Аудит process-api — решения, противоречия, план</title>
+<style>
+  :root {
+    --ink: #1a1f24;
+    --muted: #5c6570;
+    --line: #d8dde3;
+    --bg: #f3f5f7;
+    --card: #ffffff;
+    --ok: #1f6b3a;
+    --ok-bg: #e8f5ec;
+    --warn: #8a5a00;
+    --warn-bg: #fff3d6;
+    --bad: #9b1c1c;
+    --bad-bg: #fde8e8;
+    --info: #1a4a7a;
+    --info-bg: #e8f0f8;
+    --accent: #0d3b66;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    background: linear-gradient(135deg, #0d3b66 0%, #1a5a8a 55%, #2a7ab0 100%);
+    color: #fff;
+    padding: 2rem 1.5rem 1.75rem;
+  }
+  header .wrap { max-width: 960px; margin: 0 auto; }
+  header h1 {
+    margin: 0 0 .4rem;
+    font-size: 1.65rem;
+    font-weight: 650;
+    letter-spacing: -.02em;
+  }
+  header p { margin: 0; opacity: .9; font-size: .95rem; }
+  header .meta {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .75rem;
+    font-size: .82rem;
+  }
+  header .chip {
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: .25rem .6rem;
+    border-radius: 4px;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
+  nav.toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  nav.toc h2 { margin: 0 0 .5rem; font-size: .95rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  nav.toc ol { margin: 0; padding-left: 1.25rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.25rem 1.35rem;
+    margin-bottom: 1rem;
+  }
+  section h2 {
+    margin: 0 0 .75rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: .5rem;
+  }
+  section h3 { margin: 1.1rem 0 .45rem; font-size: 1.02rem; }
+  p { margin: .4rem 0 .7rem; }
+  ul, ol { margin: .3rem 0 .8rem; padding-left: 1.3rem; }
+  li { margin: .25rem 0; }
+  .verdict {
+    border-left: 4px solid var(--warn);
+    background: var(--warn-bg);
+    padding: 1rem 1.15rem;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 1rem;
+  }
+  .verdict strong { color: var(--warn); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+    margin: .5rem 0 1rem;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: .45rem .55rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef1f4; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code, .mono {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: .86em;
+    background: #eef1f4;
+    padding: .05em .3em;
+    border-radius: 3px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: .75rem;
+    font-weight: 650;
+    padding: .15rem .45rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge-ok { background: var(--ok-bg); color: var(--ok); }
+  .badge-warn { background: var(--warn-bg); color: var(--warn); }
+  .badge-bad { background: var(--bad-bg); color: var(--bad); }
+  .badge-info { background: var(--info-bg); color: var(--info); }
+  .layers {
+    display: grid;
+    gap: .5rem;
+  }
+  .layer {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: .75rem;
+    padding: .65rem .8rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fafbfc;
+  }
+  .layer .name { font-weight: 650; color: var(--accent); font-size: .9rem; }
+  .layer .desc { font-size: .9rem; color: var(--muted); }
+  .q-list li { margin: .45rem 0; }
+  .stop {
+    background: var(--bad-bg);
+    border: 1px solid #f0c0c0;
+    border-radius: 8px;
+    padding: 1rem 1.15rem;
+  }
+  .stop h3 { margin-top: 0; color: var(--bad); }
+  footer {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 1.5rem 2rem;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  @media (max-width: 640px) {
+    .layer { grid-template-columns: 1fr; }
+    table { display: block; overflow-x: auto; }
+  }
+  @media print {
+    body { background: #fff; }
+    header { break-after: avoid; }
+    section { break-inside: avoid; box-shadow: none; }
+    nav.toc { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Аудит ветки process-api</h1>
+    <p>Решения · противоречия · что сделать дальше. Без внедрений — документ на согласование.</p>
+    <div class="meta">
+      <span class="chip">Репо goshva/vitauto1c</span>
+      <span class="chip">Сравнение: origin/dev (df7ad43) … origin/process-api (101c86c)</span>
+      <span class="chip">Дата отчёта: 05.10.2026</span>
+      <span class="chip">Статус: на согласование владельцу</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="verdict">
+    <strong>Вердикт: согласовать с условиями.</strong>
+    Ветка даёт рабочий HTTP API АРМ v2.9 и прогон 11 сценариев process.html, но закрепляет решения,
+    которые расходятся с каноном матрицы прав и открытыми задачами.
+    <b>В dev / master / basdev без явного ок владельца не мержить.</b>
+  </div>
+
+  <nav class="toc">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#arch">Архитектура слоёв</a></li>
+      <li><a href="#commits">Что пришло в ветке</a></li>
+      <li><a href="#decisions">Таблица решений</a></li>
+      <li><a href="#conflicts">Противоречия</a></li>
+      <li><a href="#questions">Вопросы владельцу</a></li>
+      <li><a href="#plan">План дальнейшей работы</a></li>
+      <li><a href="#stop">Без явного ок не делать</a></li>
+    </ol>
+  </nav>
+
+  <section id="arch">
+    <h2>1. Архитектура слоёв</h2>
+    <div class="layers">
+      <div class="layer">
+        <div class="name">Канон продукта</div>
+        <div class="desc"><code>index.html</code> / <code>default-matrix.js</code> — права полей; <code>process.html</code> — сценарии B5.</div>
+      </div>
+      <div class="layer">
+        <div class="name">Контракты</div>
+        <div class="desc">Ветка <code>api</code>: <code>openapi/arm-pwa.openapi.yaml</code> (v2.7). Ветка <code>process-api</code>: только <code>openapi/arm-pwa-process.openapi.yaml</code> (transition, v2.9).</div>
+      </div>
+      <div class="layer">
+        <div class="name">Runtime 1С</div>
+        <div class="desc"><code>АРМЗакупокИПродаж_v2.9.cfe</code> — HTTP-сервис <code>Арм_API</code> (<code>/hs/api/arm/v1</code>), модули <code>Арм_API</code>, <code>Арм_APIМатрица</code>. Истина данных.</div>
+      </div>
+      <div class="layer">
+        <div class="name">Клиенты приёмки</div>
+        <div class="desc"><code>pwa/</code> (Vue) и <code>tools/arm-api-1c/e2e-processes.js</code> — поверх 1С API.</div>
+      </div>
+      <div class="layer">
+        <div class="name">Симулятор</div>
+        <div class="desc"><code>api/</code> (Node :8787) — заказы в JSON, читает process/матрицу. <b>С базой 1С не связан.</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="commits">
+    <h2>2. Что пришло в ветке (3 коммита)</h2>
+    <table>
+      <thead>
+        <tr><th>Коммит</th><th>Дата</th><th>Содержание</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>9430309</code></td>
+          <td>04.10</td>
+          <td>ARM v2.9: HTTP-сервис по arm-pwa.openapi; Node API процессов</td>
+        </tr>
+        <tr>
+          <td><code>807a0af</code></td>
+          <td>05.10</td>
+          <td>Тестовое PWA (Vue 3 + Pinia)</td>
+        </tr>
+        <tr>
+          <td><code>101c86c</code></td>
+          <td>05.10</td>
+          <td>Покрытие 11 сценариев process.html; transition; seed accounting; deploy/e2e</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Ключевые артефакты: <code>АРМЗакупокИПродаж_v2.9.cfe</code>, <code>src/…_v2.9/</code>, <code>api/</code>, <code>pwa/</code>,
+    <code>tools/arm-api-1c/</code>, <code>tasks/arm-api-process-coverage.md</code>,
+    <code>tasks/arm-api-processes-manual-check.md</code>.</p>
+  </section>
+
+  <section id="decisions">
+    <h2>3. Таблица решений</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Решение</th>
+          <th>Оценка</th>
+          <th>Комментарий</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Два API (Node + 1С) и контракт разнесён по веткам (2.7 vs 2.9)</td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>1С API — целевой runtime; Node — lab. Перед merge собрать единый OpenAPI 2.9 в одной ветке.</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><code>POST /lines/transition</code> — hardcoded роль×from→to</td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>API расширяет возможности тонкого клиента. Нужен явный канон таблицы или генерация из process.html.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><code>POST /sales/shipments</code> требует ручной <code>shipmentNumber</code></td>
+          <td><span class="badge badge-bad">отклонить vs канон</span></td>
+          <td>Матрица: номер RO у всех. Задача <code>task/shipment-number-system-fill</code> — системное заполнение.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><code>supplier-orders</code> → 501; ЗП создаёт «В работе»</td>
+          <td><span class="badge badge-ok">ок</span></td>
+          <td>Честное зеркало заглушки формы.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>PWA как клиент приёмки</td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>Harness, не замена АРМ. Нет паритета форм/печати/УПД.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Seed дозаполняет тип/счета/НДС</td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>Нужно для проводок; повторный прогон трогает созданные элементы — только test_fresh / после бэкапа.</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>Bearer через X-Arm-Authorization; safe mode off; пароли <code>1</code></td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>Нормально для lab; на боевую — отдельный апрув.</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>deploy-prod → <code>C:\1c_bases</code>; install/seed → <code>D:\…</code></td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>Риск деплоя не туда. Всегда явный <code>-IbDir</code>.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>Claim «11/11»</td>
+          <td><span class="badge badge-warn">с условиями</span></td>
+          <td>Цепочки статусов OK; stub: уведомления, УПД, P1, G1≠заказ-наряд и др.</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>v2.9 vs v2.8 (цена×кол-во)</td>
+          <td><span class="badge badge-ok">ок</span></td>
+          <td>Пересчёт сумм сохранён; плюс фикс состояния заказа при jobs.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="conflicts">
+    <h2>4. Противоречия</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Тема</th>
+          <th>Канон / другая ветка</th>
+          <th>process-api</th>
+          <th>Критичность</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Номер отгрузки</td>
+          <td><code>task/shipment-number-system-fill</code>: RO + system-fill (рекомендация — из РН)</td>
+          <td>API требует ручной <code>shipmentNumber</code></td>
+          <td><span class="badge badge-bad">блокер продукта</span></td>
+        </tr>
+        <tr>
+          <td>OpenAPI</td>
+          <td>Ветка <code>api</code>: yaml v2.7, без transition</td>
+          <td>Код v2.9 + process-yaml; основного yaml в ветке нет</td>
+          <td><span class="badge badge-bad">блокер артефактов</span></td>
+        </tr>
+        <tr>
+          <td>Переходы статусов</td>
+          <td>Матрица = поля; в форме части кнопок нет</td>
+          <td>Новый endpoint со своей ACL</td>
+          <td><span class="badge badge-warn">нужен апрув</span></td>
+        </tr>
+        <tr>
+          <td>Заказ поставщику</td>
+          <td>Контракт: <code>POST /sales/supplier-orders</code></td>
+          <td>501; ЗП через jobs</td>
+          <td><span class="badge badge-info">зафиксировать</span></td>
+        </tr>
+        <tr>
+          <td>Путь базы</td>
+          <td>install/seed → <code>D:\1c_bases\…</code></td>
+          <td>deploy-prod → <code>C:\1c_bases\…</code></td>
+          <td><span class="badge badge-warn">операционный риск</span></td>
+        </tr>
+        <tr>
+          <td>Два runtime</td>
+          <td>—</td>
+          <td>Node simulator ≠ 1С API (оба в README)</td>
+          <td><span class="badge badge-warn">путаница</span></td>
+        </tr>
+        <tr>
+          <td>Документ подписан (А3)</td>
+          <td>В форме unlock по галке не wired</td>
+          <td>API: PATCH поля + gate на closed из shipped</td>
+          <td><span class="badge badge-info">частично</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="questions">
+    <h2>5. Вопросы владельцу (до любого merge в dev)</h2>
+    <ol class="q-list">
+      <li><b>Runtime.</b> Канон приёмки процессов — только 1С <code>Арм_API</code>, или Node <code>api/</code> тоже «продукт»?</li>
+      <li><b>Контракт.</b> Собираем единый OpenAPI 2.9 в одной ветке (включая <code>transition</code>)?</li>
+      <li><b>Номер отгрузки.</b> Меняем канон матрицы под ручной ввод, или блокируем merge до system-fill?</li>
+      <li><b>Transition ACL.</b> Таблица <code>/lines/transition</code> — временный канон процесса или генерация из <code>process.html</code>?</li>
+      <li><b>supplier-orders.</b> Оставить 501 / убрать из контракта / реализовать?</li>
+      <li><b>PWA.</b> Только lab/acceptance или путь к замене тонкого клиента?</li>
+      <li><b>Боевой путь.</b> База на <code>C:\</code> или <code>D:\</code>? Safe mode off + пароль <code>1</code> на autoservice — ок?</li>
+      <li><b>Seed accounting.</b> Дозаполнение на уже живых базах — ок?</li>
+    </ol>
+    <p>Приоритет для сужения вердикта: вопросы <b>1–3</b> (runtime, контракт, номер отгрузки).</p>
+  </section>
+
+  <section id="plan">
+    <h2>6. План дальнейшей работы</h2>
+
+    <h3>6.1. До merge (обязательно после ответов владельца)</h3>
+    <table>
+      <thead>
+        <tr><th>Шаг</th><th>Действие</th><th>Зависит от</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>A</td>
+          <td>Зафиксировать канон runtime: 1С API = prod; Node <code>api/</code> = simulator (нейминг в README).</td>
+          <td>Вопрос 1</td>
+        </tr>
+        <tr>
+          <td>B</td>
+          <td>Собрать единый <code>openapi/arm-pwa.openapi.yaml</code> v2.9 (базовый контракт + transition) в одной ветке.</td>
+          <td>Вопрос 2</td>
+        </tr>
+        <tr>
+          <td>C</td>
+          <td>Решить номер отгрузки: либо убрать обязательный ручной ввод из API и связать с system-fill / РН; либо явно изменить матрицу (отдельное решение).</td>
+          <td>Вопрос 3 + ветка <code>task/shipment-number-system-fill</code></td>
+        </tr>
+        <tr>
+          <td>D</td>
+          <td>Документировать таблицу <code>/lines/transition</code> как канон процесса <i>или</i> запланировать генерацию из process.html.</td>
+          <td>Вопрос 4</td>
+        </tr>
+        <tr>
+          <td>E</td>
+          <td>Выровнять пути базы (C: vs D:) в deploy/install/README; запретить запуск deploy без явного <code>-IbDir</code> в инструкции.</td>
+          <td>Вопрос 7</td>
+        </tr>
+        <tr>
+          <td>F</td>
+          <td>Переформулировать «11/11»: «11 сценариев статусов через API», не «полный паритет process.html».</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6.2. После согласования merge в dev</h3>
+    <ol>
+      <li>LoadCfg v2.9 только на тестовую базу (<code>D:\1c\test_fresh</code> / аналог), не на боевую без отдельного ок.</li>
+      <li>Прогон: <code>start.ps1</code> → seed → <code>test-endpoints.js</code> → <code>e2e-processes.js</code> → ручной чеклист PWA.</li>
+      <li>Приёмка UI тонкого клиента: регресс v2.8 (цена×кол-во) + новые команды/статусы, если появятся в форме.</li>
+    </ol>
+
+    <h3>6.3. Отдельные задачи (не «заодно» с merge)</h3>
+    <ul>
+      <li><b>System-fill номера отгрузки</b> — ветка <code>task/shipment-number-system-fill</code> (после решения вопроса 3).</li>
+      <li><b>supplier-orders</b> — реализовать или выкинуть из контракта (вопрос 5).</li>
+      <li><b>Поля УПД</b> в регистре АРМ — сейчас всегда пустые.</li>
+      <li><b>Unlock по А3</b> в тонком клиенте (сейчас частично только в API gate на closed).</li>
+      <li><b>Ед. изм. / бинарная логика матрицы</b> — вне scope v2.9, отдельный бэклог.</li>
+      <li><b>Prod hardening</b> — пароли, TLS/сеть, политика safe mode (вопрос 6–7).</li>
+    </ul>
+
+    <h3>6.4. Критерии готовности к merge (чеклист)</h3>
+    <ul>
+      <li>☐ Ответы на вопросы 1–3 зафиксированы письменно</li>
+      <li>☐ Единый OpenAPI 2.9 в репо (или явное «контракт остаётся на ветке api»)</li>
+      <li>☐ Решение по <code>shipmentNumber</code> согласовано с матрицей</li>
+      <li>☐ README: Node = simulator; 1С = канон; пути баз согласованы</li>
+      <li>☐ «11/11» описан с оговорками (stub-шаги)</li>
+      <li>☐ Явный ок владельца на merge <code>process-api</code> → <code>dev</code></li>
+    </ul>
+  </section>
+
+  <section id="stop">
+    <div class="stop">
+      <h3>7. Без явного ок не делать</h3>
+      <ul>
+        <li>Merge <code>process-api</code> → <code>dev</code> / <code>master</code> / <code>basdev</code></li>
+        <li><code>deploy-prod.ps1</code> на боевую autoservice</li>
+        <li>Менять канон матрицы под ручной номер отгрузки «тихо»</li>
+        <li>«Заодно» делать system-fill номера или реализовывать supplier-orders</li>
+        <li>Считать 11/11 полным паритетом UI / УПД / уведомлений / заказ-наряда</li>
+        <li>Публиковать Node <code>api/</code> как API 1С</li>
+        <li>Любые merge между ветками от имени разработчика</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Источники: origin/process-api @ 101c86c; tasks/arm-api-process-coverage.md;
+  tasks/arm-api-processes-manual-check.md; task/shipment-number-system-fill;
+  openapi/arm-pwa-process.openapi.yaml; канон матрицы index.html (роль manager, уровень Заказ).
+  Отчёт подготовлен для согласования; внедрений по результатам аудита не выполнялось.
+</footer>
+
+</body>
+</html>

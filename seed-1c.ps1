@@ -29,7 +29,8 @@ param(
     [string]$IbPassword = '',
     [string]$ConnectionString,           # вместо -IbDir/-IbUser/-IbPassword (например, серверная база)
     [string]$DataFile,                   # по умолчанию seed\data.json
-    [switch]$KeepSafeModeOff             # не возвращать безопасный режим расширения после заполнения
+    [switch]$KeepSafeModeOff,            # не возвращать безопасный режим расширения после заполнения
+    [switch]$AllowProd                   # осознанно писать в боевую базу (C:\1c_bases\...); без него — отказ (T12a)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,6 +60,16 @@ try {
         Ok "файловая база: $IbDir, пользователь «$IbUser»"
     } else {
         Ok 'строка соединения задана параметром'
+    }
+
+    # ---------- защита от боевой базы (T12a) ----------
+    # Blacklist: каталог C:\1c_bases\... (в -IbDir, 1c-env.json или в строке соединения) — боевая ИБ. Seed туда без -AllowProd не пишем.
+    $probe = "$IbDir $ConnectionString"
+    if ($probe -match '(?i)C:[\\/]+1c_bases') {
+        if (-not $AllowProd) {
+            throw "Отказ: база выглядит боевой (C:\1c_bases\...). Укажите тестовую базу через -IbDir (например, D:\1c\test_v211) или, осознанно и с ок владельца, добавьте -AllowProd."
+        }
+        Warn 'ВНИМАНИЕ: -AllowProd — запись демо-данных в боевую базу (C:\1c_bases\...)'
     }
 
     # ---------- COM-соединитель ----------
