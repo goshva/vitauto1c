@@ -638,7 +638,10 @@ class TestWiring(unittest.TestCase):
         expected_prefix = ('CommonModule/' + G.MODULE_NAME + '/',)
         allowed = {
             'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаСнабжение/Form.obj.bsl',
             'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            # v8unpack пересчитывает контрольные суммы объектов при любом rebuild tip
+            'ConfigurationExtension.json',
         }
         unexpected = [c for c in changed if c not in allowed and not c.startswith(expected_prefix)
                       and not c.endswith('.elem.json')]
@@ -704,25 +707,76 @@ class TestWiring(unittest.TestCase):
         self.assertNotIn('МожноРедактироватьПоле', body)
 
     def test_h02_status_transition_whitelist(self):
-        """H02 / D12=A: whitelist from→to для трёх MVP-кнопок."""
+        """H02 / D12=A + F-07: явный whitelist from→to для трёх MVP-кнопок."""
         fn = procedure_text(self.form, 'ДопустимПереходСтатусаМВП')
-        self.assertIn('Выполнено', fn)
+        self.assertIn('Допустимые.Добавить(', fn)
         self.assertIn('Завершено', fn)
         self.assertIn('Резервирование', fn)
         self.assertIn('ОжидаемПоступление', fn)
         self.assertIn('Возврат', fn)
+        self.assertIn('Допустимые.Найти(ТекущийСтатус)', fn)
+        # Отгружено → Резервирование не в whitelist (только в ветке Возврат как from)
+        reserve_branch = fn.split('Резервирование Тогда')[1].split('ИначеЕсли')[0]
+        self.assertNotIn('Отгружено', reserve_branch)
         server = procedure_text(self.form, 'УстановитьСтатусСтрокАдминистраторомНаСервере')
         self.assertIn('ДопустимПереходСтатусаМВП(', server)
         self.assertLess(server.index('ДопустимПереходСтатусаМВП'), server.index('Набор.Записать()'))
 
     def test_h03_supply_d10a_role_whitelist(self):
-        """H03 / D10=A: цепочка снабжения — ролевой whitelist, не матрица line_status."""
+        """H03 / D10=A + F-06: ролевой whitelist; неизвестная цель — отказ."""
         oan = read(OAN)
         self.assertIn('D10=A', oan)
         chain = procedure_text(oan, 'ИзменитьСтатусыВРегистреСнабжения')
         self.assertIn('ОтказРолиСнабжения()', chain)
-        self.assertIn('ЦелевойСтатус', chain)
+        self.assertIn('Недопустимый целевой статус цепочки снабжения', chain)
+        self.assertIn('ВидОперации = ЗНАЧЕНИЕ(Перечисление.Арм_ВидыОпераций.Закупка)', chain)
+        self.assertIn('МассивИдентификаторов.Найти(', chain)
         self.assertNotIn('МожноРедактироватьПоле', chain)
+
+    def test_audit_f02_order_commands_role_gated(self):
+        """F-02/F-03: массовые команды заказа — только менеджер/админ."""
+        gate = procedure_text(self.form, 'ОтказЕслиНеМенеджерИлиАдминАРМ')
+        self.assertIn('РольМожетМенятьСтатусыАРМ()', gate)
+        for name in (
+            'ВычеркнутьСтрокуНаСервере',
+            'УдалитьТекущуюСтрокуНаСервере',
+            'УдалитьВыбранныеЗаказыНаСервере',
+            'ПодготовленоНаСервере',
+            'ПровестиЗаказПокупателяНаСервере',
+            'ЗапуститьФоновоеЗаданиеНаСервере',
+            'ОбновитьДанныеОтгрузкиВРегистреНаСервере',
+        ):
+            body = procedure_text(self.form, name)
+            self.assertIn('ОтказЕслиНеМенеджерИлиАдминАРМ()', body, name)
+
+    def test_audit_f04_post_order_status_after_write(self):
+        """F-04: статус Завершено только после успешного проведения заказа."""
+        body = procedure_text(self.form, 'ПровестиЗаказПокупателяНаСервере')
+        self.assertIn('Номенклатура', body)
+        self.assertIn('Количество', body)
+        self.assertIn('Записать(РежимЗаписиДокумента.Проведение)', body)
+        self.assertLess(
+            body.index('Записать(РежимЗаписиДокумента.Проведение)'),
+            body.index('Арм_СтатусыАРМ.Завершено'),
+        )
+
+    def test_audit_f08_supply_marks_respect_author(self):
+        """F-08: ВыделитьВсе на снабжении не трогает чужие отметки."""
+        body = procedure_text(self.supply, 'ВыделитьВсеСтрокиЗаказаНаСервере')
+        self.assertIn('АвторСтроки', body)
+        self.assertIn('ЗаблокированоФоном', body)
+        self.assertIn('Удаление', body)
+
+    def test_audit_f10_party_acl_on_side_fields(self):
+        body = procedure_text(self.form, 'ЗафиксироватьПартиюНаСервере')
+        self.assertIn('ОтказПоПравамАРМ(', body)
+        self.assertIn('СебестоимостьЕдиницы', body)
+        self.assertIn('Поставщик', body)
+
+    def test_audit_f17_marked_ids_never_undefined(self):
+        oan = read(OAN)
+        fn = procedure_text(oan, 'ПолучитьМассивОтмеченныхИдентификаторов')
+        self.assertIn('МассивИдентификаторов = Новый Массив', fn)
 
     def test_h05_creator_still_deferred(self):
         """H05 / D1c′=A: creator (128) отложен; в ACL-модуле нет маппинга на АвторСтроки."""
