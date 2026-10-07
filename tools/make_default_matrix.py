@@ -22,6 +22,13 @@ LEVELS = ['order', 'line']
 # Новые колонки, которых нет в экспорте: id -> (вставить после, скопировать права с, тип)
 NEW_COLUMNS = {
     'aggregate_fact': ('model_fact', 'gosnomer_fact', 'select'),
+    # v2.13: счёт, срок поставки, дата заказа поставщику (ставит система), ячейка склада, второй комментарий
+    'invoice_number': ('paid_status', 'paid_status', 'text'),              # О6 Счёт №
+    'invoice_date': ('invoice_number', 'paid_status', 'date'),             # О7 Дата счёта
+    'stock_cell': ('line_status', 'receipt_date', 'text'),                 # Н6 Ячейка склада (на склад)
+    'supplier_order_date': ('supplier_ship_territory', 'shipment_number', 'date'),  # С6 системная
+    'delivery_term': ('supplier_order_date', 'supplier', 'date'),          # С7 Срок поставки
+    'comment_2': ('comment', 'comment', 'text'),                           # Т2 Комментарий 2
 }
 
 # Новые статусы, которых нет в экспорте: id -> (вставить после, скопировать права с)

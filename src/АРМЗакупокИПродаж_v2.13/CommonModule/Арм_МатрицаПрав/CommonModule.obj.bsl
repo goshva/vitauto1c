@@ -7,9 +7,10 @@
 //   D1b — роль не задана (нет записи в регистре прав) = запрет (fail-closed);
 //   D1c / D1c′=A — бит creator игнорируется (H05 SKIP; поле «создатель» — вне пачки);
 //   D1d — роль Снабжение = права storekeeper;
-//   D1e — администратор: whitelist полей без привязки к статусу, матрица ему не применяется;
+//   D1e′ (v2.13) — администратор: все поля регистра колонок в любом статусе (и «Заблокировано фоном»),
+//          включая системные; матрица ему не применяется;
 //   D2  — статус строки меняют менеджер (по полю СтатусСтроки) и администратор (в форме).
-// Статус ЗаблокированоФоном пары в матрице не имеет — правка запрещена всем.
+// Статус ЗаблокированоФоном пары в матрице не имеет — правка запрещена всем, кроме администратора.
 
 #Область ПрограммныйИнтерфейс
 
@@ -29,16 +30,16 @@
 		Возврат "Для вашей учётной записи не задана роль в регистре «Права пользователей АРМ». Обратитесь к администратору.";
 	КонецЕсли;
 
-	Если СтатусСтроки = ПредопределенноеЗначение("Перечисление.Арм_СтатусыАРМ.ЗаблокированоФоном") Тогда
-		Возврат "Строка обрабатывается фоновым заданием — правка недоступна. Повторите позже.";
-	КонецЕсли;
-
-	// D1e: администратор — whitelist полей без привязки к статусу.
+	// D1e′ (v2.13): администратор — все поля регистра колонок в любом статусе, включая «Заблокировано фоном».
 	Если Роль = ПредопределенноеЗначение("Перечисление.Арм_РолиИнтерфейса.Администратор") Тогда
 		Если СтрНайти("," + ПоляИзменяемыеАдминистратором() + ",", "," + ИмяПоляРегистра + ",") > 0 Тогда
 			Возврат "";
 		КонецЕсли;
 		Возврат ТекстОтказаПоПолю(Роль, СтатусСтроки, ИмяПоляРегистра);
+	КонецЕсли;
+
+	Если СтатусСтроки = ПредопределенноеЗначение("Перечисление.Арм_СтатусыАРМ.ЗаблокированоФоном") Тогда
+		Возврат "Строка обрабатывается фоновым заданием — правка недоступна. Повторите позже.";
 	КонецЕсли;
 
 	ИдСтатуса = МатричныйСтатусПоСтатусуАРМ(СтатусСтроки);
@@ -227,11 +228,14 @@
 		+ "КоличествоВПути=ordered_in_transit_qty;"
 		+ "Партия=batch_fifo;"
 		+ "СтатусСтроки=line_status;"
+		+ "ЯчейкаСклада=stock_cell;"
 		+ "СебестоимостьЕдиницы=price;"
 		+ "Себестоимость=sum;"
 		+ "ФормаОплаты=payment_form;"
 		+ "РРЦ=rrc;"
 		+ "Оплачено=paid_status;"
+		+ "НомерСчета=invoice_number;"
+		+ "ДатаСчета=invoice_date;"
 		+ "КоличествоНормаЧас=qty_norm_hours_client;"
 		+ "Коэффициент=coefficient;"
 		+ "Цена=extra_field_1;"
@@ -241,7 +245,10 @@
 		+ "ДатаУПД=upd_date;"
 		+ "НомерУПД=upd_number;"
 		+ "ТерриторияОтгрузкиПоставщиком=supplier_ship_territory;"
-		+ "КомментарийКСтроке=comment;";
+		+ "ДатаЗаказаПоставщику=supplier_order_date;"
+		+ "СрокПоставки=delivery_term;"
+		+ "КомментарийКСтроке=comment;"
+		+ "КомментарийКСтроке2=comment_2;";
 
 КонецФункции
 
@@ -255,19 +262,21 @@
 
 КонецФункции
 
-// Все поля, которые администратор вправе менять (= ПоляИзменяемыеАдминистратором() формы).
+// Все поля, которые администратор вправе менять в любом статусе (= ПоляИзменяемыеАдминистратором() формы, v2.13).
 Функция ПоляИзменяемыеАдминистратором()
 
 	Возврат ПоляОбщегоВвода() + ","
-		+ "ОтметкаСтроки,Номенклатура,Количество,Цена,Коэффициент,Партия,ВидУслуги,ФормаОплаты,"
-		+ "ДатаОтгрузки,КомментарийКСтроке";
+		+ "ОтметкаСтроки,Порядок,ДатаОтгрузки,НомерОтгрузки,НомерЗаказа,ВидУслуги,НомерШасси,Номенклатура,"
+		+ "Количество,ОстатокДляСтроки,КоличествоВРезерве,КоличествоВПути,Партия,СтатусСтроки,ЯчейкаСклада,Себестоимость,"
+		+ "ФормаОплаты,НомерСчета,ДатаСчета,Коэффициент,Цена,ДатаПоступления,ДатаУПД,НомерУПД,"
+		+ "ДатаЗаказаПоставщику,СрокПоставки,КомментарийКСтроке,КомментарийКСтроке2";
 
 КонецФункции
 
-// T05 (D4): поля ручного ввода только по ACL, не входящие в whitelist администратора (= ПоляВводаПоACL() формы).
+// Поля ручного ввода по ACL для ролей матрицы (= ПоляВводаПоACL() формы; администратор правит их как и всё).
 Функция ПоляВводаПоACL()
 
-	Возврат "НомерШасси,КоличествоВРезерве,КоличествоВПути,ДатаУПД,НомерУПД,ДатаПоступления";
+	Возврат "НомерШасси,КоличествоВРезерве,КоличествоВПути,ДатаУПД,НомерУПД,ДатаПоступления,НомерСчета,ДатаСчета,СрокПоставки,ЯчейкаСклада,КомментарийКСтроке2";
 
 КонецФункции
 
@@ -304,11 +313,15 @@
 			+ "payment_form=15;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "in_work" Тогда
 		Возврат "cell_select=63;"
 			+ "order_date=13;"
@@ -339,11 +352,15 @@
 			+ "payment_form=15;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "partially_ordered" Тогда
 		Возврат "cell_select=13;"
 			+ "service_type=15;"
@@ -355,11 +372,15 @@
 			+ "payment_form=15;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "ordered" Тогда
 		Возврат "cell_select=13;"
 			+ "service_type=15;"
@@ -371,11 +392,15 @@
 			+ "payment_form=15;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "paid" Тогда
 		Возврат "cell_select=29;"
 			+ "service_type=15;"
@@ -385,11 +410,15 @@
 			+ "line_status=1;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "in_transit" Тогда
 		Возврат "cell_select=29;"
 			+ "service_type=15;"
@@ -399,11 +428,15 @@
 			+ "line_status=1;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "awaiting_receipt" Тогда
 		Возврат "cell_select=13;"
 			+ "service_type=15;"
@@ -413,11 +446,15 @@
 			+ "line_status=1;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=13;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "acceptance" Тогда
 		Возврат "cell_select=10;"
 			+ "service_type=15;"
@@ -425,10 +462,13 @@
 			+ "qty_norm_hours_client=13;"
 			+ "batch_fifo=15;"
 			+ "line_status=1;"
+			+ "stock_cell=2;"
 			+ "price=11;"
 			+ "payment_form=10;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=3;"
@@ -436,7 +476,9 @@
 			+ "upd_date=2;"
 			+ "upd_number=2;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=3;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "to_stock" Тогда
 		Возврат "cell_select=10;"
 			+ "service_type=15;"
@@ -444,10 +486,13 @@
 			+ "qty_norm_hours_client=13;"
 			+ "batch_fifo=15;"
 			+ "line_status=1;"
+			+ "stock_cell=2;"
 			+ "price=11;"
 			+ "payment_form=10;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier=3;"
@@ -455,7 +500,9 @@
 			+ "upd_date=2;"
 			+ "upd_number=2;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "delivery_term=3;"
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "reserve" Тогда
 		Возврат "cell_select=15;"
 			+ "service_type=15;"
@@ -465,10 +512,13 @@
 			+ "line_status=1;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "assembly" Тогда
 		Возврат "cell_select=10;"
 			+ "service_type=15;"
@@ -478,10 +528,13 @@
 			+ "line_status=1;"
 			+ "rrc=13;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "ready_to_ship" Тогда
 		Возврат "cell_select=10;"
 			+ "shipment_date=15;"
@@ -491,33 +544,45 @@
 			+ "batch_fifo=15;"
 			+ "line_status=1;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "coefficient=13;"
 			+ "extra_field_1=13;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "shipped" Тогда
 		Возврат "cell_select=10;"
 			+ "doc_signed_original=15;"
 			+ "qty_norm_hours_client=13;"
 			+ "line_status=1;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "return" Тогда
 		Возврат "cell_select=15;"
 			+ "doc_signed_original=15;"
 			+ "qty_norm_hours_client=13;"
 			+ "line_status=1;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "comment=63;"
+			+ "comment_2=63;";
 	ИначеЕсли ИдСтатуса = "closed" Тогда
 		Возврат "cell_select=15;"
 			+ "qty_norm_hours_client=13;"
 			+ "line_status=1;"
 			+ "paid_status=15;"
+			+ "invoice_number=15;"
+			+ "invoice_date=15;"
 			+ "supplier_ship_territory=63;"
-			+ "comment=63;";
+			+ "comment=63;"
+			+ "comment_2=63;";
 	КонецЕсли;
 
 	Возврат "";

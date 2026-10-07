@@ -353,11 +353,14 @@
     {id:'ordered_in_transit_qty', title:'Кол-во заказанного в пути / свободное', group:'stock'},
     {id:'batch_fifo', title:'№ партии ФИФО / выбор партии', group:'stock'},
     {id:'line_status', title:'Статус заявки', group:'status'},
+    {id:'stock_cell', title:'Ячейка склада (на склад)', group:'stock'},
     {id:'price', title:'Цена (себес.)', group:'pricing', type:'decimal'},
     {id:'sum', title:'Сумма (себес.)', group:'pricing', type:'decimal'},
     {id:'payment_form', title:'Форма оплаты', group:'payment'},
     {id:'rrc', title:'РРЦ', group:'margin_locked'},
     {id:'paid_status', title:'Оплачено (счёт, оплата, постоплата)', group:'payment'},
+    {id:'invoice_number', title:'Счёт №', group:'payment'},
+    {id:'invoice_date', title:'Дата счёта', group:'payment'},
     {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
     {id:'coefficient', title:'Коэфф', group:'margin_open'},
     {id:'extra_field_1', title:'Цена продажи', group:'pricing', type:'decimal'},
@@ -367,7 +370,10 @@
     {id:'upd_date', title:'Дата УПД', group:'receipt'},
     {id:'upd_number', title:'№ УПД', group:'receipt'},
     {id:'supplier_ship_territory', title:'Территория отгрузки поставщиком', group:'receipt'},
-    {id:'comment', title:'Комментарий', group:'comment'}
+    {id:'supplier_order_date', title:'Дата заказа поставщику', group:'auto'},
+    {id:'delivery_term', title:'Срок поставки', group:'receipt'},
+    {id:'comment', title:'Комментарий', group:'comment'},
+    {id:'comment_2', title:'Комментарий 2', group:'comment'}
   ];
 
   // Примеры строк реальной таблицы (для наглядного предпросмотра прав роли)
@@ -550,7 +556,7 @@
   var DEFAULT_DATA_TYPES = {
     cell_select:'checkbox', doc_signed_original:'checkbox',
     row_number:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
-    shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date',
+    shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date', invoice_date:'date', supplier_order_date:'date', delivery_term:'date',
     customer:'select', contract:'select', service_type:'select',
     brand_fact:'select', model_fact:'select', aggregate_fact:'select', gosnomer_fact:'select', grz_fact:'select', vin_fact:'select', engine_fact:'select',
     name:'select', article:'select', code_aa:'select', unit:'select',

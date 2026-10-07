@@ -18,12 +18,15 @@ window.VITAUTO_COLUMN_GROUPS = [
   {code:'C2', letter:'К', parent:'C', title:'Позиция (факт)', columns:['urgency_fact','vehicle_plate_fact','territory_fact','name_fact',
     'article_fact','qty_fact','unit_fact']},
   {code:'D', letter:'М', title:'Номенклатура', columns:['name','article','code_aa','unit']},
-  {code:'E', letter:'Н', start:0, title:'Склад и статус', columns:['qty','stock_qty','reserve_qty','ordered_in_transit_qty','batch_fifo','line_status']},
+  {code:'E', letter:'Н', start:0, title:'Склад и статус', columns:['qty','stock_qty','reserve_qty','ordered_in_transit_qty','batch_fifo','line_status',
+    'stock_cell']},
   {code:'F', letter:'О–Р', title:'Цены и оплата', columns:[]},
-  {code:'F1', letter:'О', parent:'F', title:'Себестоимость и оплата', columns:['price','sum','payment_form','rrc','paid_status']},
+  {code:'F1', letter:'О', parent:'F', title:'Себестоимость и оплата', columns:['price','sum','payment_form','rrc','paid_status',
+    'invoice_number','invoice_date']},
   {code:'F2', letter:'Р', parent:'F', start:0, title:'Продажа', columns:['qty_norm_hours_client','coefficient','extra_field_1','extra_field_2']},
-  {code:'G', letter:'С', title:'Поступление от поставщика', columns:['supplier','receipt_date','upd_date','upd_number','supplier_ship_territory']},
-  {code:'H', letter:'Т', title:'Комментарий', columns:['comment']}
+  {code:'G', letter:'С', title:'Поступление от поставщика', columns:['supplier','receipt_date','upd_date','upd_number','supplier_ship_territory',
+    'supplier_order_date','delivery_term']},
+  {code:'H', letter:'Т', title:'Комментарий', columns:['comment','comment_2']}
 ];
 
 // colId → {code:'Е4', group:'C1', top:'C'}

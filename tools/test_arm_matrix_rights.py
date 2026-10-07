@@ -32,6 +32,7 @@ ROOT = G.ROOT
 EXT = G.EXT_DIR
 V210 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.10')
 V211 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.11')
+V212 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.12')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -120,10 +121,10 @@ def bsl_can_edit(parsed, role_enum, status_enum, field):
     bit = dict(parsed['roles']).get(role_enum, 0)
     if bit == 0:
         return False
+    if role_enum == G.ADMIN_ENUM:          # D1e′ (v2.13): любой статус, включая ЗаблокированоФоном
+        return field in set(parsed['admin_generic']) | set(parsed['admin_extra'])
     if status_enum == G.BLOCKED_STATUS_ENUM:
         return False
-    if role_enum == G.ADMIN_ENUM:
-        return field in set(parsed['admin_generic']) | set(parsed['admin_extra'])
     sid = next((s for s, names in parsed['statuses'] if status_enum in names), None)
     if sid is None:
         return False
@@ -242,9 +243,9 @@ class TestGeneratedData(MatrixCase):
         self.assertEqual(self.parsed['admin_extra'], G.ADMIN_EXTRA_FIELDS)
 
     def test_control_flow_order_in_bsl(self):
-        """Порядок проверок в ОтказПоПолю: нет роли -> ЗаблокированоФоном -> админ -> статус -> поле -> маска."""
+        """Порядок проверок в ОтказПоПолю (v2.13): нет роли -> админ -> ЗаблокированоФоном -> статус -> поле -> маска."""
         body = function_body(self.bsl_text, 'ОтказПоПолю')
-        marks = ['Бит = БитРоли(Роль)', 'Арм_СтатусыАРМ.ЗаблокированоФоном', 'Арм_РолиИнтерфейса.Администратор',
+        marks = ['Бит = БитРоли(Роль)', 'Арм_РолиИнтерфейса.Администратор', 'Арм_СтатусыАРМ.ЗаблокированоФоном',
                  'МатричныйСтатусПоСтатусуАРМ(СтатусСтроки)', 'КолонкаМатрицыПоПолюРегистра(ИмяПоляРегистра)',
                  'БитРолиВМаске(МаскаЯчейки(ИдСтатуса, ИдКолонки), Бит)']
         pos = [body.index(m) for m in marks]
@@ -301,7 +302,9 @@ class TestStatusMap(MatrixCase):
     def test_unknown_or_empty_status_denied(self):
         self.assertFalse(self.can('Менеджер', 'НесуществующийСтатус', 'КомментарийКСтроке'))
         self.assertFalse(self.can('Менеджер', None, 'КомментарийКСтроке'))
-        self.assertFalse(self.can('Администратор', G.BLOCKED_STATUS_ENUM, 'КомментарийКСтроке'))
+        # D1e′ (v2.13): администратор правит и в «Заблокировано фоном»
+        self.assertTrue(self.can('Администратор', G.BLOCKED_STATUS_ENUM, 'КомментарийКСтроке'))
+        self.assertFalse(self.can('Менеджер', G.BLOCKED_STATUS_ENUM, 'КомментарийКСтроке'))
 
 
 # ====================================================================== перечисления и колонки
@@ -351,14 +354,19 @@ class TestSchemaConsistency(MatrixCase):
                 continue
             self.assertIn('"%s"' % f, reg.replace('\\"', '"'), 'поля %s нет в метаданных регистра' % f)
 
-    def test_admin_whitelist_matches_v210_form(self):
-        """D1e=B: whitelist администратора = v2.10 (ПоляРедактируемыеАдминистратором / ПоляИзменяемыеАдминистратором)."""
-        for path in (FORM_V210, FORM):
-            text = read(path)
-            gen = ''.join(string_literals(function_body(text, 'ПоляРедактируемыеАдминистратором')))
-            ext = ''.join(s for s in string_literals(function_body(text, 'ПоляИзменяемыеАдминистратором')) if s != ',')
-            self.assertEqual(gen.split(','), G.ADMIN_GENERIC_FIELDS, path)
-            self.assertEqual(ext.split(','), G.ADMIN_EXTRA_FIELDS, path)
+    def test_admin_fields_match_form(self):
+        """D1e′ (v2.13): ПоляИзменяемыеАдминистратором формы = все поля регистра колонок (как в генераторе);
+        «общий ввод» для ролей (ПоляРедактируемыеАдминистратором) — прежний список v2.10."""
+        text = read(FORM)
+        gen = ''.join(string_literals(function_body(text, 'ПоляРедактируемыеАдминистратором')))
+        ext = ''.join(s for s in string_literals(function_body(text, 'ПоляИзменяемыеАдминистратором')) if s != ',')
+        self.assertEqual(gen.split(','), G.ADMIN_GENERIC_FIELDS)
+        self.assertEqual(ext.split(','), G.ADMIN_EXTRA_FIELDS)
+        old = read(FORM_V210)
+        self.assertEqual(''.join(string_literals(function_body(old, 'ПоляРедактируемыеАдминистратором'))).split(','),
+                         G.ADMIN_GENERIC_FIELDS)
+        expected = {f for _c, f in G.FIELD_MAP} - set(G.NOT_REGISTER_FIELDS)
+        self.assertEqual(G.admin_fields(), expected)
 
     def test_admin_fields_are_mapped_matrix_fields(self):
         mapped = {f for _, f in G.FIELD_MAP}
@@ -370,10 +378,10 @@ class TestMatrixFacts(MatrixCase):
     ALL_STATUSES = [n for _, names in G.STATUS_MAP for n in names]
 
     def test_shipment_number_never_editable(self):
-        """Номер отгрузки — системное поле из РН: ни одна роль, ни один статус, в т.ч. админ."""
+        """Номер отгрузки — системное поле из РН: ни одна роль матрицы; администратор — да (D1e′, v2.13)."""
         for role, _ in G.ROLE_ENUM_MAP:
             for st in self.ALL_STATUSES + [G.BLOCKED_STATUS_ENUM]:
-                self.assertFalse(self.can(role, st, 'НомерОтгрузки'), (role, st))
+                self.assertEqual(self.can(role, st, 'НомерОтгрузки'), role == G.ADMIN_ENUM, (role, st))
         for sid, _ in G.STATUS_MAP:
             self.assertEqual(self.raw_mask(sid, 'shipment_number') & 63, 0)
 
@@ -412,8 +420,9 @@ class TestMatrixFacts(MatrixCase):
         for st in self.ALL_STATUSES:
             self.assertTrue(ch('Администратор', st), st)
         self.assertFalse(ch('Администратор', G.BLOCKED_STATUS_ENUM))
-        # колонка line_status — не поле «общего ввода» администратора: whitelist её не содержит
-        self.assertNotIn('СтатусСтроки', G.admin_fields())
+        # D1e′ (v2.13): администратор правит и поле статуса напрямую (системная колонка)
+        self.assertIn('СтатусСтроки', G.admin_fields())
+        self.assertNotIn('СтатусСтроки', G.ADMIN_GENERIC_FIELDS)
 
     def test_client_can_edit_comment(self):
         self.assertTrue(self.can('Клиент', 'Черновик', 'КомментарийКСтроке'))
@@ -438,11 +447,12 @@ class TestMatrixFacts(MatrixCase):
         self.assertFalse(self.can('Поставщик', 'Черновик', 'Покупатель'))
 
     def test_blocked_by_background_denies_everyone_everything(self):
-        """T-map: ЗаблокированоФоном — запрет всегда, включая Администратора."""
+        """T-map: ЗаблокированоФоном — запрет всем ролям матрицы; администратору — разрешено (D1e′, v2.13)."""
         for role, _ in G.ROLE_ENUM_MAP:
             for _cid, f in G.FIELD_MAP:
-                self.assertFalse(self.can(role, G.BLOCKED_STATUS_ENUM, f), (role, f))
-                self.assertFalse(bsl_can_edit(self.parsed, role, G.BLOCKED_STATUS_ENUM, f), (role, f))
+                expected = role == G.ADMIN_ENUM and f in G.admin_fields()
+                self.assertEqual(self.can(role, G.BLOCKED_STATUS_ENUM, f), expected, (role, f))
+                self.assertEqual(bsl_can_edit(self.parsed, role, G.BLOCKED_STATUS_ENUM, f), expected, (role, f))
 
     def test_no_role_denies_fail_closed(self):
         """D1b: нет записи Арм_ПраваПользователей (пустая роль / None) — отказ, поля те же."""
@@ -474,16 +484,21 @@ class TestMatrixFacts(MatrixCase):
         self.assertEqual(self.raw_mask('ordered', 'contract'), 128)
         self.assertFalse(self.can('Менеджер', 'Заказано', 'Договор'))
 
-    def test_admin_whitelist_without_status_gate(self):
-        """D1e=B: админ правит whitelist в ЛЮБОМ статусе (кроме ЗаблокированоФоном) и не правит остальное."""
+    def test_admin_all_register_fields_any_status(self):
+        """D1e′ (v2.13): админ правит ВСЕ поля регистра колонок в ЛЮБОМ статусе, включая системные и «Заблокировано фоном»;
+        не правит только реквизиты номенклатуры (М2–М4) и вычисляемую «Сумма продажи» (Р3)."""
         wl = G.admin_fields()
-        for st in self.ALL_STATUSES:
+        for st in self.ALL_STATUSES + [G.BLOCKED_STATUS_ENUM]:
             for _cid, f in G.FIELD_MAP:
                 self.assertEqual(self.can('Администратор', st, f), f in wl, (st, f))
-        self.assertTrue(self.can('Администратор', 'Завершено', 'Покупатель'))
-        self.assertTrue(self.can('Администратор', 'Отгружено', 'Количество'))
-        self.assertFalse(self.can('Администратор', 'Черновик', 'СтатусСтроки'))
-        self.assertFalse(self.can('Администратор', 'Черновик', 'Себестоимость'))
+                self.assertEqual(bsl_can_edit(self.parsed, 'Администратор', st, f), f in wl, (st, f))
+        for f in ('СтатусСтроки', 'Себестоимость', 'НомерОтгрузки', 'НомерЗаказа', 'ОстатокДляСтроки', 'Порядок',
+                  'ДатаЗаказаПоставщику', 'КоличествоВРезерве', 'ДатаУПД'):
+            self.assertTrue(self.can('Администратор', 'Черновик', f), f)
+            self.assertTrue(self.can('Администратор', 'Завершено', f), f)
+            self.assertTrue(self.can('Администратор', G.BLOCKED_STATUS_ENUM, f), f)
+        for f in G.NOT_REGISTER_FIELDS:
+            self.assertFalse(self.can('Администратор', 'Черновик', f), f)
 
     def test_admin_path_separate_from_matrix(self):
         """Админ не зависит от бита admin в матрице: матрица даёт ему не то же, что whitelist."""
@@ -564,7 +579,7 @@ class TestWiring(unittest.TestCase):
         self.assertIn('доступно только администратору', procedure_text(self.v210, 'ЗаписатьПолеСтрокиАРМ'))   # было в v2.10
 
     def test_status_gate_replaced_by_acl_in_select_handler(self):
-        body = procedure_text(self.form, 'ДанныеАРМОтображениеВыбор')
+        body = procedure_text(self.form, 'ДанныеАРМОтображениеВыбор_Выполнить')
         self.assertNotIn('Невозможно редактировать строку на статусе', body)
         self.assertIn('ОтказПоПравамАРМ(ДанныеСтроки.ИдентификаторЗаписи, ИмяПоляАРМ)', body)
         self.assertIn('ИмяПоляРегистраПоЭлементуАРМ(Поле.Имя)', body)
@@ -574,7 +589,7 @@ class TestWiring(unittest.TestCase):
         self.assertLess(body.index('ОтказПоПравамАРМ('), body.index('ПоказатьВводЧисла('))
 
     def test_non_admin_general_input_goes_through_acl(self):
-        sel = procedure_text(self.form, 'ДанныеАРМОтображениеВыбор')
+        sel = procedure_text(self.form, 'ДанныеАРМОтображениеВыбор_Выполнить')
         self.assertIn('Если РежимАдминистратораАРМ <> Истина Тогда\r\n\t\tЕсли ОбработатьВыборАдминистратора(Поле, ДанныеСтроки) Тогда',
                       sel.replace('\n', '\r\n') if '\r\n' not in sel else sel)
         fn = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
@@ -647,10 +662,10 @@ class TestWiring(unittest.TestCase):
 
     def test_v212_vs_v211_only_expected_files_changed(self):
         changed = []
-        for dp, _dn, fn in os.walk(EXT):
+        for dp, _dn, fn in os.walk(V212):
             for f in fn:
                 p = os.path.join(dp, f)
-                rel = os.path.relpath(p, EXT)
+                rel = os.path.relpath(p, V212)
                 q = os.path.join(V211, rel)
                 if not os.path.isfile(q) or read_bytes(p) != read_bytes(q):
                     changed.append(rel.replace('\\', '/'))
@@ -683,14 +698,16 @@ class TestWiring(unittest.TestCase):
         self.assertEqual(len(uuids), len(set(uuids)), 'дубли идентификаторов ресурсов')
 
     def test_acl_input_fields_consistent(self):
-        expected = ['НомерШасси', 'КоличествоВРезерве', 'КоличествоВПути', 'ДатаУПД', 'НомерУПД', 'ДатаПоступления']
+        expected = ['НомерШасси', 'КоличествоВРезерве', 'КоличествоВПути', 'ДатаУПД', 'НомерУПД', 'ДатаПоступления',
+                    'НомерСчета', 'ДатаСчета', 'СрокПоставки', 'ЯчейкаСклада', 'КомментарийКСтроке2']
         self.assertEqual(G.ACL_INPUT_FIELDS, expected)
         form_fn = ''.join(string_literals(function_body(self.form, 'ПоляВводаПоACL')))
         self.assertEqual(form_fn.split(','), expected)
         mod = read(os.path.join(EXT, 'CommonModule', G.MODULE_NAME, 'CommonModule.obj.bsl'))
         mod_fn = ''.join(string_literals(function_body(mod, 'ПоляВводаПоACL')))
         self.assertEqual(mod_fn.split(','), expected)
-        self.assertFalse(set(expected) & set(G.admin_fields()), 'D1e=B: whitelist админа не расширяем')
+        self.assertTrue(set(expected) <= G.admin_fields(), 'D1e′: администратор правит и поля ввода по ACL')
+        self.assertNotIn('ДатаЗаказаПоставщику', expected)     # системное поле: ставит код, роли не вводят
         names = '\n'.join(procedure_text(self.form, n) for n in ('ОбработатьВыборАдминистратора', 'ЗаписатьПолеСтрокиАРМ'))
         self.assertIn('ПоляВводаПоACL()', names)
 
@@ -877,6 +894,138 @@ class TestWiring(unittest.TestCase):
             self.assertEqual(b.count(b'\n'), b.count(b'\r\n'), 'голый LF в ' + path)
 
 
+# ====================================================================== v2.13: колонки, дата заказа поставщику, журнал
+NEW_V213 = [('invoice_number', 'НомерСчета', 'О6'), ('invoice_date', 'ДатаСчета', 'О7'), ('stock_cell', 'ЯчейкаСклада', 'Н6'),
+            ('supplier_order_date', 'ДатаЗаказаПоставщику', 'С6'), ('delivery_term', 'СрокПоставки', 'С7'),
+            ('comment_2', 'КомментарийКСтроке2', 'Т2')]
+JOURNAL = os.path.join(EXT, 'CommonModule', 'Арм_Журнал', 'CommonModule.obj.bsl')
+
+
+class TestV213(MatrixCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.form = read(FORM)
+        cls.supply = read(FORM_SUPPLY)
+
+    def test_new_columns_everywhere(self):
+        """Шесть колонок v2.13: матрица (default-matrix.js), коды, генератор, регистр, форма, index.html."""
+        fmap = dict(G.FIELD_MAP)
+        desc = procedure_text(self.form, 'ОписаниеКолонокПоМатрице')
+        reg = read(os.path.join(EXT, 'InformationRegister', 'Арм_ДанныеЗакупокИПродаж', 'InformationRegister.json'))
+        html = read(os.path.join(ROOT, 'index.html'))
+        mdm = read(os.path.join(HERE, 'make_default_matrix.py'))
+        for cid, field, code in NEW_V213:
+            self.assertIn(cid, self.cols, cid)
+            self.assertEqual(fmap[cid], field)
+            self.assertIn('|%s|' % field, desc)
+            self.assertRegex(desc, r'\|%s\|[^|\r\n]*\|Р\|%s' % (field, code))
+            self.assertIn('"%s"' % field, reg.replace('\\"', '"'))
+            self.assertIn("id:'%s'" % cid, html)
+            self.assertIn("'%s':" % cid, mdm)
+        self.assertEqual(len(self.cols), 56)
+
+    def test_new_columns_rights(self):
+        self.assertTrue(self.can('Менеджер', 'Заказано', 'НомерСчета'))
+        self.assertTrue(self.can('Кладовщик', 'Приходуется', 'ЯчейкаСклада'))
+        self.assertTrue(self.can('Снабжение', 'НаСкладе', 'ЯчейкаСклада'))
+        self.assertFalse(self.can('Менеджер', 'Приходуется', 'ЯчейкаСклада'))
+        self.assertTrue(self.can('Менеджер', 'Оплачено', 'СрокПоставки'))
+        self.assertTrue(self.can('Клиент', 'Черновик', 'КомментарийКСтроке2'))
+        for role, _ in G.ROLE_ENUM_MAP:              # системное поле: роли матрицы — нет, админ — да
+            for st in self.ALL_STATUSES:
+                self.assertEqual(self.can(role, st, 'ДатаЗаказаПоставщику'), role == G.ADMIN_ENUM, (role, st))
+
+    ALL_STATUSES = [n for _, names in G.STATUS_MAP for n in names]
+
+    def test_supplier_order_date_set_by_button_and_job(self):
+        btn = procedure_text(self.form, 'СоздатьЗаказПоставщикуНаСервере')
+        self.assertIn('ОтметитьДатуЗаказаПоставщикуНаСервере(ТЗ_Выделенные)', btn)
+        self.assertIn('ОтказЕслиНеМенеджерИлиАдминАРМ()', btn)
+        fn = procedure_text(self.form, 'ОтметитьДатуЗаказаПоставщикуНаСервере')
+        self.assertIn('Запись.ДатаЗаказаПоставщику = ДатаЗаказа', fn)
+        self.assertIn('Арм_ВидыОпераций.Продажа', fn)             # и связанным продажам
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        upd = procedure_text(fon, 'ОбновитьДанныеЗакупокВРегистре')
+        self.assertEqual(upd.count('Если Не ЗначениеЗаполнено(Запись.ДатаЗаказаПоставщику) Тогда'), 2)   # закупка и продажа
+
+    def test_admin_general_input_for_system_columns(self):
+        sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
+        self.assertIn('ОбщийВводАдминистратора = РежимАдминистратораАРМ = Истина', sel)
+        self.assertIn('Не ЗначениеЗаполнено(ИмяПоляРегистраПоЭлементуАРМ(Поле.Имя))', sel)
+        wr = procedure_text(self.form, 'ЗаписатьПолеСтрокиАРМ')
+        self.assertIn('Если ЭтоАдминистраторАРМ() И СтрНайти("," + ПоляИзменяемыеАдминистратором()', wr)   # не ключи регистра
+        self.assertIn('Арм_Журнал.ЗаписатьПравку(', wr)
+        self.assertLess(wr.index('Набор.Записать()'), wr.index('Арм_Журнал.ЗаписатьПравку('))
+
+    def test_every_exception_handler_is_logged(self):
+        """Полное логирование: за каждым «Исключение» в модулях расширения — запись в Арм_Журнал."""
+        missing = []
+        for dp, _dn, fns in os.walk(EXT):
+            for fname in fns:
+                p = os.path.join(dp, fname)
+                if not fname.endswith('.bsl') or p == JOURNAL:
+                    continue
+                lines = read(p).split('\r\n')
+                for i, ln in enumerate(lines):
+                    if re.match(r'^\s*Исключение\s*$', ln):
+                        nxt = next((x for x in lines[i + 1:] if x.strip()), '')
+                        if 'Арм_Журнал.' not in nxt and 'ОшибкаКлиентаАРМ(' not in ''.join(lines[i + 1:i + 3]):
+                            missing.append('%s:%d' % (os.path.relpath(p, EXT), i + 1))
+        self.assertEqual(missing, [])
+
+    def test_client_command_handlers_wrapped(self):
+        for text in (self.form, self.supply):
+            cmds = re.findall(r'&НаКлиенте\r\nПроцедура (\w+)\(Команда\)', text)
+            self.assertTrue(cmds)
+            for name in cmds:
+                if name.endswith('_Выполнить'):
+                    continue
+                body = procedure_text(text, name)
+                self.assertIn('%s_Выполнить(Команда);' % name, body, name)
+                self.assertIn('ОшибкаКлиентаАРМ("%s", ИнформацияОбОшибке());' % name, body, name)
+        for ev in ('ДанныеАРМОтображениеВыбор', 'ДанныеАРМОтображениеКолонкаПриИзменении'):
+            self.assertIn('%s_Выполнить(' % ev, procedure_text(self.form, ev))
+        self.assertIn('Арм_Журнал.ЗаписатьИсключениеКлиента(', procedure_text(self.form, 'ОшибкаКлиентаАРМ'))
+
+    def test_journal_module(self):
+        j = read(JOURNAL)
+        for name in ('ЗаписатьИсключение', 'ЗаписатьИсключениеКлиента', 'ЗаписатьОшибку', 'ЗаписатьОтказ',
+                     'ЗаписатьПравку', 'ЗаписатьДействие'):
+            self.assertRegex(j, r'Процедура %s\([^)]*\) Экспорт' % name)
+        self.assertIn('РежимТранзакцииЗаписиЖурналаРегистрации.Независимая', j)
+        self.assertIn('ПодробноеПредставлениеОшибки', j)
+        self.assertIn('Причина', j)                                   # стек вызовов по цепочке
+        meta = read(os.path.join(EXT, 'CommonModule', 'Арм_Журнал', 'CommonModule.json'))
+        self.assertIn('Арм_Журнал', meta)
+        reg = read(REG_RIGHTS)
+        self.assertGreaterEqual(procedure_text(reg, 'ОтказПоПравамНаПолеСтроки').count('ОтказВЖурнал('), 4)
+
+    def test_v213_bsl_changes_scope(self):
+        """В v2.13 относительно v2.12 меняется только заявленный код (формы — XML-перепаковка, их BSL сравниваем)."""
+        allowed = {
+            'CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl', 'CommonModule/Арм_Журнал/CommonModule.obj.bsl',
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl', 'DataProcessor/АС_АРМ2/Form/ФормаСнабжение/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаЗагрузкиДанных/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаВводаРеквизитовОтгрузки/Form.obj.bsl',
+            'InformationRegister/Арм_ДанныеЗакупокИПродаж/InformationRegister.mgr.bsl',
+            'InformationRegister/Арм_ПраваПользователей/InformationRegister.mgr.bsl',
+            'Document/ПриходнаяНакладная/Document.obj.bsl',
+        }
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V212, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(set(changed) - allowed), [])
+
+
 # ====================================================================== регистрация и синтаксис
 COMMON_MODULE_CLASS = '0fe48980-252d-11d6-a3c7-0050bae0a776'
 
@@ -908,7 +1057,7 @@ class TestRegistrationAndSyntax(unittest.TestCase):
         new = json.load(io.open(os.path.join(G.MODULE_DIR, 'CommonModule.id.json'), encoding='utf-8'))['uuid']
         self.assertIn(new, ids)
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertEqual(len(ids), 3)
+        self.assertEqual(len(ids), 4)      # v2.13: + Арм_Журнал
         # uuid уникален среди всех *.id.json расширения
         seen = 0
         for dp, _dn, fn in os.walk(EXT):

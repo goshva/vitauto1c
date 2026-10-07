@@ -28,3 +28,6 @@ srvinfo/
 
 # Python
 __pycache__/
+
+# выгрузки tools/arm-log-report.ps1
+logs/

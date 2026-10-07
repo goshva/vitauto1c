@@ -141,7 +141,7 @@ function Get-LineDiff($A, $B) {
 
 # Первый заголовок ["\"ru\"", "\"Текст\""] в структуре элемента
 function Find-Ru($Node) {
-    if ($null -eq $Node -or $Node -is [string]) { return $null }
+    if ($null -eq $Node -or $Node -is [string] -or $Node -is [ValueType]) { return $null }   # число/булево — лист: @(5) снова 5, иначе бесконечная рекурсия
     if ($Node -is [System.Management.Automation.PSCustomObject]) {
         foreach ($p in $Node.PSObject.Properties) { $r = Find-Ru $p.Value; if ($null -ne $r) { return $r } }
         return $null
@@ -154,7 +154,7 @@ function Find-Ru($Node) {
 
 # Текст запроса динамического списка: ... "\"QueryText\"", ["\"S\"", "\"ВЫБРАТЬ ...\""]
 function Find-QueryText($Node) {
-    if ($null -eq $Node -or $Node -is [string]) { return $null }
+    if ($null -eq $Node -or $Node -is [string] -or $Node -is [ValueType]) { return $null }   # число/булево — лист: @(5) снова 5, иначе бесконечная рекурсия
     if ($Node -is [System.Management.Automation.PSCustomObject]) {
         foreach ($p in $Node.PSObject.Properties) { $r = Find-QueryText $p.Value; if ($null -ne $r) { return $r } }
         return $null

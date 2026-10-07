@@ -106,52 +106,52 @@
           "\"FieldsMapItemId0\"",
           [
             "\"N\"",
-            "1"
+            "3"
           ],
           "\"FieldsMapItemName0\"",
           [
             "\"S\"",
-            "\"Code\""
+            "\"Description\""
           ],
           "\"FieldsMapItemSecondaryName0\"",
           [
             "\"S\"",
-            "\"Код\""
+            "\"Наименование\""
           ],
           "\"FiledsMapItemId0\"",
           [
             "\"N\"",
-            "1"
+            "3"
           ],
           "\"FiledsMapItemName0\"",
           [
             "\"S\"",
-            "\"Code\""
+            "\"Description\""
           ],
           "\"FieldsMapItemId1\"",
           [
             "\"N\"",
-            "3"
+            "4"
           ],
           "\"FieldsMapItemName1\"",
           [
             "\"S\"",
-            "\"Description\""
+            "\"Code\""
           ],
           "\"FieldsMapItemSecondaryName1\"",
           [
             "\"S\"",
-            "\"Наименование\""
+            "\"Код\""
           ],
           "\"FiledsMapItemId1\"",
           [
             "\"N\"",
-            "3"
+            "4"
           ],
           "\"FiledsMapItemName1\"",
           [
             "\"S\"",
-            "\"Description\""
+            "\"Code\""
           ],
           "\"FieldsMapSecondaryNamesLoaded\"",
           [
@@ -171,7 +171,7 @@
           "\"ServerState\"",
           [
             "\"S\"",
-            "\"QcGaAu+7mrO/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nN\n\nCjxVbml2ZXJzYWxMaXN0U2VydmVyT25seVN0YXRlIHhtbG5\n\nzP\n\nSI\n\niI\n\nHh\n\ntb\n\nG5\n\nzO\n\nnhz\n\nPSJodHRwOi8vd3d3LnczLm9yZy8yMDA\n\nxL1h\n\nNTFN\n\njaGV\n\ntYSI\n\ngeG1\n\nsbnM\n\n6eHN\n\npPSJo\n\ndHRwOi8vd3d3Lnc\n\nzLm9yZ\n\ny8yMDA\n\nxL1hNT\n\nFNjaGV\n\ntYS1pb\n\nnN0YW5\n\njZSIvP\n\niAg\""
+            "\"QcGaAu+7mrO/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4N\n\nCjxVbml2ZXJzYWxMaXN0U2VydmVyT25seVN0YXRlIHhtbG5zPSIiIHhtbG5zOnhz\n\nPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYSIgeG1sbnM6eHNpPSJo\n\ndHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYS1pbnN0YW5jZSIvPiAg\""
           ],
           "\"DataParameters\"",
           [
@@ -339,7 +339,7 @@
         ],
         "1",
         "0",
-        "13",
+        "11",
         "5",
         [
           "\"B\"",
@@ -391,19 +391,10 @@
           "eac7bfa0-10b4-4369-996c-d258871ad519",
           "0"
         ],
-        "15",
-        [
-          "\"U\""
-        ],
         "16",
         [
           "\"N\"",
           "1"
-        ],
-        "19",
-        [
-          "\"S\"",
-          "\"\""
         ],
         "20",
         [
@@ -1461,7 +1452,7 @@
             "1"
           ],
           [
-            "1"
+            "4"
           ]
         ],
         [

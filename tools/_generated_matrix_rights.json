@@ -248,6 +248,10 @@
    "СтатусСтроки"
   ],
   [
+   "stock_cell",
+   "ЯчейкаСклада"
+  ],
+  [
    "price",
    "СебестоимостьЕдиницы"
   ],
@@ -266,6 +270,14 @@
   [
    "paid_status",
    "Оплачено"
+  ],
+  [
+   "invoice_number",
+   "НомерСчета"
+  ],
+  [
+   "invoice_date",
+   "ДатаСчета"
   ],
   [
    "qty_norm_hours_client",
@@ -304,8 +316,20 @@
    "ТерриторияОтгрузкиПоставщиком"
   ],
   [
+   "supplier_order_date",
+   "ДатаЗаказаПоставщику"
+  ],
+  [
+   "delivery_term",
+   "СрокПоставки"
+  ],
+  [
    "comment",
    "КомментарийКСтроке"
+  ],
+  [
+   "comment_2",
+   "КомментарийКСтроке2"
   ]
  ],
  "masks": {
@@ -346,11 +370,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 13,
    "sum": 0,
    "payment_form": 15,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -359,7 +386,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "in_work": {
    "cell_select": 63,
@@ -398,11 +428,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 13,
    "sum": 0,
    "payment_form": 15,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -411,7 +444,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "partially_ordered": {
    "cell_select": 13,
@@ -450,11 +486,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 13,
    "sum": 0,
    "payment_form": 15,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -463,7 +502,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "ordered": {
    "cell_select": 13,
@@ -502,11 +544,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 13,
    "sum": 0,
    "payment_form": 15,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -515,7 +560,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "paid": {
    "cell_select": 29,
@@ -554,11 +602,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -567,7 +618,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "in_transit": {
    "cell_select": 29,
@@ -606,11 +660,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -619,7 +676,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "awaiting_receipt": {
    "cell_select": 13,
@@ -658,11 +718,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -671,7 +734,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 13,
+   "comment": 63,
+   "comment_2": 63
   },
   "acceptance": {
    "cell_select": 10,
@@ -710,11 +776,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 2,
    "price": 11,
    "sum": 0,
    "payment_form": 10,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -723,7 +792,10 @@
    "upd_date": 2,
    "upd_number": 2,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 3,
+   "comment": 63,
+   "comment_2": 63
   },
   "to_stock": {
    "cell_select": 10,
@@ -762,11 +834,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 2,
    "price": 11,
    "sum": 0,
    "payment_form": 10,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -775,7 +850,10 @@
    "upd_date": 2,
    "upd_number": 2,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 3,
+   "comment": 63,
+   "comment_2": 63
   },
   "reserve": {
    "cell_select": 15,
@@ -814,11 +892,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -827,7 +908,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 0,
+   "comment": 63,
+   "comment_2": 63
   },
   "assembly": {
    "cell_select": 10,
@@ -866,11 +950,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 13,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -879,7 +966,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 0,
+   "comment": 63,
+   "comment_2": 63
   },
   "ready_to_ship": {
    "cell_select": 10,
@@ -918,11 +1008,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 0,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 13,
    "extra_field_1": 13,
    "extra_field_2": 0,
@@ -931,7 +1024,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 0,
+   "comment": 63,
+   "comment_2": 63
   },
   "shipped": {
    "cell_select": 10,
@@ -970,11 +1066,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 0,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 0,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 0,
    "extra_field_1": 0,
    "extra_field_2": 0,
@@ -983,7 +1082,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 0,
+   "comment": 63,
+   "comment_2": 63
   },
   "return": {
    "cell_select": 15,
@@ -1022,11 +1124,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 0,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 0,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 0,
    "extra_field_1": 0,
    "extra_field_2": 0,
@@ -1035,7 +1140,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 0,
+   "comment": 63,
+   "comment_2": 63
   },
   "closed": {
    "cell_select": 15,
@@ -1074,11 +1182,14 @@
    "ordered_in_transit_qty": 0,
    "batch_fifo": 0,
    "line_status": 1,
+   "stock_cell": 0,
    "price": 0,
    "sum": 0,
    "payment_form": 0,
    "rrc": 0,
    "paid_status": 15,
+   "invoice_number": 15,
+   "invoice_date": 15,
    "coefficient": 0,
    "extra_field_1": 0,
    "extra_field_2": 0,
@@ -1087,7 +1198,10 @@
    "upd_date": 0,
    "upd_number": 0,
    "supplier_ship_territory": 63,
-   "comment": 63
+   "supplier_order_date": 0,
+   "delivery_term": 0,
+   "comment": 63,
+   "comment_2": 63
   }
  },
  "ignored_creator": [
@@ -1134,7 +1248,7 @@
  ],
  "tab_divergences_vs_manager": {
   "storekeeper": {
-   "cells": 55,
+   "cells": 57,
    "examples": [
     "new/grz_fact: manager=1 storekeeper=0",
     "new/article: manager=0 storekeeper=15",
@@ -1144,7 +1258,7 @@
    ]
   },
   "chief_mechanic": {
-   "cells": 55,
+   "cells": 57,
    "examples": [
     "new/grz_fact: manager=1 chief_mechanic=0",
     "new/article: manager=0 chief_mechanic=15",
@@ -1154,7 +1268,7 @@
    ]
   },
   "admin": {
-   "cells": 55,
+   "cells": 57,
    "examples": [
     "new/grz_fact: manager=1 admin=0",
     "new/article: manager=0 admin=15",
@@ -1164,7 +1278,7 @@
    ]
   },
   "supplier": {
-   "cells": 55,
+   "cells": 57,
    "examples": [
     "new/grz_fact: manager=1 supplier=0",
     "new/article: manager=0 supplier=15",
@@ -1174,7 +1288,7 @@
    ]
   },
   "client": {
-   "cells": 55,
+   "cells": 57,
    "examples": [
     "new/grz_fact: manager=1 client=0",
     "new/article: manager=0 client=15",
@@ -1192,32 +1306,50 @@
   "ГРЗКлиента",
   "Госномер",
   "ДатаЗаказа",
+  "ДатаЗаказаПоставщику",
   "ДатаОтгрузки",
+  "ДатаПоступления",
+  "ДатаСчета",
+  "ДатаУПД",
   "Двигатель",
   "Договор",
   "ДокументПодписанОригинал",
   "ЕдиницаИзмеренияКлиента",
   "Количество",
+  "КоличествоВПути",
+  "КоличествоВРезерве",
   "КоличествоКлиента",
   "КоличествоНормаЧас",
   "КомментарийКСтроке",
+  "КомментарийКСтроке2",
   "Коэффициент",
   "Марка",
   "Модель",
   "Номенклатура",
   "НоменклатураКлиента",
+  "НомерЗаказа",
   "НомерЗаказаКлиента",
+  "НомерОтгрузки",
+  "НомерСчета",
+  "НомерУПД",
+  "НомерШасси",
   "Оплачено",
+  "ОстатокДляСтроки",
   "ОтметкаСтроки",
   "Партия",
   "Покупатель",
+  "Порядок",
   "Поставщик",
   "РРЦ",
+  "Себестоимость",
   "СебестоимостьЕдиницы",
+  "СрокПоставки",
   "СрочностьКлиента",
+  "СтатусСтроки",
   "ТерриторияКлиента",
   "ТерриторияОтгрузкиПоставщиком",
   "ФормаОплаты",
-  "Цена"
+  "Цена",
+  "ЯчейкаСклада"
  ]
 }
