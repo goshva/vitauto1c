@@ -11,7 +11,8 @@
 window.VITAUTO_COLUMN_GROUPS = [
   {code:'A', letter:'А', title:'Служебные', columns:['cell_select','row_number','doc_signed_original']},
   {code:'B', letter:'В', title:'Заказ и отгрузка', columns:['shipment_date','shipment_number','order_date','order_internal_number',
-    'order_client_number','customer','contract','service_type']},
+    'order_client_number','customer','contract','service_type',
+    'assembly_sent_date']},
   {code:'C', letter:'Е–К', title:'Факт (заявка клиента)', columns:[]},
   {code:'C1', letter:'Е', parent:'C', title:'Автомобиль / агрегат', columns:['brand_fact','model_fact','aggregate_fact','gosnomer_fact',
     'grz_fact','vin_fact','engine_fact']},

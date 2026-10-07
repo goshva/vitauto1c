@@ -29,6 +29,8 @@ NEW_COLUMNS = {
     'supplier_order_date': ('supplier_ship_territory', 'shipment_number', 'date'),  # С6 системная
     'delivery_term': ('supplier_order_date', 'supplier', 'date'),          # С7 Срок поставки
     'comment_2': ('comment', 'comment', 'text'),                           # Т2 Комментарий 2
+    # v2.14: дата отправки на сборку — системная (ставится при переводе строки в «Комплектуется»)
+    'assembly_sent_date': ('service_type', 'shipment_number', 'date'),     # В9
 }
 
 # Новые статусы, которых нет в экспорте: id -> (вставить после, скопировать права с)

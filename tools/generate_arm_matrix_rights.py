@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Генератор ACL «роль x статус x колонка» для расширения АРМ (T-map + T01, tip v2.13).
+"""Генератор ACL «роль x статус x колонка» для расширения АРМ (T-map + T01, tip v2.14).
 
 Источник прав: default-matrix.js (канон Pages: вкладка manager, уровень order — решение D1).
 Результат:
   1) tools/_generated_matrix_rights.json — срез для тестов и отчёта о расхождениях вкладок;
-  2) src/АРМЗакупокИПродаж_v2.13/CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl (CRLF, без BOM);
+  2) src/АРМЗакупокИПродаж_v2.14/CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl (CRLF, без BOM);
   3) CommonModule.json / CommonModule.id.json (создаются один раз, UUID стабилен) и запись
      в ConfigurationExtension.json (список общих модулей).
 
@@ -29,7 +29,7 @@ ROOT = os.path.abspath(os.path.join(HERE, '..'))
 MODULE_NAME = 'Арм_МатрицаПрав'
 MODULE_SYNONYM = 'Арм матрица прав'
 TEMPLATE_MODULE = 'Арм_ДанныеЗакупокИПродажФон'
-VERSION_DIR_GLOB = 'АРМЗакупокИПродаж_v2.13'
+VERSION_DIR_GLOB = 'АРМЗакупокИПродаж_v2.14'
 
 ROLE_BITS = {'manager': 1, 'storekeeper': 2, 'chief_mechanic': 4, 'admin': 8, 'supplier': 16, 'client': 32}
 BIT_REQUIRED, BIT_CREATOR, BIT_ADMIN_ONLY = 64, 128, 256
@@ -84,6 +84,7 @@ _FIELD_PAIRS = [
     ('Покупатель', 'customer'),                          # В6
     ('Договор', 'contract'),                             # В7
     ('ВидУслуги', 'service_type'),                       # В8
+    ('ДатаОтправкиНаСборку', 'assembly_sent_date'),      # В9 (v2.14, ставится при переводе в «Комплектуется»)
     ('Марка', 'brand_fact'),                             # Е1
     ('Модель', 'model_fact'),                            # Е2
     ('Агрегат', 'aggregate_fact'),                       # Е3
@@ -143,7 +144,7 @@ ADMIN_GENERIC_FIELDS = (
 ).split(',')
 # v2.13 (D1e′, решение владельца 07.10.2026): администратор правит ВСЕ поля регистра, выведенные колонками,
 # в ЛЮБОМ статусе (включая «Заблокировано фоном») — в том числе системные: номер отгрузки, номер заказа, статус,
-# себестоимость, остаток, порядок, дату заказа поставщику. Не правятся только колонки не из регистра:
+# себестоимость, остаток, порядок, дату заказа поставщику, дату отправки на сборку (v2.14). Не правятся только колонки не из регистра:
 # реквизиты номенклатуры (М2–М4 — данные справочника) и «Сумма продажи» (Р3 — вычисляется в запросе списка).
 NOT_REGISTER_FIELDS = ('НоменклатураАртикул', 'НоменклатураАС_КодАвтоАльянс', 'НоменклатураЕдиницаИзмерения', 'Сумма')
 ADMIN_EXTRA_FIELDS = [f for _c, f in FIELD_MAP if f not in NOT_REGISTER_FIELDS and f not in ADMIN_GENERIC_FIELDS]
@@ -275,7 +276,7 @@ def bsl_str(s):
 def generate_bsl(model):
     L = []
     a = L.append
-    a('// %s — ACL «роль x статус строки x колонка» по матрице прав (T-map + T01, tip v2.13).' % MODULE_NAME)
+    a('// %s — ACL «роль x статус строки x колонка» по матрице прав (T-map + T01, tip v2.14).' % MODULE_NAME)
     a('// СГЕНЕРИРОВАНО tools/generate_arm_matrix_rights.py из «%s». Не править вручную.' % model['source'])
     a('// Модуль чистый: не читает БД и сеанс — роль и статус строки передаёт вызывающий серверный код.')
     a('//')

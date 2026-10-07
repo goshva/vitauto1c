@@ -33,6 +33,7 @@ EXT = G.EXT_DIR
 V210 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.10')
 V211 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.11')
 V212 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.12')
+V213 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.13')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -897,7 +898,7 @@ class TestWiring(unittest.TestCase):
 # ====================================================================== v2.13: колонки, дата заказа поставщику, журнал
 NEW_V213 = [('invoice_number', 'НомерСчета', 'О6'), ('invoice_date', 'ДатаСчета', 'О7'), ('stock_cell', 'ЯчейкаСклада', 'Н6'),
             ('supplier_order_date', 'ДатаЗаказаПоставщику', 'С6'), ('delivery_term', 'СрокПоставки', 'С7'),
-            ('comment_2', 'КомментарийКСтроке2', 'Т2')]
+            ('comment_2', 'КомментарийКСтроке2', 'Т2'), ('assembly_sent_date', 'ДатаОтправкиНаСборку', 'В9')]
 JOURNAL = os.path.join(EXT, 'CommonModule', 'Арм_Журнал', 'CommonModule.obj.bsl')
 
 
@@ -923,7 +924,7 @@ class TestV213(MatrixCase):
             self.assertIn('"%s"' % field, reg.replace('\\"', '"'))
             self.assertIn("id:'%s'" % cid, html)
             self.assertIn("'%s':" % cid, mdm)
-        self.assertEqual(len(self.cols), 56)
+        self.assertEqual(len(self.cols), 57)      # v2.13: +6, v2.14: +В9
 
     def test_new_columns_rights(self):
         self.assertTrue(self.can('Менеджер', 'Заказано', 'НомерСчета'))
@@ -948,6 +949,40 @@ class TestV213(MatrixCase):
         fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
         upd = procedure_text(fon, 'ОбновитьДанныеЗакупокВРегистре')
         self.assertEqual(upd.count('Если Не ЗначениеЗаполнено(Запись.ДатаЗаказаПоставщику) Тогда'), 2)   # закупка и продажа
+
+    def test_v214_assembly_sent_date(self):
+        """В9 «Дата отправки на сборку»: системная колонка — ставится при переводе в «Комплектуется»
+        (цепочка снабжения: закупка и связанная продажа; ручная смена статуса администратором), только если пустая."""
+        for role, _ in G.ROLE_ENUM_MAP:
+            for st in self.ALL_STATUSES:
+                self.assertEqual(self.can(role, st, 'ДатаОтправкиНаСборку'), role == G.ADMIN_ENUM, (role, st))
+        oan = read(OAN)
+        fn = procedure_text(oan, 'ОтметитьДатуОтправкиНаСборку')
+        self.assertIn('Статус = Перечисления.Арм_СтатусыАРМ.Комплектуется', fn)
+        self.assertIn('Не ЗначениеЗаполнено(Запись.ДатаОтправкиНаСборку)', fn)
+        chain = procedure_text(oan, 'ИзменитьСтатусыВРегистреСнабжения')
+        self.assertEqual(chain.count('ОтметитьДатуОтправкиНаСборку(Запись, ЦелевойСтатус);'), 2)
+        wr = procedure_text(self.form, 'ЗаписатьПолеСтрокиАРМ')
+        self.assertIn('Арм_ОбщегоНазначенияАРМ.ОтметитьДатуОтправкиНаСборку(Запись, Значение);', wr)
+        codes = read(os.path.join(ROOT, 'column-codes.js'))
+        self.assertIn("'service_type',", codes)
+        self.assertLess(codes.index("'service_type'"), codes.index("'assembly_sent_date'"))
+
+    def test_v214_changes_only_expected_bsl(self):
+        """v2.14 относительно v2.13: код меняется только в общем модуле, форме АРМ и модуле прав."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V213, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl']))
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
