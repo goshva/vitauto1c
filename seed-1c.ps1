@@ -1,11 +1,17 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  Наполнение базы 1С демо-данными АРМ закупок и продаж (seed) по seed\data.json.
+  Наполнение чистой базы 1С с АРМ 3.0 демо-данными (seed): путь детали по процессам из таблицы
+  seed\Шаблон деталей.xlsx (seed\data.json строит tools\seed_from_xlsx.py).
 
-  Что создаётся: виды услуг, формы оплаты, контрагенты с договорами, номенклатура,
-  пользователи с ролями интерфейса АРМ, заказы покупателей (номера клиента SEED-*) и строки АРМ
-  в статусах матрицы. Повторный запуск дублей не создаёт.
+  Что создаётся: виды услуг, формы оплаты, контрагенты с договорами и счетами расчётов, номенклатура
+  с реквизитами УНФ (тип, счета, НДС), пользователи с ролями интерфейса АРМ и по заказу покупателя
+  на каждый сценарий таблицы (номер клиента SEED-309-<n>):
+    1 — товар на складе;  2 — закупка → отгрузка;  3 — с контролем комплектации;
+    4 — отказ клиента при получении (возврат);  5 — поступление машины в ремонт (запчасти и работы).
+  В заказе — строка на каждый шаг процесса; строки АРМ получают статус и поля как в таблице
+  (включая колонки v2.13–v2.14: счёт, срок поставки, ячейка склада, дата отправки на сборку…).
+  Повторный запуск дублей не создаёт.
 
   Как работает:
     - строки АРМ появляются через документ «Заказ покупателя» — регистр заполняет само расширение;
@@ -14,13 +20,13 @@
     - запись идёт через COM-соединение 1С (seed\seed.js, cscript той же разрядности, что платформа);
       библиотека типов comcntr.dll при необходимости регистрируется для текущего пользователя.
 
-  База должна быть закрыта в конфигураторе; расширение АРМЗакупокИПродаж — установлено
-  (для ролей кладовщика, главного механика, клиента и поставщика — версия v2.4 и новее).
+  База должна быть закрыта в конфигураторе; расширение АРМЗакупокИПродаж — установлено, АРМ 3.0
+  (схема регистра v2.14 и новее: без полей «Дата отправки на сборку», «Ячейка склада»… seed откажет).
 
 .EXAMPLE
-  .\seed-1c.ps1                                   # база из 1c-env.json или D:\1c_bases\autoservice
-  .\seed-1c.ps1 -IbDir D:\1c\test_v21
-  .\seed-1c.ps1 -IbDir D:\1c\test_v21 -KeepSafeModeOff
+  .\seed-1c.ps1 -IbDir D:\1c\test_arm30           # чистая база после установки АРМ 3.0
+  .\seed-1c.ps1 -IbDir D:\1c\test_arm30 -KeepSafeModeOff
+  python tools\seed_from_xlsx.py                  # после правки таблицы — пересобрать seed\data.json
   .\seed-1c.ps1 -ConnectionString 'Srvr="localhost";Ref="autoservice";Usr="Админ";Pwd=""'
 #>
 param(
@@ -50,9 +56,16 @@ try {
     Step 'База'
     if (-not $ConnectionString) {
         if (-not $IbDir) {
+            # 1c-env.json (preflight-1c.ps1) может устареть после новой установки — берём первую существующую базу:
+            # из 1c-env.json, затем каталог по умолчанию install-1c.ps1
+            $candidates = @()
             $envFile = Join-Path $Root '1c-env.json'
-            if (Test-Path $envFile) { $IbDir = (Get-Content $envFile -Raw -Encoding UTF8 | ConvertFrom-Json).Infobase.Dir }
-            if (-not $IbDir) { $IbDir = 'D:\1c_bases\autoservice' }
+            if (Test-Path $envFile) { $candidates += (Get-Content $envFile -Raw -Encoding UTF8 | ConvertFrom-Json).Infobase.Dir }
+            $candidates += 'D:\1c_bases\autoservice'
+            $candidates = @($candidates | Where-Object { $_ } | Select-Object -Unique)
+            $IbDir = $candidates | Where-Object { Test-Path (Join-Path $_ '1Cv8.1CD') } | Select-Object -First 1
+            if (-not $IbDir) { throw "Файловая база не найдена (проверено: $($candidates -join ', ')). Укажите каталог базы: -IbDir <каталог>" }
+            if ($IbDir -ne $candidates[0]) { Warn "в 1c-env.json база $($candidates[0]) — её нет, используется $IbDir (каталог install-1c.ps1)" }
         }
         $ibFile = Join-Path $IbDir '1Cv8.1CD'
         if (-not (Test-Path $ibFile)) { throw "Файловая база не найдена: $ibFile" }

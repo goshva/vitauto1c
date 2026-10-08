@@ -34,6 +34,7 @@ V210 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.10')
 V211 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.11')
 V212 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.12')
 V213 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.13')
+V214 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.14')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -983,6 +984,29 @@ class TestV213(MatrixCase):
             'CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl',
             'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
             'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl']))
+
+    def test_v215_close_without_server_calls_on_exit(self):
+        """v2.15: закрытие программы с открытым АРМ — без «Серверные вызовы при завершении работы запрещены»:
+        ПередЗакрытием при ЗавершениеРаботы выходит до вызова сервера, флаги снимаются при следующем открытии."""
+        close = procedure_text(self.form, 'ПередЗакрытием')
+        self.assertIn('Если ЗавершениеРаботы = Истина Тогда', close)
+        self.assertLess(close.index('Если ЗавершениеРаботы = Истина Тогда'), close.index('СброситьФлагиНаСервере();'))
+        self.assertLess(close.index('Возврат;'), close.index('СброситьФлагиНаСервере();'))
+        create = procedure_text(self.form, 'ПриСозданииНаСервере')
+        self.assertLess(create.index('СброситьФлагиНаСервере();'), create.index('ПрименитьКолонкиПоМатрице();'))
+
+    def test_v215_changes_only_form(self):
+        """v2.15 относительно v2.14: код меняется только в модуле формы АРМ."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V214, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(changed, ['DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl'])
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
