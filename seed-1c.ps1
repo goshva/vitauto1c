@@ -56,9 +56,16 @@ try {
     Step 'База'
     if (-not $ConnectionString) {
         if (-not $IbDir) {
+            # 1c-env.json (preflight-1c.ps1) может устареть после новой установки — берём первую существующую базу:
+            # из 1c-env.json, затем каталог по умолчанию install-1c.ps1
+            $candidates = @()
             $envFile = Join-Path $Root '1c-env.json'
-            if (Test-Path $envFile) { $IbDir = (Get-Content $envFile -Raw -Encoding UTF8 | ConvertFrom-Json).Infobase.Dir }
-            if (-not $IbDir) { $IbDir = 'D:\1c_bases\autoservice' }
+            if (Test-Path $envFile) { $candidates += (Get-Content $envFile -Raw -Encoding UTF8 | ConvertFrom-Json).Infobase.Dir }
+            $candidates += 'D:\1c_bases\autoservice'
+            $candidates = @($candidates | Where-Object { $_ } | Select-Object -Unique)
+            $IbDir = $candidates | Where-Object { Test-Path (Join-Path $_ '1Cv8.1CD') } | Select-Object -First 1
+            if (-not $IbDir) { throw "Файловая база не найдена (проверено: $($candidates -join ', ')). Укажите каталог базы: -IbDir <каталог>" }
+            if ($IbDir -ne $candidates[0]) { Warn "в 1c-env.json база $($candidates[0]) — её нет, используется $IbDir (каталог install-1c.ps1)" }
         }
         $ibFile = Join-Path $IbDir '1Cv8.1CD'
         if (-not (Test-Path $ibFile)) { throw "Файловая база не найдена: $ibFile" }
