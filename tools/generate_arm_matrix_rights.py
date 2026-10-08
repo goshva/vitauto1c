@@ -5,7 +5,7 @@
 Источник прав: default-matrix.js (канон Pages: вкладка manager, уровень order — решение D1).
 Результат:
   1) tools/_generated_matrix_rights.json — срез для тестов и отчёта о расхождениях вкладок;
-  2) src/АРМЗакупокИПродаж_v2.14/CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl (CRLF, без BOM);
+  2) src/АРМЗакупокИПродаж_v2.15/CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl (CRLF, без BOM);
   3) CommonModule.json / CommonModule.id.json (создаются один раз, UUID стабилен) и запись
      в ConfigurationExtension.json (список общих модулей).
 
@@ -29,7 +29,7 @@ ROOT = os.path.abspath(os.path.join(HERE, '..'))
 MODULE_NAME = 'Арм_МатрицаПрав'
 MODULE_SYNONYM = 'Арм матрица прав'
 TEMPLATE_MODULE = 'Арм_ДанныеЗакупокИПродажФон'
-VERSION_DIR_GLOB = 'АРМЗакупокИПродаж_v2.14'
+VERSION_DIR_GLOB = 'АРМЗакупокИПродаж_v2.15'
 
 ROLE_BITS = {'manager': 1, 'storekeeper': 2, 'chief_mechanic': 4, 'admin': 8, 'supplier': 16, 'client': 32}
 BIT_REQUIRED, BIT_CREATOR, BIT_ADMIN_ONLY = 64, 128, 256
