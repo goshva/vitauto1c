@@ -12,7 +12,8 @@
     2. Тихая установка PostgreSQL (+ initdb и служба, если MSI их не создал)
     3. Тихая установка 1С (клиенты + сервер) + служба агента сервера
     3б. Технологический журнал: logcfg.xml в conf по разрядности установленной платформы + рестарт агента
-    4. Создание базы на сервере 1С из cf/dt (промежуточный .dt после загрузки удаляется)
+    4. Создание базы на сервере 1С: сначала — готовый .dt (резервная копия прошлого запуска, не выгружается заново),
+       иначе выгрузка файловой базы в .dt; ход выгрузки и загрузки — время, объём, %, ожидаемое окончание; .dt сохраняется
     5. Проверка подключения (порты, PostgreSQL, вход конфигуратором) и записи ТЖ
     6. Вопрос «заполнить демо-данными АРМ?» -> seed-1c.ps1 со строкой соединения серверной базы и пользователем 1С
        (-Seed — без вопроса, -NoSeed — пропустить, -SeedKeepSafeModeOff — оставить безопасный режим выключенным)
@@ -228,7 +229,7 @@ function Assert-FreeSpace {
         }
         Add-Need $BaseDir ($gb * 1.6)                # распакованное содержимое
     }
-    Add-Need $BaseDir 2.5                            # промежуточный autoservice.dt
+    Add-Need $BaseDir 2.5                            # autoservice.dt (резервная копия)
     Add-Need $env:ProgramFiles 2.5                   # PostgreSQL + платформа 1С
     Add-Need $PgDataDir $EstDbGB                     # база в PostgreSQL
 
@@ -511,10 +512,11 @@ try {
             Ok 'локальный пользователь postgres удалён'
         }
 
-        $leftovers = $oldDirs + @(
-            (Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName),
-            ($ProgramRoots | ForEach-Object { Join-Path $_ "1cv8\$PlatformVersion" })
-        ) | Where-Object { $_ -and (Test-Path $_) }
+        # плоский список: вложенный массив в @(..., (...)) удалялся бы одной строкой из нескольких путей
+        $leftovers = @($oldDirs) +
+            @(Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName) +
+            @($ProgramRoots | ForEach-Object { Join-Path $_ "1cv8\$PlatformVersion" }) |
+            Where-Object { $_ -and (Test-Path $_) }
         foreach ($d in $leftovers) {
             Remove-Item $d -Recurse -Force -ErrorAction SilentlyContinue
             if (Test-Path $d) { Warn "не удалось удалить $d (файлы заняты?)" } else { Ok "удалён каталог $d" }
@@ -697,11 +699,32 @@ try {
         $ibAuth = "/N `"$IbUser`" /P `"$ibPwdPlain`""
     }
 
-    function Invoke-1C([string]$ArgsLine, [string]$Tag) {
+    # Пакетный 1cv8. Долгие операции (-Title) показывают ход: время, объём, процент и ожидаемое окончание.
+    # -Progress — scriptblock, возвращающий @{ Done = байт; Total = байт (оценка) }; без него — только время.
+    function Invoke-1C([string]$ArgsLine, [string]$Tag, [string]$Title, [scriptblock]$Progress, [int]$EveryS = 20) {
         $out = Join-Path $LogDir "1c_$Tag.log"
         $res = Join-Path $LogDir "1c_$Tag.result"
         Remove-Item $res -ErrorAction SilentlyContinue
-        Start-Process $v8 -ArgumentList "$ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$out`" /DumpResult `"$res`"" -Wait
+        $p = Start-Process $v8 -ArgumentList "$ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$out`" /DumpResult `"$res`"" -PassThru
+        $t0 = Get-Date
+        if ($Title) { Write-Host ("  {0}: начало {1:HH:mm:ss}" -f $Title, $t0) }
+        while (-not $p.WaitForExit($EveryS * 1000)) {
+            if (-not $Title) { continue }
+            $el = (Get-Date) - $t0
+            $line = "    … {0:hh\:mm\:ss} прошло" -f $el
+            $pr = $null
+            if ($Progress) { try { $pr = & $Progress } catch { $pr = $null } }
+            if ($pr -and $pr.Done -gt 0 -and $pr.Total -gt 0) {
+                $pct = [math]::Min(99, [math]::Floor(100 * $pr.Done / $pr.Total))
+                $line += ", {0:N0} из ~{1:N0} МБ ({2}%)" -f ($pr.Done / 1MB), ($pr.Total / 1MB), $pct
+                if ($pct -ge 3) {
+                    $eta = $t0.AddSeconds($el.TotalSeconds * 100 / $pct)
+                    $line += ", окончание ≈ {0:HH:mm} (ещё ~{1:N0} мин)" -f $eta, [math]::Max(1, ($eta - (Get-Date)).TotalMinutes)
+                }
+            }
+            Write-Host $line
+        }
+        if ($Title) { Write-Host ("  {0}: завершено за {1:hh\:mm\:ss}" -f $Title, ((Get-Date) - $t0)) }
         Clear-PgPasswordInFile $out                               # CREATEINFOBASE пишет в лог строку соединения с паролем
         $code = if (Test-Path $res) { (Get-Content $res -Raw).Trim() } else { '-1' }
         if ($code -ne '0') {
@@ -711,8 +734,27 @@ try {
     }
 
     $extBaked = $false   # расширение уже встроено в .dt (применено к файловой базе до миграции)
-    $dtPath   = $null    # промежуточный .dt, выгруженный из файловой базы
+    $dtPath   = $null    # .dt, выгруженный из файловой базы (остаётся резервной копией для повторных запусков)
+    # Сначала — готовый .dt (резервная копия от прошлого запуска или из архива): выгрузка файловой базы долгая.
+    # Рядом с выгрузкой этого скрипта лежит <имя>.dt.ext — какое расширение в неё встроено.
     $cfFile = Get-ChildItem $ConfDir -Recurse -Include '*.dt', '*.cf' | Sort-Object { $_.Extension -ne '.dt' } | Select-Object -First 1
+    if ($cfFile -and $cfFile.Extension -eq '.dt') {
+        Ok ("найдена резервная копия .dt: {0} ({1:N0} МБ, от {2:dd.MM.yyyy HH:mm}) — выгрузка файловой базы не нужна" -f
+            $cfFile.FullName, ($cfFile.Length / 1MB), $cfFile.LastWriteTime)
+        $extMark = "$($cfFile.FullName).ext"
+        if ($ExtensionFile -and (Test-Path $extMark) -and (Test-Path $ExtensionFile)) {
+            $was = (Get-Content $extMark -Raw).Trim()
+            $now = "{0}|{1}" -f (Split-Path -Leaf $ExtensionFile), (Get-FileHash $ExtensionFile -Algorithm SHA1).Hash
+            if ($was -eq $now) {
+                if (-not $ExtensionName) { $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', '' }
+                $extBaked = $true
+                Ok "в .dt уже встроено расширение $(Split-Path -Leaf $ExtensionFile)"
+            } else { Warn "в .dt другое расширение ($($was -replace '\|.*$')) — $(Split-Path -Leaf $ExtensionFile) будет загружено на сервере" }
+        }
+        Write-Host '  (выгрузить заново: удалите этот .dt или запустите с -Redownload)'
+    } elseif (-not $cfFile) {
+        Write-Host "  Резервной копии .dt в $ConfDir нет — выгружаю из файловой базы"
+    }
     if (-not $cfFile) {
         # Файловая база (1Cv8.1CD) — сюда встраиваем расширение и выгружаем в .dt вместе с данными
         $fileDb = Get-ChildItem $ConfDir -Recurse -Filter '1Cv8.1CD' | Select-Object -First 1
@@ -735,6 +777,10 @@ try {
             $tries    = if ($ibAuth) { @($ibAuth) } else { @('', '/N "Админ" /P ""', '/N "Администратор" /P ""') }
             $firstOp  = if ($applyExt) { "/LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" } else { "/DumpIB `"$dtPath`"" }
             $firstTag = if ($applyExt) { 'ext_load' } else { 'dumpib' }
+            # ход выгрузки: размер .dt против оценки (~55% от 1Cv8.1CD — по замерам «Автосервиса»: 1,8 ГБ -> 1 011 МБ)
+            $dumpProgress = { @{ Done = [double](Get-Item $dtPath -ErrorAction SilentlyContinue).Length; Total = [double]$fileDb.Length * 0.55 } }
+            $firstTitle = if ($applyExt) { 'Подключение расширения' } else { 'Выгрузка в .dt' }
+            $firstProg  = if ($applyExt) { $null } else { $dumpProgress }
             if ($applyExt) { Write-Host "  Подключение расширения '$ExtensionName' к файловой базе..." }
             else           { Write-Host '  Выгрузка в .dt (может занять несколько минут)...' }
             $done = $false
@@ -749,7 +795,7 @@ try {
                 }
                 else { throw 'Не удалось войти в файловую базу — нужны имя и пароль пользователя 1С с правами администратора' }
                 try {
-                    Invoke-1C "DESIGNER /F `"$fdir`" $auth $firstOp" $firstTag
+                    Invoke-1C "DESIGNER /F `"$fdir`" $auth $firstOp" $firstTag -Title $firstTitle -Progress $firstProg
                     $done = $true
                     $ibAuth = $auth   # тот же пользователь окажется и в серверной базе после загрузки
                 } catch {
@@ -760,13 +806,17 @@ try {
             }
             if ($applyExt) {
                 # применяем расширение к файловой базе (монопольно) и выгружаем один раз
-                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply'
+                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply' -Title 'Применение расширения'
                 Ok "расширение '$ExtensionName' встроено в базу до миграции"
                 $extBaked = $true
                 Write-Host '  Выгрузка в .dt (может занять несколько минут)...'
-                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /DumpIB `"$dtPath`"" 'dumpib'
+                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /DumpIB `"$dtPath`"" 'dumpib' -Title 'Выгрузка в .dt' -Progress $dumpProgress
             }
-            Ok ("выгружено: {0} ({1:N0} МБ)" -f $dtPath, ((Get-Item $dtPath).Length / 1MB))
+            # какое расширение встроено в .dt — чтобы повторный запуск мог взять .dt как есть
+            if ($extBaked) {
+                Set-Content "$dtPath.ext" ("{0}|{1}" -f (Split-Path -Leaf $ExtensionFile), (Get-FileHash $ExtensionFile -Algorithm SHA1).Hash) -Encoding UTF8
+            } else { Remove-Item "$dtPath.ext" -ErrorAction SilentlyContinue }
+            Ok ("выгружено: {0} ({1:N0} МБ) — остаётся резервной копией для повторных запусков" -f $dtPath, ((Get-Item $dtPath).Length / 1MB))
             $cfFile = Get-Item $dtPath
         }
     }
@@ -781,6 +831,11 @@ try {
     }
     if (-not $cfFile) { throw "В $ConfDir не найдены .dt/.cf/1Cv8.1CD" }
     Ok ("источник базы: {0} ({1:N0} МБ)" -f $cfFile.FullName, ($cfFile.Length / 1MB))
+    # ход загрузки .dt: рост БД в PostgreSQL против оценки (~2,5 x .dt: таблицы + индексы)
+    $restoreProgress = {
+        $sz = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain -Sql "SELECT pg_database_size('$IbName')" -Tuple).Out
+        @{ Done = $(if ($sz -match '^\d+$') { [double]$sz } else { 0 }); Total = [double]$cfFile.Length * 2.5 }
+    }
 
     $exists = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain `
                            -Sql "SELECT 1 FROM pg_database WHERE datname='$IbName'" -Tuple).Out -eq '1'
@@ -794,7 +849,7 @@ try {
     }
     if ($emptyIb) {
         Warn "база '$IbName' есть в PostgreSQL, но пустая (конфигурация: $cfgRows записей) — загружаю $($cfFile.Name)"
-        Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore'
+        Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore' -Title 'Загрузка .dt в базу на сервере' -Progress $restoreProgress -EveryS 30
         Add-ServerIbToList
         Ok "база загружена: $ibPath"
     } elseif ($exists) {
@@ -816,19 +871,16 @@ try {
         }
         # без /AddToList: при занятом имени в списке баз 1С возвращает ошибку уже после создания базы
         if ($cfFile.Extension -eq '.cf') {
-            Invoke-1C "CREATEINFOBASE $connArg /UseTemplate `"$($cfFile.FullName)`"" 'create'
+            Invoke-1C "CREATEINFOBASE $connArg /UseTemplate `"$($cfFile.FullName)`"" 'create' -Title 'Создание базы из шаблона'
         } else {
-            Invoke-1C "CREATEINFOBASE $connArg" 'create'
-            Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore'
+            Invoke-1C "CREATEINFOBASE $connArg" 'create' -Title 'Создание пустой базы в кластере и PostgreSQL'
+            Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore' -Title 'Загрузка .dt в базу на сервере' -Progress $restoreProgress -EveryS 30
         }
         Add-ServerIbToList
         Ok "база создана: $ibPath"
     }
-    # промежуточный .dt (выгрузка файловой базы) после загрузки не нужен — освобождаем место
-    if ($dtPath -and (Test-Path $dtPath)) {
-        Remove-Item $dtPath -Force
-        Ok "удалён промежуточный $dtPath"
-    }
+    # .dt не удаляем: это резервная копия, повторный запуск возьмёт её и не будет выгружать файловую базу заново
+    if ($cfFile.Extension -eq '.dt') { Ok ("резервная копия сохранена: {0} ({1:N0} МБ)" -f $cfFile.FullName, ($cfFile.Length / 1MB)) }
 
     # =================================================================
     #  Расширение конфигурации (.cfe)
@@ -875,9 +927,18 @@ try {
 
     try {
         $tmpCf = Join-Path $env:TEMP 'check_conn.cf'
-        Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /DumpCfg `"$tmpCf`"" 'check'
+        # .dt взят готовым — пользователь ещё не подобран: заданный -> без пользователя -> Админ/Администратор
+        $checkTries = if ($ibAuth) { @($ibAuth) } else { @('', '/N "Админ" /P ""', '/N "Администратор" /P ""') }
+        for ($i = 0; ; $i++) {
+            try { Invoke-1C "DESIGNER /S `"$ibPath`" $($checkTries[$i]) /DumpCfg `"$tmpCf`"" 'check'; $ibAuth = $checkTries[$i]; break }
+            catch {
+                $log = Join-Path $LogDir '1c_check.log'
+                $authError = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'не идентифицирован|Неправильн|пароль')
+                if (-not $authError -or $i -ge $checkTries.Count - 1) { throw }
+            }
+        }
         Remove-Item $tmpCf -ErrorAction SilentlyContinue
-        Ok "1С: конфигуратор подключился к $ibPath"
+        Ok "1С: конфигуратор подключился к $ibPath$(if ($ibAuth -match '/N "([^"]*)"') { " (пользователь «$($Matches[1])»)" })"
     } catch { Warn $_.Exception.Message; $allOk = $false }
 
     if (-not $NoTrace) {

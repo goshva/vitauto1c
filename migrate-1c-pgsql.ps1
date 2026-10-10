@@ -8,7 +8,8 @@
   Шаги:
     0. Проверки: платформа, исходная база, кластер 1С (порты 1540/1541), PostgreSQL (вход, имени базы ещё нет), место
     1. Вход в исходную базу (заданный пользователь -> без пользователя -> Админ / Администратор / Автосервис -> запрос)
-    2. Выгрузка исходной базы в .dt (-WorkDir) — он же резервная копия, после миграции сохраняется
+    2. Резервная копия .dt в -WorkDir: есть выгрузка этой базы новее 1Cv8.1CD — берётся она, иначе выгрузка
+       (с ходом: время, объём, %, ожидаемое окончание). .dt после миграции сохраняется
     3. Создание базы в кластере 1С + БД PostgreSQL и загрузка .dt
        -Method Designer (по умолчанию): 1cv8 CREATEINFOBASE + DESIGNER /RestoreIB — база сразу зарегистрирована в кластере
        -Method Ibcmd: ibcmd infobase dump/restore (нужен ibcmd из 64-битного сервера 1С; в 32-битном дистрибутиве
@@ -43,6 +44,7 @@ param(
     [string]      $ExtensionName,                           # имя расширения; по умолчанию — из имени файла
     [string]      $WorkDir     = 'D:\1c\migrate',           # куда выгружать .dt (остаётся резервной копией)
     [switch]      $DeleteDt,                                # удалить .dt после успешного переноса
+    [switch]      $FreshDt,                                 # выгрузить заново, даже если есть свежая резервная копия .dt
     [switch]      $CheckOnly,                               # только проверки (шаг 0 и вход в исходную базу)
     [switch]      $SkipSpaceCheck
 )
@@ -118,11 +120,32 @@ function Add-ServerIbToList([string]$Title) {
     Ok "база добавлена в список: $t"
 }
 # Пакетный запуск 1cv8; код результата — из /DumpResult
-function Invoke-1C([string]$ArgsLine, [string]$Tag) {
+# Долгие операции (-Title) показывают ход: время, объём, процент и ожидаемое окончание.
+# -Progress — scriptblock, возвращающий @{ Done = байт; Total = байт (оценка) }; без него — только время.
+function Invoke-1C([string]$ArgsLine, [string]$Tag, [string]$Title, [scriptblock]$Progress, [int]$EveryS = 20) {
     $out = Join-Path $LogDir "1c_$Tag.log"
     $res = Join-Path $LogDir "1c_$Tag.result"
     Remove-Item $out, $res -ErrorAction SilentlyContinue
-    Start-Process $script:V8 -ArgumentList "$ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$out`" /DumpResult `"$res`"" -Wait
+    $p = Start-Process $script:V8 -ArgumentList "$ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$out`" /DumpResult `"$res`"" -PassThru
+    $t0 = Get-Date
+    if ($Title) { Write-Host ("  {0}: начало {1:HH:mm:ss}" -f $Title, $t0) }
+    while (-not $p.WaitForExit($EveryS * 1000)) {
+        if (-not $Title) { continue }
+        $el = (Get-Date) - $t0
+        $line = "    … {0:hh\:mm\:ss} прошло" -f $el
+        $pr = $null
+        if ($Progress) { try { $pr = & $Progress } catch { $pr = $null } }
+        if ($pr -and $pr.Done -gt 0 -and $pr.Total -gt 0) {
+            $pct = [math]::Min(99, [math]::Floor(100 * $pr.Done / $pr.Total))
+            $line += ", {0:N0} из ~{1:N0} МБ ({2}%)" -f ($pr.Done / 1MB), ($pr.Total / 1MB), $pct
+            if ($pct -ge 3) {
+                $eta = $t0.AddSeconds($el.TotalSeconds * 100 / $pct)
+                $line += ", окончание ≈ {0:HH:mm} (ещё ~{1:N0} мин)" -f $eta, [math]::Max(1, ($eta - (Get-Date)).TotalMinutes)
+            }
+        }
+        Write-Host $line
+    }
+    if ($Title) { Write-Host ("  {0}: завершено за {1:hh\:mm\:ss}" -f $Title, ((Get-Date) - $t0)) }
     Clear-PgPasswordInFile $out                               # CREATEINFOBASE пишет в лог строку соединения с паролем
     $code = if (Test-Path $res) { (Get-Content $res -Raw).Trim() } else { '-1' }
     if ($code -ne '0') {
@@ -243,6 +266,20 @@ try {
 
     # =================================================================
     Step '2. Выгрузка исходной базы в .dt'
+    # Сначала — готовая резервная копия: .dt этой базы из -WorkDir, сделанный после последнего изменения 1Cv8.1CD
+    # (выгрузка долгая; повторный запуск после сбоя на шаге 3 её не повторяет). -FreshDt — выгрузить заново.
+    $srcTime = (Get-Item -LiteralPath $srcFile).LastWriteTime
+    $reuse = if ($FreshDt) { $null } else {
+        Get-ChildItem $WorkDir -Filter "$($IbName)_*.dt" -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTime -gt $srcTime -and $_.Length -gt 0 -and (Test-Path "$($_.FullName).ok") } |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    }
+    if ($reuse) {
+        $dt = $reuse.FullName
+        Ok ("найдена резервная копия: {0} ({1:N0} МБ, от {2:dd.MM.yyyy HH:mm}; база изменялась {3:dd.MM.yyyy HH:mm}) — выгрузка не нужна (заново: -FreshDt)" -f
+            $dt, ($reuse.Length / 1MB), $reuse.LastWriteTime, $srcTime)
+    } else {
+    Write-Host ("  Резервной копии .dt новее базы ({0:dd.MM.yyyy HH:mm}) в {1} нет — выгружаю" -f $srcTime, $WorkDir)
     $dt = Join-Path $WorkDir ("{0}_{1:yyyyMMdd_HHmmss}.dt" -f $IbName, (Get-Date))
     Write-Host '  Выгрузка (база должна быть закрыта во всех сеансах; может занять несколько минут)...'
     if ($Method -eq 'Ibcmd') {
@@ -252,9 +289,13 @@ try {
         & $Ibcmd infobase dump "--db-path=$SrcIbDir" @uArgs $dt
         if ($LASTEXITCODE -ne 0) { throw "ibcmd infobase dump вернул $LASTEXITCODE" }
     } else {
-        Invoke-1C "DESIGNER /F `"$SrcIbDir`" $srcAuth /DumpIB `"$dt`"" 'dumpib'
+        # ход: размер .dt против оценки (~55% от 1Cv8.1CD)
+        $dumpProgress = { @{ Done = [double](Get-Item $dt -ErrorAction SilentlyContinue).Length; Total = [double](Get-Item -LiteralPath $srcFile).Length * 0.55 } }
+        Invoke-1C "DESIGNER /F `"$SrcIbDir`" $srcAuth /DumpIB `"$dt`"" 'dumpib' -Title 'Выгрузка в .dt' -Progress $dumpProgress
     }
+    Set-Content "$dt.ok" ("{0}|{1:yyyy-MM-dd HH:mm:ss}" -f $SrcIbDir, $srcTime) -Encoding UTF8   # выгрузка завершена целиком
     Ok ("выгружено: {0} ({1:N0} МБ) — резервная копия исходной базы" -f $dt, ((Get-Item $dt).Length / 1MB))
+    }
 
     # =================================================================
     Step "3. База '$IbName' на PostgreSQL ($Method)"
@@ -269,11 +310,16 @@ try {
     } else {
         $conn = "Srvr=`"$Server1C`";Ref=`"$IbName`";DBMS=PostgreSQL;DBSrvr=`"$dbSrvr`";DB=`"$IbName`";" +
                 "DBUID=`"$PgUser`";DBPwd=`"$script:PgPwdPlain`";CrSQLDB=Y;SchJobDn=N;Locale=ru"
-        Invoke-1C "CREATEINFOBASE `"$($conn -replace '"','""')`"" 'create'
+        Invoke-1C "CREATEINFOBASE `"$($conn -replace '"','""')`"" 'create' -Title 'Создание пустой базы в кластере и PostgreSQL'
         Ok "база создана в кластере: $ibPath"
         Add-ServerIbToList $IbTitle
         Write-Host '  Загрузка .dt в новую базу (может занять несколько минут)...'
-        Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$dt`"" 'restore'   # новая база пуста — без пользователя
+        # ход: рост БД в PostgreSQL против оценки (~2,5 x .dt: таблицы + индексы)
+        $restoreProgress = if ($script:PgBin) {
+            { $sz = (Invoke-Psql 'postgres' "SELECT pg_database_size('$($IbName.ToLower())')").Out
+              @{ Done = $(if ($sz -match '^\d+$') { [double]$sz } else { 0 }); Total = [double](Get-Item $dt).Length * 2.5 } }
+        } else { $null }
+        Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$dt`"" 'restore' -Title 'Загрузка .dt в базу на сервере' -Progress $restoreProgress -EveryS 30   # новая база пуста — без пользователя
         Ok 'данные загружены'
     }
 
@@ -284,7 +330,7 @@ try {
         if (-not $ExtensionName) { $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', '' }
         Invoke-1C "DESIGNER /S `"$ibPath`" $srcAuth /LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" 'ext_load'
         for ($i = 1; ; $i++) {
-            try { Invoke-1C "DESIGNER /S `"$ibPath`" $srcAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply'; break }
+            try { Invoke-1C "DESIGNER /S `"$ibPath`" $srcAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply' -Title 'Применение расширения'; break }
             catch {
                 $log = Join-Path $LogDir '1c_ext_apply.log'
                 $locked = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'блокировк|заблокирована|monopol|exclusive')
@@ -322,7 +368,7 @@ try {
         Write-Host "  Запуск: 1cv8c.exe /S `"$ibPath`"$userArg"
         Write-Host "  Исходная файловая база не изменялась: $SrcIbDir"
     }
-    if ($DeleteDt) { Remove-Item $dt -Force; Ok "удалён $dt" } else { Write-Host "  Резервная копия: $dt" }
+    if ($DeleteDt) { Remove-Item $dt, "$dt.ok" -Force -ErrorAction SilentlyContinue; Ok "удалён $dt" } else { Write-Host "  Резервная копия: $dt" }
 }
 catch {
     Write-Host "`nОШИБКА: $($_.Exception.Message)" -ForegroundColor Red
