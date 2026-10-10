@@ -7,23 +7,30 @@
   Шаги:
     0. Полное удаление прошлой установки (службы, процессы, MSI, каталоги данных, список баз)
        и артефактов файлового варианта: файловая база из .dt (-FileIbDir) и её запись в списке баз
-    1. Проверка архивов (наличие, размер, целостность) -> докачка при необходимости -> распаковка
+    1. Исходники: уже распакованы — пропуск; иначе архив (есть и цел — без сети; нет или битый — докачка
+       с Яндекс.Диска) -> распаковка. -Redownload — скачать и распаковать заново
     2. Тихая установка PostgreSQL (+ initdb и служба, если MSI их не создал)
     3. Тихая установка 1С (клиенты + сервер) + служба агента сервера
     3б. Технологический журнал: logcfg.xml в conf по разрядности установленной платформы + рестарт агента
     4. Создание базы на сервере 1С из cf/dt (промежуточный .dt после загрузки удаляется)
     5. Проверка подключения (порты, PostgreSQL, вход конфигуратором) и записи ТЖ
+    6. Вопрос «заполнить демо-данными АРМ?» -> seed-1c.ps1 со строкой соединения серверной базы и пользователем 1С
+       (-Seed — без вопроса, -NoSeed — пропустить, -SeedKeepSafeModeOff — оставить безопасный режим выключенным)
+    7. Запуск 1С:Предприятие (тонкий клиент) в серверную базу под «Админ» с пустым паролем (-NoLaunch — не запускать)
 
-  Архивы по умолчанию сохраняются в -BaseDir, чтобы повторный запуск не качал 3.7 ГБ заново.
-  Ключ -DeleteArchives удаляет их после распаковки.
-  Трассировка — технологический журнал 1С (не Redis/pgtrace). -NoTrace отключает настройку и проверку ТЖ.
+  Архивы и распакованные исходники лежат в -BaseDir (по умолчанию D:\1c — общий с install-1c.ps1) и повторно
+  не скачиваются. Ключ -DeleteArchives удаляет архивы после распаковки.
+  Файловая база файлового варианта (-FileIbDir) по умолчанию сохраняется (её можно перенести migrate-1c-pgsql.ps1);
+  удалить вместе с прошлой установкой — ключ -RemoveFileIb.
+  Трассировка — технологический журнал 1С (событие DBPOSTGRS). -NoTrace отключает настройку и проверку ТЖ.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\install-1c-pgsql.ps1
   powershell -ExecutionPolicy Bypass -File .\install-1c-pgsql.ps1 -Force -DeleteArchives
+  .\install-1c-pgsql.ps1 -Force -Seed -SeedKeepSafeModeOff   # без вопросов: переустановка + демо-данные АРМ
 #>
 param(
-    [string]      $BaseDir     = $(if ($PSScriptRoot) { $PSScriptRoot } else { 'C:\soft\1c' }),
+    [string]      $BaseDir     = $(if ($PSScriptRoot -like 'D:\*') { $PSScriptRoot } else { 'D:\1c' }),   # архивы, исходники, логи (как install-1c.ps1)
     [SecureString]$PgPassword,                      # если не задан — будет запрошен
     [string]      $PgUser      = 'postgres',
     [int]         $PgPort      = 5432,
@@ -34,19 +41,26 @@ param(
     [string]      $Server1C    = 'localhost',
     [switch]      $Force,                           # удалять прошлую установку без подтверждения
     [switch]      $DeleteArchives,                  # удалить архивы после распаковки
+    [switch]      $Redownload,                      # скачать и распаковать исходники заново, даже если они уже есть
     [string]      $IbUser,                          # пользователь 1С в базе «Автосервис» (если есть список пользователей)
     [SecureString]$IbPassword,                      # его пароль; при -IbUser без пароля будет запрошен
     [string]      $ExtensionFile,                    # путь к .cfe; не задан — последняя версия <имя>_vN.cfe рядом со скриптом; '' — не подключать
     [string]      $ExtensionName,                    # имя расширения в базе; по умолчанию — из имени файла
     [double]      $EstDbGB       = 6,                 # оценка размера базы в PostgreSQL (для проверки места)
     [switch]      $SkipSpaceCheck,                    # пропустить проверку свободного места на диске
+    # --- демо-данные АРМ (seed-1c.ps1) и запуск после установки ---
+    [switch]      $Seed,                              # заполнить без вопроса
+    [switch]      $NoSeed,                            # не заполнять и не спрашивать
+    [switch]      $SeedKeepSafeModeOff,               # передать seed -KeepSafeModeOff (оставить безопасный режим расширения выключенным)
+    [switch]      $NoLaunch,                          # не запускать 1С:Предприятие (Админ, пустой пароль) в конце
     # --- технологический журнал 1С (logcfg.xml) ---
     [switch]      $NoTrace,                           # не настраивать и не проверять ТЖ
     [string]      $TechLogDir          = 'D:\1c\tj',  # каталог файлов ТЖ (HDD, не SSD с базой)
-    [int]         $TechLogThresholdMs  = 200,         # логировать события DBMS дольше N мс
+    [int]         $TechLogThresholdMs  = 200,         # логировать запросы к PostgreSQL (DBPOSTGRS) дольше N мс
     [string]      $LogcfgPath,                        # по умолчанию <корень 1cv8>\conf\logcfg.xml по разрядности установленной платформы
-    # --- остатки файловой установки (install-1c.ps1) — удаляются на шаге 0 ---
-    [string]      $FileIbDir   = 'D:\1c_bases\autoservice'
+    # --- файловая установка (install-1c.ps1): база сохраняется, удаляется на шаге 0 только с -RemoveFileIb ---
+    [string]      $FileIbDir   = 'D:\1c_bases\autoservice',
+    [switch]      $RemoveFileIb
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,10 +83,14 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 
 $PlatformVersion = '8.3.27.2342'
 $Sources = [ordered]@{
-    Platform = @{ Url = 'https://disk.yandex.ru/d/WmdHaZZr45QoXA'; File = 'windows_8_3_27_2342.rar';       Dir = 'platform_8_3_27_2342' }
-    Postgres = @{ Url = 'https://disk.yandex.ru/d/B2Lpn8-7A0WVEg'; File = 'postgresql_15.13_1.1C_x64.zip'; Dir = 'postgresql_15.13_1.1C' }
-    Config   = @{ Url = 'https://disk.yandex.ru/d/xl9suLCSUGRpPA'; File = 'autoservice.zip';               Dir = 'config_autoservice' }
+    # Content — по каким файлам понять, что каталог уже распакован (уже есть — не скачиваем и не распаковываем)
+    Platform = @{ Url = 'https://disk.yandex.ru/d/WmdHaZZr45QoXA'; File = 'windows_8_3_27_2342.rar';       Dir = 'platform_8_3_27_2342';  Content = @('1CEnterprise*.msi') }
+    Postgres = @{ Url = 'https://disk.yandex.ru/d/B2Lpn8-7A0WVEg'; File = 'postgresql_15.13_1.1C_x64.zip'; Dir = 'postgresql_15.13_1.1C'; Content = @('*.msi') }
+    Config   = @{ Url = 'https://disk.yandex.ru/d/xl9suLCSUGRpPA'; File = 'autoservice.zip';               Dir = 'config_autoservice';    Content = @('1Cv8.1CD', '*.dt', '*.cf') }
 }
+$UnpackedMark = '.unpacked'   # пишется после успешной распаковки; без него неполная распаковка не считается готовой
+# Корни, где может лежать 1cv8 / 7-Zip: Program Files обеих разрядностей и D:\Program Files (install-1c.ps1)
+$ProgramRoots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, 'D:\Program Files') | Where-Object { $_ } | Select-Object -Unique
 
 New-Item -ItemType Directory -Force -Path $BaseDir | Out-Null
 $LogDir = Join-Path $BaseDir 'logs'
@@ -87,7 +105,7 @@ function Warn($text) { Write-Host "  [!]  $text" -ForegroundColor Yellow }
 #  Вспомогательные функции
 # =====================================================================
 function Get-7Zip {
-    $candidates = @("$env:ProgramFiles\7-Zip\7z.exe", "${env:ProgramFiles(x86)}\7-Zip\7z.exe")
+    $candidates = @($ProgramRoots | ForEach-Object { Join-Path $_ '7-Zip\7z.exe' })   # в т.ч. поставленный install-1c.ps1
     foreach ($c in $candidates) { if (Test-Path $c) { return $c } }
     Write-Host '  7-Zip не найден, устанавливаю...'
     $inst = Join-Path $env:TEMP '7z-x64.exe'
@@ -121,9 +139,31 @@ function Get-YandexFile([string]$PublicUrl, [string]$OutFile, [int64]$Size) {
     if (-not (Test-Path $OutFile) -or (Get-Item $OutFile).Length -ne $Size) { throw "Не удалось полностью скачать $PublicUrl" }
 }
 
+# Исходники уже распакованы: есть отметка успешной распаковки и нужные файлы.
+# Каталог от прежних версий скрипта (без отметки) принимается по наличию файлов — отметка дописывается.
+function Test-Unpacked($src) {
+    if ($Redownload) { return $false }
+    $dest = Join-Path $BaseDir $src.Dir
+    if (-not (Test-Path $dest)) { return $false }
+    $found = Get-ChildItem $dest -Recurse -File -Include $src.Content -ErrorAction SilentlyContinue |
+             Where-Object { $_.Length -gt 0 } | Select-Object -First 1
+    if (-not $found) { return $false }
+    $mark = Join-Path $dest $UnpackedMark
+    if (-not (Test-Path $mark)) { Set-Content $mark "$($src.File)`r`n$($found.FullName)" -Encoding UTF8 }
+    return $true
+}
+
 # Проверить архив (наличие, размер, целостность); при проблемах — докачать/перекачать
 function Confirm-Archive($src) {
     $archive = Join-Path $BaseDir $src.File
+    # архив уже есть и цел — сеть не нужна
+    if ((Test-Path $archive) -and -not $Redownload) {
+        Write-Host "  Архив найден: $($src.File), проверка целостности..."
+        & $script:SevenZip t $archive -bso0 -bsp0
+        if ($LASTEXITCODE -eq 0) { Ok ("архив в порядке ({0:N1} МБ), скачивание не нужно" -f ((Get-Item $archive).Length / 1MB)); return $archive }
+        Warn 'архив неполный или повреждён — сверяю размер с Яндекс.Диском и докачиваю'
+    }
+    if ($Redownload -and (Test-Path $archive)) { Remove-Item $archive -Force; Write-Host "  -Redownload: архив $($src.File) удалён, скачиваю заново" }
     $size    = Get-YandexSize $src.Url
     for ($attempt = 1; $attempt -le 2; $attempt++) {
         if (Test-Path $archive) {
@@ -143,13 +183,18 @@ function Confirm-Archive($src) {
 }
 
 function Expand-Source($src) {
+    $dest = Join-Path $BaseDir $src.Dir
+    if (Test-Unpacked $src) {
+        Ok "исходники уже есть: $dest — скачивание и распаковка пропущены (заново: -Redownload)"
+        return $dest
+    }
     $archive = Confirm-Archive $src
-    $dest    = Join-Path $BaseDir $src.Dir
     if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
     Write-Host "  Распаковка -> $dest"
     & $script:SevenZip x $archive "-o$dest" -y -bso0 -bsp0
     if ($LASTEXITCODE -ne 0) { throw "Ошибка распаковки $archive" }
+    Set-Content (Join-Path $dest $UnpackedMark) $src.File -Encoding UTF8
     if ($DeleteArchives) { Remove-Item $archive -Force; Ok 'распаковано, архив удалён' }
     else { Ok 'распаковано (архив сохранён для повторных запусков)' }
     return $dest
@@ -173,8 +218,9 @@ function Assert-FreeSpace {
 
     # Архивы: если их нет — придётся скачать; при распаковке архив и папка лежат вместе
     foreach ($src in $Sources.Values) {
+        if (Test-Unpacked $src) { continue }         # уже распаковано — ни скачивания, ни распаковки
         $archive = Join-Path $BaseDir $src.File
-        if (Test-Path $archive) {
+        if ((Test-Path $archive) -and -not $Redownload) {
             $gb = (Get-Item $archive).Length / 1GB
         } else {
             $gb = (Get-YandexSize $src.Url) / 1GB
@@ -250,7 +296,7 @@ function Find-PgBin {
 }
 
 function Find-1CBin {
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+    foreach ($root in $ProgramRoots) {
         $b = Join-Path $root "1cv8\$PlatformVersion\bin"
         if (Test-Path (Join-Path $b '1cv8.exe')) { return $b }
     }
@@ -293,7 +339,7 @@ function Get-LogcfgPath([string]$Bin) {
 # Удалить logcfg.xml и logcfg.xml.bak.*, записанные этими скриптами в других местах
 # (каталог conf другой разрядности платформа не читает). Чужие файлы не трогаем.
 function Remove-StrayLogcfg([string]$Keep) {
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+    foreach ($root in $ProgramRoots) {
         $conf = Join-Path $root '1cv8\conf'
         foreach ($f in Get-ChildItem $conf -Filter 'logcfg.xml*' -File -ErrorAction SilentlyContinue) {
             if ($f.FullName -eq $Keep) { continue }
@@ -314,7 +360,7 @@ function Remove-IbFromList {
         if (-not (Test-Path $f)) { continue }
         $text  = [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8)
         $parts = [regex]::Split($text, '(?m)^(?=\[)')
-        $kept  = $parts | Where-Object { $_ -notmatch $pattern -and $_ -notmatch $filePattern }
+        $kept  = $parts | Where-Object { $_ -notmatch $pattern -and (-not $RemoveFileIb -or $_ -notmatch $filePattern) }
         if (@($kept).Count -ne @($parts).Count) {
             [IO.File]::WriteAllText($f, (-join $kept), (New-Object Text.UTF8Encoding $true))
             Ok "база удалена из списка: $f"
@@ -373,9 +419,15 @@ try {
     $ourPaths = @("1cv8\$PlatformVersion", 'PostgreSQL\15*1C', $PgDataDir, $SrvInfoDir)
     $isOurs   = { param($path) foreach ($p in $ourPaths) { if ($path -and $path -like "*$p*") { return $true } }; $false }
     $oldServices = Get-CimInstance Win32_Service | Where-Object { & $isOurs $_.PathName }
-    # + артефакты файлового варианта (install-1c.ps1): файловая база, созданная из .dt
-    $oldDirs = @($PgDataDir, $SrvInfoDir, $FileIbDir) + ($Sources.Values | ForEach-Object { Join-Path $BaseDir $_.Dir }) |
+    # распакованные исходники — не «прошлая установка»: удаляются только с -Redownload;
+    # файловая база файлового варианта (install-1c.ps1) — только с -RemoveFileIb (источник для migrate-1c-pgsql.ps1)
+    $srcDirs = if ($Redownload) { $Sources.Values | ForEach-Object { Join-Path $BaseDir $_.Dir } } else { @() }
+    $fileIb  = if ($RemoveFileIb) { @($FileIbDir) } else { @() }
+    $oldDirs = @($PgDataDir, $SrvInfoDir) + @($fileIb) + @($srcDirs) |
                Where-Object { $_ -and (Test-Path $_) }
+    if (-not $RemoveFileIb -and (Test-Path (Join-Path $FileIbDir '1Cv8.1CD'))) {
+        Ok "файловая база $FileIbDir сохраняется (удалить вместе с установкой: -RemoveFileIb)"
+    }
 
     if (-not ($oldProducts -or $oldServices -or $oldDirs)) {
         Ok 'следов прошлой установки нет'
@@ -385,8 +437,8 @@ try {
         $oldServices | ForEach-Object { Write-Host "    служба:    $($_.Name)" }
         $oldDirs     | ForEach-Object { Write-Host "    каталог:   $_" }
         Write-Host '  ВНИМАНИЕ: данные баз PostgreSQL в этих каталогах будут потеряны.' -ForegroundColor Red
-        if (Test-Path $FileIbDir) {
-            Write-Host "  ВНИМАНИЕ: файловая база $FileIbDir (файловая установка) будет удалена." -ForegroundColor Red
+        if ($RemoveFileIb -and (Test-Path $FileIbDir)) {
+            Write-Host "  ВНИМАНИЕ: файловая база $FileIbDir (файловая установка) будет удалена (-RemoveFileIb)." -ForegroundColor Red
         }
         if (-not $Force) {
             if ((Read-Host '  Продолжить? (Y/N)') -notmatch '^[YyДд]') { throw 'Отменено пользователем' }
@@ -423,7 +475,7 @@ try {
 
         $leftovers = $oldDirs + @(
             (Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName),
-            "$env:ProgramFiles\1cv8\$PlatformVersion", "${env:ProgramFiles(x86)}\1cv8\$PlatformVersion"
+            ($ProgramRoots | ForEach-Object { Join-Path $_ "1cv8\$PlatformVersion" })
         ) | Where-Object { $_ -and (Test-Path $_) }
         foreach ($d in $leftovers) {
             Remove-Item $d -Recurse -Force -ErrorAction SilentlyContinue
@@ -569,11 +621,11 @@ try {
         $durationUnits = [math]::Max(0, $TechLogThresholdMs) * 10
         $logcfgXml = @"
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Сгенерировано install-1c-pgsql.ps1: ТЖ DBMS >= $TechLogThresholdMs мс -> $TechLogDir -->
+<!-- Сгенерировано install-1c-pgsql.ps1: ТЖ DBPOSTGRS >= $TechLogThresholdMs мс -> $TechLogDir -->
 <config xmlns="http://v8.1c.ru/v8/tech-log">
   <log location="$TechLogDir" history="24">
     <event>
-      <eq property="name" value="DBMS"/>
+      <eq property="name" value="DBPOSTGRS"/>
       <ge property="duration" value="$durationUnits"/>
     </event>
     <property name="all"/>
@@ -581,7 +633,7 @@ try {
 </config>
 "@
         [IO.File]::WriteAllText($LogcfgPath, $logcfgXml, (New-Object Text.UTF8Encoding $false))
-        Ok "записан $LogcfgPath (порог DBMS $TechLogThresholdMs мс, каталог $TechLogDir)"
+        Ok "записан $LogcfgPath (порог DBPOSTGRS $TechLogThresholdMs мс, каталог $TechLogDir)"
 
         Write-Host "  Перезапуск службы $($agentSvc.Name) для применения logcfg..."
         Restart-Service -Name $agentSvc.Name -Force
@@ -789,7 +841,48 @@ try {
     if (-not $NoTrace) {
         Write-Host "Технологический журнал:" -ForegroundColor Green
         Write-Host "  logcfg:  $LogcfgPath"
-        Write-Host "  каталог: $TechLogDir (DBMS >= $TechLogThresholdMs мс, history 24 ч)"
+        Write-Host "  каталог: $TechLogDir (DBPOSTGRS >= $TechLogThresholdMs мс, history 24 ч)"
+    }
+
+    # =================================================================
+    #  Демо-данные АРМ (seed-1c.ps1 рядом со скриптом): спросить, при согласии — передать базу и пользователя
+    $seedScript = Join-Path $(if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }) 'seed-1c.ps1'
+    $doSeed = $false
+    if ($NoSeed) { }
+    elseif (-not $allOk) { Warn 'установка с предупреждениями — seed не предлагается (запустите seed-1c.ps1 вручную)' }
+    elseif (-not $ExtensionFile) { Warn 'расширение АРМ не подключено — seed не предлагается' }
+    elseif (-not (Test-Path $seedScript)) { Warn "нет $seedScript — seed не предлагается" }
+    elseif ($Seed) { $doSeed = $true }
+    else { $doSeed = (Read-Host "`n  Заполнить базу демо-данными АРМ (seed: сценарии из seed\Шаблон деталей.xlsx)? (Y/N)") -match '^[YyДд]' }
+
+    # пользователь, под которым конфигуратор вошёл в базу (подобран на шаге 4); '' — в базе нет пользователей
+    $seedUser = ''; $seedPwd = ''
+    if ($ibAuth -match '/N "([^"]*)" /P "([^"]*)"') { $seedUser = $Matches[1]; $seedPwd = $Matches[2] }
+    if ($doSeed) {
+        Step '6. Демо-данные АРМ (seed)'
+        # серверная база — строкой соединения (seed-1c.ps1 -ConnectionString), COM-соединитель той же разрядности
+        $seedConn = "Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$seedUser`";Pwd=`"$seedPwd`""
+        $seedArgs = @{ ConnectionString = $seedConn }
+        if ($SeedKeepSafeModeOff) { $seedArgs.KeepSafeModeOff = $true }
+        Write-Host "  seed-1c.ps1 -ConnectionString 'Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$seedUser`";Pwd=***'$(if ($SeedKeepSafeModeOff) { ' -KeepSafeModeOff' })"
+        & $seedScript @seedArgs
+        $seedCode = $LASTEXITCODE
+        $seedConn = $null; $seedArgs = $null
+        if ($seedCode -eq 0) { Ok 'демо-данные АРМ загружены' }
+        else { Warn "seed завершился с кодом $seedCode — повторить: .\seed-1c.ps1 -ConnectionString 'Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$seedUser`";Pwd=`"`"'" }
+    } elseif (-not $NoSeed -and $allOk -and $ExtensionFile) {
+        Write-Host "  seed пропущен. Позже: .\seed-1c.ps1 -ConnectionString 'Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$seedUser`";Pwd=`"`"'"
+    }
+    $seedPwd = $null
+
+    # =================================================================
+    #  Запуск 1С:Предприятие под администратором 1С «Админ» (пустой пароль) — сразу в серверную базу
+    if ($allOk -and -not $NoLaunch) {
+        Step '7. Запуск 1С:Предприятие'
+        $client = Join-Path $Bin1C '1cv8c.exe'                 # тонкий клиент; нет — 1cv8.exe ENTERPRISE
+        $launch = if (Test-Path $client) { @{ Exe = $client; Args = '' } } else { @{ Exe = $v8; Args = 'ENTERPRISE ' } }
+        Start-Process $launch.Exe -ArgumentList "$($launch.Args)/S `"$ibPath`" /N `"Админ`" /P `"`""
+        Ok "запущен $(Split-Path -Leaf $launch.Exe): база $ibPath, пользователь «Админ» (пароль пустой)"
     }
 }
 catch {
