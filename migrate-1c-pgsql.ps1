@@ -88,15 +88,45 @@ function Invoke-Psql([string]$Db, [string]$Sql) {
     } finally { $ErrorActionPreference = $prev; Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue }
     [pscustomobject]@{ Out = (($out | Out-String).Trim()); Code = $code }
 }
+# Скрыть пароль PostgreSQL (DBPwd=...) в тексте и в файлах логов
+function Hide-PgPassword([string]$Text) {
+    if (-not $Text) { return $Text }
+    $Text = [regex]::Replace($Text, '(?i)(DBPwd=)("[^"]*"|[^;]*)', '$1"***"')
+    if ($script:PgPwdPlain) { $Text = $Text.Replace($script:PgPwdPlain, '***') }
+    return $Text
+}
+function Clear-PgPasswordInFile([string]$Path) {
+    if (-not (Test-Path $Path)) { return }
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $enc = if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { [Text.Encoding]::Unicode } else { [Text.Encoding]::UTF8 }
+    $text = $enc.GetString($bytes); $clean = Hide-PgPassword $text
+    if ($clean -ne $text) { [IO.File]::WriteAllText($Path, $clean, $enc) }
+}
+# Добавить серверную базу в список (ibases.v8i); имя занято другой базой — «<имя> (2)». /AddToList при занятом
+# имени возвращает ошибку уже после создания базы, поэтому список ведём сами.
+function Add-ServerIbToList([string]$Title) {
+    $f = "$env:APPDATA\1C\1CEStart\ibases.v8i"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $f) | Out-Null
+    $text = if (Test-Path $f) { [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8) } else { '' }
+    if ($text -match "Srvr=`"?$([regex]::Escape($Server1C))`"?;Ref=`"?$([regex]::Escape($IbName))`"?;") { Ok 'база уже в списке баз'; return }
+    $t = $Title
+    for ($n = 2; $text -match "(?m)^\[$([regex]::Escape($t))\]\s*$"; $n++) { $t = "$Title ($n)" }
+    if ($text -and -not $text.EndsWith("`n")) { $text += "`r`n" }
+    $entry = "[$t]`r`nConnect=Srvr=`"$Server1C`";Ref=`"$IbName`";`r`nID=$([guid]::NewGuid())`r`nOrderInList=0`r`nFolder=/`r`n" +
+             "OrderInTree=0`r`nExternal=0`r`nClientConnectionSpeed=Normal`r`nApp=Auto`r`nWA=1`r`nVersion=8.3`r`n"
+    [IO.File]::WriteAllText($f, $text + $entry, (New-Object Text.UTF8Encoding $true))
+    Ok "база добавлена в список: $t"
+}
 # Пакетный запуск 1cv8; код результата — из /DumpResult
 function Invoke-1C([string]$ArgsLine, [string]$Tag) {
     $out = Join-Path $LogDir "1c_$Tag.log"
     $res = Join-Path $LogDir "1c_$Tag.result"
     Remove-Item $out, $res -ErrorAction SilentlyContinue
     Start-Process $script:V8 -ArgumentList "$ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$out`" /DumpResult `"$res`"" -Wait
+    Clear-PgPasswordInFile $out                               # CREATEINFOBASE пишет в лог строку соединения с паролем
     $code = if (Test-Path $res) { (Get-Content $res -Raw).Trim() } else { '-1' }
     if ($code -ne '0') {
-        if (Test-Path $out) { Get-Content $out -Encoding UTF8 | ForEach-Object { Write-Host "    $_" } }
+        if (Test-Path $out) { Get-Content $out -Encoding UTF8 | ForEach-Object { Write-Host "    $(Hide-PgPassword $_)" } }
         throw "1С ($Tag) завершилась с кодом $code, лог: $out"
     }
 }
@@ -239,8 +269,9 @@ try {
     } else {
         $conn = "Srvr=`"$Server1C`";Ref=`"$IbName`";DBMS=PostgreSQL;DBSrvr=`"$dbSrvr`";DB=`"$IbName`";" +
                 "DBUID=`"$PgUser`";DBPwd=`"$script:PgPwdPlain`";CrSQLDB=Y;SchJobDn=N;Locale=ru"
-        Invoke-1C "CREATEINFOBASE `"$($conn -replace '"','""')`" /AddToList `"$IbTitle`"" 'create'
-        Ok "база создана в кластере: $ibPath (в списке баз — «$IbTitle»)"
+        Invoke-1C "CREATEINFOBASE `"$($conn -replace '"','""')`"" 'create'
+        Ok "база создана в кластере: $ibPath"
+        Add-ServerIbToList $IbTitle
         Write-Host '  Загрузка .dt в новую базу (может занять несколько минут)...'
         Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$dt`"" 'restore'   # новая база пуста — без пользователя
         Ok 'данные загружены'

@@ -368,6 +368,40 @@ function Remove-IbFromList {
     }
 }
 
+# Добавить серверную базу в список (ibases.v8i), если её там нет. Имя занято другой базой (например, файловой
+# «Автосервис» от install-1c.ps1) — запись получает имя «<IbTitle> (PostgreSQL)». 1cv8 /AddToList в этом случае
+# падает с «уже зарегистрирована», поэтому список ведём сами.
+function Add-ServerIbToList {
+    $f = "$env:APPDATA\1C\1CEStart\ibases.v8i"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $f) | Out-Null
+    $text = if (Test-Path $f) { [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8) } else { '' }
+    if ($text -match "Srvr=`"?$([regex]::Escape($Server1C))`"?;Ref=`"?$([regex]::Escape($IbName))`"?;") { Ok 'база уже в списке баз'; return }
+    $title = $IbTitle
+    for ($n = 1; $text -match "(?m)^\[$([regex]::Escape($title))\]\s*$"; $n++) {
+        $title = if ($n -eq 1) { "$IbTitle (PostgreSQL)" } else { "$IbTitle (PostgreSQL $n)" }
+    }
+    if ($text -and -not $text.EndsWith("`n")) { $text += "`r`n" }
+    $entry = "[$title]`r`nConnect=Srvr=`"$Server1C`";Ref=`"$IbName`";`r`nID=$([guid]::NewGuid())`r`nOrderInList=0`r`nFolder=/`r`n" +
+             "OrderInTree=0`r`nExternal=0`r`nClientConnectionSpeed=Normal`r`nApp=Auto`r`nWA=1`r`nVersion=8.3`r`n"
+    [IO.File]::WriteAllText($f, $text + $entry, (New-Object Text.UTF8Encoding $true))
+    Ok "база добавлена в список: $title"
+}
+
+# Скрыть пароль PostgreSQL (DBPwd=...) в тексте и в файлах логов: 1С пишет строку соединения в /Out как есть
+function Hide-PgPassword([string]$Text) {
+    if (-not $Text) { return $Text }
+    $Text = [regex]::Replace($Text, '(?i)(DBPwd=)("[^"]*"|[^;]*)', '$1"***"')
+    if ($script:PgPasswordPlain) { $Text = $Text.Replace($script:PgPasswordPlain, '***') }
+    return $Text
+}
+function Clear-PgPasswordInFile([string]$Path) {
+    if (-not (Test-Path $Path)) { return }
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $enc = if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { [Text.Encoding]::Unicode } else { [Text.Encoding]::UTF8 }
+    $text = $enc.GetString($bytes); $clean = Hide-PgPassword $text
+    if ($clean -ne $text) { [IO.File]::WriteAllText($Path, $clean, $enc) }
+}
+
 # Последняя версия расширения рядом со скриптом: <имя>_v<версия>.cfe с наибольшей версией
 # (v1 < v2.0 < v2.1 < v10). Файл без суффикса версии считается версией 0. Нет .cfe — ''.
 function Find-LatestExtension([string]$Dir) {
@@ -407,6 +441,10 @@ try {
     if ($PgPasswordPlain.ToCharArray() | Where-Object { [int]$_ -gt 126 -or [int]$_ -lt 32 }) {
         throw 'Пароль PostgreSQL должен состоять только из ASCII: латиница, цифры, спецсимволы (без кириллицы и пробелов по краям). Иначе psql и 1С используют разные кодировки и вход не пройдёт.'
     }
+
+    # логи прошлых запусков (до маскировки) могли сохранить пароль PostgreSQL из строки соединения
+    Get-ChildItem $LogDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.log', '.txt' } |
+        ForEach-Object { try { Clear-PgPasswordInFile $_.FullName } catch { } }
 
     $SevenZip = Get-7Zip
 
@@ -664,9 +702,10 @@ try {
         $res = Join-Path $LogDir "1c_$Tag.result"
         Remove-Item $res -ErrorAction SilentlyContinue
         Start-Process $v8 -ArgumentList "$ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$out`" /DumpResult `"$res`"" -Wait
+        Clear-PgPasswordInFile $out                               # CREATEINFOBASE пишет в лог строку соединения с паролем
         $code = if (Test-Path $res) { (Get-Content $res -Raw).Trim() } else { '-1' }
         if ($code -ne '0') {
-            if (Test-Path $out) { Get-Content $out -Encoding UTF8 | Write-Host }
+            if (Test-Path $out) { Get-Content $out -Encoding UTF8 | ForEach-Object { Write-Host (Hide-PgPassword $_) } }
             throw "1С ($Tag) завершилась с кодом $code, лог: $out"
         }
     }
@@ -745,8 +784,22 @@ try {
 
     $exists = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain `
                            -Sql "SELECT 1 FROM pg_database WHERE datname='$IbName'" -Tuple).Out -eq '1'
-    if ($exists) {
+    # Есть, но пустая: прошлый запуск создал базу и прервался до загрузки .dt (конфигурация пустой базы —
+    # десятки строк в таблице config, загруженной УНФ — десятки тысяч) — загружаем, а не пропускаем
+    $emptyIb = $false
+    if ($exists -and $cfFile.Extension -ne '.cf') {
+        $cfgRows = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db $IbName -PwPlain $PgPasswordPlain `
+                               -Sql 'SELECT count(*) FROM config' -Tuple).Out
+        $emptyIb = ($cfgRows -match '^\d+$') -and ([int]$cfgRows -lt 1000)
+    }
+    if ($emptyIb) {
+        Warn "база '$IbName' есть в PostgreSQL, но пустая (конфигурация: $cfgRows записей) — загружаю $($cfFile.Name)"
+        Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore'
+        Add-ServerIbToList
+        Ok "база загружена: $ibPath"
+    } elseif ($exists) {
         Ok "база '$IbName' уже есть в PostgreSQL — создание пропущено"
+        Add-ServerIbToList
     } else {
         $conn = "Srvr=`"$Server1C`";Ref=`"$IbName`";DBMS=PostgreSQL;DBSrvr=`"localhost port=$PgPort`";DB=`"$IbName`";" +
                 "DBUID=`"$PgUser`";DBPwd=`"$PgPasswordPlain`";CrSQLDB=Y;SchJobDn=N;Locale=ru"
@@ -761,12 +814,14 @@ try {
             }
             Ok "место под базу: нужно ~$needGB ГБ, свободно $freeGB ГБ"
         }
+        # без /AddToList: при занятом имени в списке баз 1С возвращает ошибку уже после создания базы
         if ($cfFile.Extension -eq '.cf') {
-            Invoke-1C "CREATEINFOBASE $connArg /UseTemplate `"$($cfFile.FullName)`" /AddToList `"$IbTitle`"" 'create'
+            Invoke-1C "CREATEINFOBASE $connArg /UseTemplate `"$($cfFile.FullName)`"" 'create'
         } else {
-            Invoke-1C "CREATEINFOBASE $connArg /AddToList `"$IbTitle`"" 'create'
+            Invoke-1C "CREATEINFOBASE $connArg" 'create'
             Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore'
         }
+        Add-ServerIbToList
         Ok "база создана: $ibPath"
     }
     # промежуточный .dt (выгрузка файловой базы) после загрузки не нужен — освобождаем место
