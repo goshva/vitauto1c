@@ -9,15 +9,25 @@
        и артефактов файлового варианта: файловая база из .dt (-FileIbDir) и её запись в списке баз
     1. Исходники: уже распакованы — пропуск; иначе архив (есть и цел — без сети; нет или битый — докачка
        с Яндекс.Диска) -> распаковка. -Redownload — скачать и распаковать заново
-    2. Тихая установка PostgreSQL (+ initdb и служба, если MSI их не создал)
+    2. PostgreSQL для 1С: уже установлен (служба pg_ctl, есть расширение mchar) — используется как есть, шаг 0 его
+       не удаляет; иначе — из установщика PostgreSQL_1C_*_Setup.exe: локального (-BaseDir или -PgSetup, подпись
+       Postgres Professional) или скачанного с -PgSetupUrl (Яндекс.Диск, проверка SHA256 и подписи); распаковка
+       программы, VC++ x64, initdb, служба postgresql-1c-<версия>. Нет и его — архив 15.13-1.1C с Яндекс.Диска (MSI).
+       -ReinstallPostgres — удалить найденный PostgreSQL для 1С вместе с данными и поставить заново
     3. Тихая установка 1С (клиенты + сервер) + служба агента сервера
     3б. Технологический журнал: logcfg.xml в conf по разрядности установленной платформы + рестарт агента
-    4. Создание базы на сервере 1С: сначала — готовый .dt (резервная копия прошлого запуска, не выгружается заново),
-       иначе выгрузка файловой базы в .dt; ход выгрузки и загрузки — время, объём, %, ожидаемое окончание; .dt сохраняется
+    4. Создание базы на сервере 1С. ВЫШЕ ВСЕГО — бэкап рабочей базы в -BaseDir («бэкап 20260805.dt»; из нескольких —
+       самый свежий по дате в имени; -SourceDt — явный файл, -NoBackupDt — не брать). Без бэкапа — база из
+       autoservice.zip (1Cv8.1CD): её выгрузка этим скриптом
+       (<IbName>.dt с меткой .src/.ext) берётся готовой, иначе база выгружается заново; .dt/.cf из архива — только
+       если 1Cv8.1CD в нём нет; посторонние .dt не используются. autoservice.zip новее распаковки — распаковывается
+       заново (вместе с ним пропадает и старая выгрузка). Ход выгрузки и загрузки — время, объём, %, окончание
+    4в. Пользователю «Администратор» (-AdminUser) — пустой пароль (вход «Админ»/«Автосервис» через COM); им же —
+        конфигуратор и запуск 1С. Пользователя нет (база из autoservice.zip) — работа под «Админ»
     5. Проверка подключения (порты, PostgreSQL, вход конфигуратором) и записи ТЖ
     6. Вопрос «заполнить демо-данными АРМ?» -> seed-1c.ps1 со строкой соединения серверной базы и пользователем 1С
        (-Seed — без вопроса, -NoSeed — пропустить, -SeedKeepSafeModeOff — оставить безопасный режим выключенным)
-    7. Запуск 1С:Предприятие (тонкий клиент) в серверную базу под «Админ» с пустым паролем (-NoLaunch — не запускать)
+    7. Запуск 1С:Предприятие (тонкий клиент) в серверную базу под «Администратор» / «Админ» без пароля (-NoLaunch — не запускать)
 
   Архивы и распакованные исходники лежат в -BaseDir (по умолчанию D:\1c — общий с install-1c.ps1) и повторно
   не скачиваются. Ключ -DeleteArchives удаляет архивы после распаковки.
@@ -34,8 +44,16 @@ param(
     [string]      $BaseDir     = $(if ($PSScriptRoot -like 'D:\*') { $PSScriptRoot } else { 'D:\1c' }),   # архивы, исходники, логи (как install-1c.ps1)
     [SecureString]$PgPassword,                      # если не задан — будет запрошен
     [string]      $PgUser      = 'postgres',
-    [int]         $PgPort      = 5432,
-    [string]      $PgDataDir   = 'C:\PGDATA15',     # только латиница в пути!
+    [int]         $PgPort      = 5432,              # для новой установки; у найденного PostgreSQL — его порт
+    [string]      $PgDataDir   = 'C:\PGDATA15',     # для новой установки из архива (MSI 15.13); из -PgSetup — <диск BaseDir>:\PostgreSQL 1C\<версия>\data
+    [string]      $PgSetup,                         # установщик PostgreSQL_1C_*_Setup.exe; по умолчанию — поиск в -BaseDir и рядом со скриптом
+    [string]      $PgSetupUrl  = 'https://disk.yandex.ru/d/bpPS8da1z_f6dw',   # откуда скачать установщик, если его нет локально ('' — не скачивать)
+    [switch]      $ReinstallPostgres,               # удалить найденный PostgreSQL для 1С (с данными!) и поставить заново
+    # --- источник базы ---
+    [string]      $SourceDt,                        # бэкап .dt для базы; по умолчанию — самый свежий *.dt в -BaseDir («бэкап 20260805.dt»)
+    [switch]      $NoBackupDt,                      # не брать бэкап из -BaseDir — база из autoservice.zip
+    [switch]      $ReloadIb,                        # база уже есть, а бэкап другой/свежее — загрузить его поверх без вопроса
+    [string]      $AdminUser   = 'Администратор',   # этому пользователю ИБ после загрузки ставится пустой пароль ('' — не менять)
     [string]      $SrvInfoDir  = 'C:\srvinfo',      # каталог кластера 1С
     [string]      $IbName      = 'autoservice',     # имя базы в кластере и в PostgreSQL
     [string]      $IbTitle     = 'Автосервис',      # имя в списке баз
@@ -134,7 +152,9 @@ function Get-YandexFile([string]$PublicUrl, [string]$OutFile, [int64]$Size) {
         $href = (Invoke-RestMethod -Uri "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=$key" -UseBasicParsing).href
         if (-not $href) { throw "Яндекс.Диск не вернул ссылку для $PublicUrl" }
         Write-Host ("  Скачивание -> {0} ({1:N0} из {2:N0} МБ, попытка {3})" -f $OutFile, ($have / 1MB), ($Size / 1MB), $try)
-        if ($have -gt 0) { & curl.exe -L --fail -C - -o $OutFile $href } else { & curl.exe -L --fail -o $OutFile $href }
+        # обрыв «зависших» соединений: меньше 1 КБ/с дольше минуты — следующая попытка с докачкой
+        $curlOpt = @('-L', '--fail', '--connect-timeout', '30', '--speed-limit', '1024', '--speed-time', '60')
+        if ($have -gt 0) { & curl.exe @curlOpt -C - -o $OutFile $href } else { & curl.exe @curlOpt -o $OutFile $href }
         if ($LASTEXITCODE -ne 0) { Warn "curl вернул $LASTEXITCODE, продолжаю докачку"; Start-Sleep -Seconds 5 }
     }
     if (-not (Test-Path $OutFile) -or (Get-Item $OutFile).Length -ne $Size) { throw "Не удалось полностью скачать $PublicUrl" }
@@ -150,6 +170,13 @@ function Test-Unpacked($src) {
              Where-Object { $_.Length -gt 0 } | Select-Object -First 1
     if (-not $found) { return $false }
     $mark = Join-Path $dest $UnpackedMark
+    # архив новее распаковки (положили обновлённый, например autoservice.zip с более полной базой) — распаковать заново
+    $archive = Join-Path $BaseDir $src.File
+    $markTime = if (Test-Path $mark) { (Get-Item $mark).LastWriteTime } else { (Get-Item $dest).LastWriteTime }
+    if ((Test-Path $archive) -and (Get-Item $archive).LastWriteTime -gt $markTime) {
+        Warn ("{0} новее распакованного {1} ({2:dd.MM.yyyy HH:mm} > {3:dd.MM.yyyy HH:mm}) — распаковываю заново" -f $src.File, $dest, (Get-Item $archive).LastWriteTime, $markTime)
+        return $false
+    }
     if (-not (Test-Path $mark)) { Set-Content $mark "$($src.File)`r`n$($found.FullName)" -Encoding UTF8 }
     return $true
 }
@@ -232,6 +259,7 @@ function Assert-FreeSpace {
     Add-Need $BaseDir 2.5                            # autoservice.dt (резервная копия)
     Add-Need $env:ProgramFiles 2.5                   # PostgreSQL + платформа 1С
     Add-Need $PgDataDir $EstDbGB                     # база в PostgreSQL
+    if ($PgSetupRemote -and -not $PgSetupFile) { Add-Need $BaseDir ($PgSetupRemote.Size / 1GB) }   # скачиваемый установщик PostgreSQL
 
     $buffer = 2.0                                    # запас на журналы, temp, рост
     $fail = $false
@@ -287,6 +315,7 @@ function Get-UninstallEntries {
     Get-ItemProperty $keys -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName }
 }
 
+# bin PostgreSQL 15.13-1.1C после установки MSI из архива
 function Find-PgBin {
     Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -like '15*' } |
@@ -294,6 +323,136 @@ function Find-PgBin {
         ForEach-Object { Join-Path $_.FullName 'bin' } |
         Where-Object { Test-Path (Join-Path $_ 'pg_ctl.exe') } |
         Select-Object -First 1
+}
+
+# 64-битный Program Files (скрипт может оказаться в 32-битном PowerShell)
+$ProgramFiles64 = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
+
+# Установленные экземпляры PostgreSQL — по службам «pg_ctl runservice -N … -D <данные>».
+# For1C — сборка для 1С (есть расширение mchar); порт — из postgresql.conf / postgresql.auto.conf (по умолчанию 5432).
+function Find-ExistingPg {
+    foreach ($s in Get-CimInstance Win32_Service | Where-Object { $_.PathName -match 'pg_ctl\.exe"?\s+runservice' }) {
+        $exe = if ($s.PathName -match '^"([^"]+pg_ctl\.exe)"') { $Matches[1] } elseif ($s.PathName -match '^(\S+pg_ctl\.exe)') { $Matches[1] } else { $null }
+        if (-not $exe -or -not (Test-Path $exe)) { continue }
+        $bin  = Split-Path -Parent $exe
+        $root = Split-Path -Parent $bin
+        $data = if ($s.PathName -match '-D\s+"([^"]+)"') { $Matches[1] } elseif ($s.PathName -match '-D\s+(\S+)') { $Matches[1] } else { '' }
+        $port = 5432
+        foreach ($cf in 'postgresql.conf', 'postgresql.auto.conf') {
+            $p = Join-Path $data $cf
+            if ($data -and (Test-Path $p)) { foreach ($l in Get-Content $p) { if ($l -match '^\s*port\s*=\s*(\d+)') { $port = [int]$Matches[1] } } }
+        }
+        $ver = try { ((& (Join-Path $bin 'postgres.exe') -V) -replace '^.*\)\s*', '').Trim() } catch { '?' }
+        $for1C = [bool](@("$root\share\extension\mchar.control", "$root\share\postgresql\extension\mchar.control") | Where-Object { Test-Path $_ })
+        [pscustomobject]@{ Service = $s.Name; State = $s.State; Bin = $bin; Root = $root; Data = $data; Port = $port; Version = $ver; For1C = $for1C }
+    }
+}
+
+# Локальный установщик PostgreSQL для 1С (Postgres Professional, NSIS): PostgreSQL_1C_<версия>_64bit_Setup.exe
+# в -BaseDir или рядом со скриптом; несколько — берётся старшая версия. -PgSetup — явный путь.
+function Find-PgSetup {
+    if ($PgSetup) { if (Test-Path $PgSetup) { return Get-Item $PgSetup } else { throw "Установщик PostgreSQL не найден: $PgSetup" } }
+    $dirs = @($BaseDir, $PSScriptRoot) | Where-Object { $_ } | Select-Object -Unique
+    Get-ChildItem $dirs -Filter 'PostgreSQL_1C_*_Setup.exe' -File -ErrorAction SilentlyContinue |
+        Where-Object { Test-PgSetupSigned $_.FullName } |
+        Sort-Object { try { [version]($_.Name -replace '^PostgreSQL_1C_(\d+(?:\.\d+)*)_.*$', '$1' -replace '^(\d+)$', '$1.0') } catch { [version]'0.0' } } -Descending |
+        Select-Object -First 1
+}
+
+# Бэкапы рабочей базы — .dt в корне -BaseDir (например «бэкап 20260805.dt») или -SourceDt.
+# Свежесть — по дате в имени (ГГГГММДД), без неё — по дате файла; берётся самый свежий. Файл проверяется
+# по заголовку выгрузки 1С («1CIBDmpF»). Возвращает { File; Date; Older } или $null.
+function Find-BackupDt {
+    $files = if ($SourceDt) {
+        if (-not (Test-Path -LiteralPath $SourceDt)) { throw "Бэкап не найден: $SourceDt" }
+        @(Get-Item -LiteralPath $SourceDt)
+    } else { @(Get-ChildItem -LiteralPath $BaseDir -Filter '*.dt' -File -ErrorAction SilentlyContinue) }
+    $list = foreach ($f in $files) {
+        $hdr = New-Object byte[] 8
+        try { $s = [IO.File]::OpenRead($f.FullName); [void]$s.Read($hdr, 0, 8); $s.Close() } catch { continue }
+        if ([Text.Encoding]::ASCII.GetString($hdr) -ne '1CIBDmpF') { Warn "$($f.Name) — не выгрузка 1С (.dt), пропущен"; continue }
+        $d = $f.LastWriteTime
+        if ($f.BaseName -match '(20\d{2})(\d{2})(\d{2})') { try { $d = Get-Date -Year $Matches[1] -Month $Matches[2] -Day $Matches[3] -Hour 0 -Minute 0 -Second 0 } catch { } }
+        [pscustomobject]@{ File = $f; Date = $d }
+    }
+    $sorted = @($list | Sort-Object Date, { $_.File.LastWriteTime } -Descending)
+    if (-not $sorted) { return $null }
+    [pscustomobject]@{ File = $sorted[0].File; Date = $sorted[0].Date; Older = @($sorted | Select-Object -Skip 1) }
+}
+
+# Пароль пользователя ИБ (по умолчанию «Администратор») — пустой: вход без пароля под ним, «Админ» или «Автосервис»
+# (у них полные права), затем смена пароля через COM (tools\ib-admin-reset.js). Возвращает @{ Login; Users; Reset; After }.
+function Reset-IbUserPassword([string]$Conn, [string]$User) {
+    $js = Join-Path $PSScriptRoot 'tools\ib-admin-reset.js'
+    if (-not (Test-Path $js)) { Warn "нет $js — пароль не изменён"; return $null }
+    $tmp = Join-Path $LogDir 'admin_reset'; New-Item -ItemType Directory -Force $tmp | Out-Null
+    [IO.File]::WriteAllText("$tmp\r.js", [IO.File]::ReadAllText($js, [Text.Encoding]::UTF8), [Text.Encoding]::Unicode)
+    [IO.File]::WriteAllText("$tmp\c.txt", $Conn, [Text.Encoding]::Unicode)
+    & "$env:WINDIR\SysWOW64\cscript.exe" //nologo //E:JScript "$tmp\r.js" "$tmp\c.txt" "$tmp\out.txt" $User | Out-Null
+    $r = @{}
+    if (Test-Path "$tmp\out.txt") { foreach ($l in [IO.File]::ReadAllLines("$tmp\out.txt", [Text.Encoding]::Unicode)) { $k, $v = $l -split '=', 2; $r[$k] = $v } }
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    return $r
+}
+
+# Установщик подписан Postgres Professional и подпись действительна (неполный/подменённый файл не пройдёт)
+function Test-PgSetupSigned([string]$Path) {
+    $sig = Get-AuthenticodeSignature -FilePath $Path -ErrorAction SilentlyContinue
+    $ok  = $sig -and $sig.Status -eq 'Valid' -and $sig.SignerCertificate.Subject -match 'Postgres Professional'
+    if (-not $ok) { Warn "$Path — подпись Postgres Professional не подтверждена ($($sig.Status)), файл не используется" }
+    return [bool]$ok
+}
+
+# Установщик на Яндекс.Диске (-PgSetupUrl): имя, размер и SHA256 — из API публичного ресурса; $null — недоступен
+function Get-PgSetupRemote {
+    if (-not $PgSetupUrl) { return $null }
+    try {
+        $key  = [uri]::EscapeDataString($PgSetupUrl)
+        $meta = Invoke-RestMethod -Uri "https://cloud-api.yandex.net/v1/disk/public/resources?public_key=$key" -UseBasicParsing -TimeoutSec 30
+        if ($meta.type -ne 'file' -or $meta.name -notmatch '^PostgreSQL_1C_\d+.*\.exe$') { Warn "по $PgSetupUrl не установщик PostgreSQL_1C_*.exe ($($meta.type) $($meta.name))"; return $null }
+        [pscustomobject]@{ Name = $meta.name; Size = [int64]$meta.size; Sha256 = $meta.sha256 }
+    } catch { Warn "Яндекс.Диск недоступен ($PgSetupUrl): $($_.Exception.Message)"; return $null }
+}
+
+# Скачать установщик в -BaseDir (с докачкой) и проверить SHA256 и подпись
+function Get-PgSetupDownload($Remote) {
+    $out = Join-Path $BaseDir $Remote.Name
+    Write-Host ("  Скачивание {0} ({1:N0} МБ) с {2}" -f $Remote.Name, ($Remote.Size / 1MB), $PgSetupUrl)
+    Get-YandexFile $PgSetupUrl $out $Remote.Size
+    if ($Remote.Sha256 -and (Get-FileHash $out -Algorithm SHA256).Hash -ne $Remote.Sha256.ToUpper()) {
+        Remove-Item $out -Force; throw "SHA256 скачанного $($Remote.Name) не совпадает с Яндекс.Диском — файл удалён, запустите снова"
+    }
+    if (-not (Test-PgSetupSigned $out)) { Remove-Item $out -Force; throw "$($Remote.Name): подпись Postgres Professional не подтверждена — файл удалён" }
+    Ok ("скачано и проверено (SHA256, подпись Postgres Professional): {0}" -f $out)
+    return Get-Item $out
+}
+
+# Установка из NSIS-установщика без его мастера: программа распаковывается 7-Zip в
+# <Program Files>\PostgreSQL 1C\<major> (bin, lib, share), VC++ 2015-2022 x64 — из того же установщика, если нет.
+# Кластер (initdb) и службу дальше создаёт скрипт — как для MSI: ошибки видны в консоли, порт и каталог данных наши.
+function Install-PgFromSetup($Setup, [string]$Major) {
+    $root = Join-Path $ProgramFiles64 "PostgreSQL 1C\$Major"
+    if (Test-Path (Join-Path $root 'bin\pg_ctl.exe')) {
+        Ok "программа PostgreSQL уже распакована: $root"
+    } else {
+        Write-Host "  Распаковка $($Setup.Name) -> $root"
+        & $script:SevenZip x -tNsis $Setup.FullName "-o$root" 'bin' 'lib' 'share' 'license.txt' '3rd_party_licenses.txt' -y -bso0 -bsp0
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $root 'bin\pg_ctl.exe'))) { throw "Не удалось распаковать $($Setup.FullName) (7-Zip вернул $LASTEXITCODE)" }
+        Ok "программа PostgreSQL распакована: $root"
+    }
+    $vc = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64' -ErrorAction SilentlyContinue
+    if (-not $vc -or $vc.Installed -ne 1) {
+        $tmp = Join-Path $env:TEMP 'pg_vcredist'
+        & $script:SevenZip x -tNsis $Setup.FullName "-o$tmp" '$1' -y -bso0 -bsp0
+        $redist = Join-Path $tmp 'vc_redist.x64.exe'
+        Move-Item (Join-Path $tmp '$1') $redist -Force
+        Write-Host '  Установка Microsoft Visual C++ 2015-2022 x64 (нужна PostgreSQL)...'
+        $p = Start-Process $redist -ArgumentList '/install /quiet /norestart' -Wait -PassThru
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        if ($p.ExitCode -notin 0, 1638, 3010) { throw "Установка VC++ x64 завершилась с кодом $($p.ExitCode)" }
+        Ok 'Visual C++ 2015-2022 x64 установлен'
+    } else { Ok "Visual C++ 2015-2022 x64 уже есть ($($vc.Version))" }
+    return (Join-Path $root 'bin')
 }
 
 function Find-1CBin {
@@ -432,7 +591,7 @@ try {
         if ($ExtensionFile) { Ok "расширение: последняя версия рядом со скриптом — $(Split-Path -Leaf $ExtensionFile)" }
         else { Warn 'рядом со скриптом нет .cfe — расширение подключено не будет' }
     }
-    if (-not $PgPassword) { $PgPassword = Read-Host -AsSecureString 'Пароль суперпользователя PostgreSQL (для новой установки)' }
+    if (-not $PgPassword) { $PgPassword = Read-Host -AsSecureString 'Пароль суперпользователя PostgreSQL (установленного — его пароль; для новой установки — новый)' }
     if ($PgPassword.Length -eq 0) { throw 'Пароль PostgreSQL не задан' }
     if ($IbUser -and -not $IbPassword) { $IbPassword = Read-Host -AsSecureString "Пароль пользователя 1С '$IbUser' (Enter — пустой)" }
     # открытый текст нужен msiexec/initdb/psql/1С — держим только в памяти
@@ -450,20 +609,52 @@ try {
     $SevenZip = Get-7Zip
 
     # =================================================================
+    #  PostgreSQL: уже установленный для 1С -> используем (шаг 0 его не трогает); нет -> локальный установщик
+    #  PostgreSQL_1C_*_Setup.exe; нет и его -> архив 15.13-1.1C с Яндекс.Диска (как раньше)
+    $PgAll      = @(Find-ExistingPg)
+    $PgExisting = if ($ReinstallPostgres) { $null } else { $PgAll | Where-Object For1C | Sort-Object { $_.State -ne 'Running' } | Select-Object -First 1 }
+    $PgSetupFile = if ($PgExisting) { $null } else { Find-PgSetup }
+    # локального установщика нет — скачаем его на шаге 1 с -PgSetupUrl (здесь только узнаём имя, размер, SHA256)
+    $PgSetupRemote = if ($PgExisting -or $PgSetupFile) { $null } else { Get-PgSetupRemote }
+    $pgSetupName = if ($PgSetupFile) { $PgSetupFile.Name } elseif ($PgSetupRemote) { $PgSetupRemote.Name } else { '' }
+    $PgMajor = if ($pgSetupName -match 'PostgreSQL_1C_(\d+)') { $Matches[1] } else { '' }
+    foreach ($p in $PgAll | Where-Object { -not $_.For1C }) { Warn "PostgreSQL $($p.Version) (служба $($p.Service), порт $($p.Port)) — не сборка для 1С, не используется" }
+    if ($PgExisting) {
+        $PgDataDir = $PgExisting.Data; $PgPort = $PgExisting.Port
+        Ok "PostgreSQL для 1С уже установлен: $($PgExisting.Version), служба $($PgExisting.Service) ($($PgExisting.State)), порт $PgPort, данные $PgDataDir — будет использован"
+    } elseif ($pgSetupName) {
+        if (-not $PSBoundParameters.ContainsKey('PgDataDir')) { $PgDataDir = "$(Split-Path -Qualifier $BaseDir)\PostgreSQL 1C\$PgMajor\data" }
+        $from = if ($PgSetupFile) { $PgSetupFile.FullName } else { "{0} ({1:N0} МБ, будет скачан с {2})" -f $PgSetupRemote.Name, ($PgSetupRemote.Size / 1MB), $PgSetupUrl }
+        Ok "PostgreSQL для 1С не установлен — будет установлен из $from (данные: $PgDataDir)"
+    } else {
+        Warn "PostgreSQL для 1С не установлен, установщика PostgreSQL_1C_*_Setup.exe нет ни в $BaseDir, ни по -PgSetupUrl — будет архив $($Sources.Postgres.File) с Яндекс.Диска"
+    }
+    if ($PgExisting -or $pgSetupName) { $Sources.Remove('Postgres') }   # архив 15.13 не нужен — ни скачивания, ни места
+
+    # =================================================================
     Step '0. Удаление прошлой установки'
+    # PostgreSQL удаляется только с -ReinstallPostgres (вместе с данными). Кластер 1С (-SrvInfoDir) хранит регистрацию
+    # баз — при сохранённом PostgreSQL он тоже сохраняется, иначе базы в PostgreSQL остались бы без регистрации.
+    $pgRemove  = $ReinstallPostgres
+    $pgTargets = if ($pgRemove) { @($PgAll | Where-Object For1C) } else { @() }
     $oldProducts = Get-UninstallEntries | Where-Object {
         ($_.DisplayName -match '^1[CС]' -and $_.DisplayVersion -eq $PlatformVersion) -or
-        ($_.DisplayName -like 'PostgreSQL*' -and ($_.DisplayName -like '*1C*' -or $_.DisplayVersion -like '15.*1C*'))
+        ($pgRemove -and $_.DisplayName -like 'PostgreSQL*' -and ($_.DisplayName -like '*1C*' -or $_.DisplayVersion -like '15.*1C*'))
     }
-    $ourPaths = @("1cv8\$PlatformVersion", 'PostgreSQL\15*1C', $PgDataDir, $SrvInfoDir)
-    $isOurs   = { param($path) foreach ($p in $ourPaths) { if ($path -and $path -like "*$p*") { return $true } }; $false }
+    $ourPaths = @("1cv8\$PlatformVersion", $SrvInfoDir)
+    if ($pgRemove) { $ourPaths += @('PostgreSQL\15*1C', 'PostgreSQL 1C\', $PgDataDir) + @($pgTargets | ForEach-Object { $_.Root; $_.Data }) }
+    $isOurs   = { param($path) foreach ($p in $ourPaths) { if ($p -and $path -and $path -like "*$p*") { return $true } }; $false }
     $oldServices = Get-CimInstance Win32_Service | Where-Object { & $isOurs $_.PathName }
     # распакованные исходники — не «прошлая установка»: удаляются только с -Redownload;
     # файловая база файлового варианта (install-1c.ps1) — только с -RemoveFileIb (источник для migrate-1c-pgsql.ps1)
     $srcDirs = if ($Redownload) { $Sources.Values | ForEach-Object { Join-Path $BaseDir $_.Dir } } else { @() }
     $fileIb  = if ($RemoveFileIb) { @($FileIbDir) } else { @() }
-    $oldDirs = @($PgDataDir, $SrvInfoDir) + @($fileIb) + @($srcDirs) |
-               Where-Object { $_ -and (Test-Path $_) }
+    $keepCluster = [bool]$PgExisting
+    $pgDirs  = if ($pgRemove) { @($PgDataDir) + @($pgTargets | ForEach-Object { $_.Data; $_.Root }) } else { @() }
+    $oldDirs = @($pgDirs) + @($(if (-not $keepCluster) { $SrvInfoDir })) + @($fileIb) + @($srcDirs) |
+               Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+    if ($keepCluster -and (Test-Path $SrvInfoDir)) { Ok "кластер 1С $SrvInfoDir сохраняется (базы в найденном PostgreSQL остаются зарегистрированными)" }
+    if ($pgRemove -and $pgTargets) { Warn "-ReinstallPostgres: PostgreSQL для 1С будет удалён ВМЕСТЕ С ДАННЫМИ: $(($pgTargets | ForEach-Object { "$($_.Service) ($($_.Data))" }) -join ', ')" }
     if (-not $RemoveFileIb -and (Test-Path (Join-Path $FileIbDir '1Cv8.1CD'))) {
         Ok "файловая база $FileIbDir сохраняется (удалить вместе с установкой: -RemoveFileIb)"
     }
@@ -475,7 +666,7 @@ try {
         $oldProducts | ForEach-Object { Write-Host "    программа: $($_.DisplayName) $($_.DisplayVersion)" }
         $oldServices | ForEach-Object { Write-Host "    служба:    $($_.Name)" }
         $oldDirs     | ForEach-Object { Write-Host "    каталог:   $_" }
-        Write-Host '  ВНИМАНИЕ: данные баз PostgreSQL в этих каталогах будут потеряны.' -ForegroundColor Red
+        if ($pgRemove) { Write-Host '  ВНИМАНИЕ: данные баз PostgreSQL в этих каталогах будут потеряны.' -ForegroundColor Red }
         if ($RemoveFileIb -and (Test-Path $FileIbDir)) {
             Write-Host "  ВНИМАНИЕ: файловая база $FileIbDir (файловая установка) будет удалена (-RemoveFileIb)." -ForegroundColor Red
         }
@@ -499,6 +690,10 @@ try {
             if ($prod.PSChildName -match '^\{[0-9A-Fa-f-]+\}$') {
                 $code = Invoke-Msi '/x' $prod.PSChildName '/qn' ("uninstall_{0}.log" -f ($prod.PSChildName -replace '[{}]'))
                 if ($code -notin 0, 1605, 3010) { Warn "msiexec /x вернул $code" }
+            } elseif ($prod.UninstallString -match '^"?([^"]+\\Uninstall\.exe)"?') {
+                # NSIS (PostgreSQL для 1С от Postgres Professional): тихое удаление
+                $u = Start-Process $Matches[1] -ArgumentList '/S' -Wait -PassThru
+                if ($u.ExitCode -ne 0) { Warn "$($Matches[1]) /S вернул $($u.ExitCode)" }
             } else {
                 Warn "не MSI-пакет, удалите вручную: $($prod.UninstallString)"
             }
@@ -514,7 +709,7 @@ try {
 
         # плоский список: вложенный массив в @(..., (...)) удалялся бы одной строкой из нескольких путей
         $leftovers = @($oldDirs) +
-            @(Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName) +
+            @($(if ($pgRemove) { Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -Filter '15*1C*' -ErrorAction SilentlyContinue | ForEach-Object FullName })) +
             @($ProgramRoots | ForEach-Object { Join-Path $_ "1cv8\$PlatformVersion" }) |
             Where-Object { $_ -and (Test-Path $_) }
         foreach ($d in $leftovers) {
@@ -534,13 +729,29 @@ try {
     if ($SkipSpaceCheck) { Warn 'проверка свободного места пропущена (-SkipSpaceCheck)' } else { Assert-FreeSpace }
     Write-Host '  -- Платформа 1С'
     $PlatformDir = Expand-Source $Sources.Platform
-    Write-Host '  -- PostgreSQL 1C'
-    $PgDistDir   = Expand-Source $Sources.Postgres
+    if ($Sources.Contains('Postgres')) {
+        Write-Host '  -- PostgreSQL 1C (архив)'
+        $PgDistDir = Expand-Source $Sources.Postgres
+    } elseif ($PgSetupRemote -and -not $PgSetupFile) {
+        Write-Host '  -- PostgreSQL для 1С (установщик)'
+        $PgSetupFile = Get-PgSetupDownload $PgSetupRemote
+    } elseif ($PgSetupFile) {
+        Write-Host '  -- PostgreSQL для 1С (установщик)'
+        Ok ("установщик уже есть: {0} ({1:N0} МБ, подпись Postgres Professional) — скачивание не нужно" -f $PgSetupFile.FullName, ($PgSetupFile.Length / 1MB))
+    }
     Write-Host '  -- Конфигурация "Автосервис"'
     $ConfDir     = Expand-Source $Sources.Config
 
     # =================================================================
-    Step '2. Установка PostgreSQL 15.13-1.1C'
+    if ($PgExisting) {
+        Step "2. PostgreSQL $($PgExisting.Version) — уже установлен"
+        $PgBin = $PgExisting.Bin
+        if ($PgExisting.State -ne 'Running') {
+            Write-Host "  Запуск службы $($PgExisting.Service)..."
+            try { Start-Service -Name $PgExisting.Service } catch { throw "Служба $($PgExisting.Service) не запускается — смотрите $PgDataDir\log и журнал событий Windows" }
+        }
+        Ok "служба $($PgExisting.Service) работает: порт $PgPort, данные $PgDataDir, программа $PgBin — установка пропущена"
+    } else {
     # Порт может быть занят другим PostgreSQL (например, обычным 17-м) — берём первый свободный
     $busy = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | ForEach-Object LocalPort)
     if ($busy -contains $PgPort) {
@@ -548,21 +759,33 @@ try {
         Warn "порт $PgPort занят другим процессом — PostgreSQL 1C будет на порту $free"
         $PgPort = $free
     }
-    $pgMsi = Get-ChildItem $PgDistDir -Recurse -Filter '*.msi' | Select-Object -First 1
-    if (-not $pgMsi) { throw "MSI PostgreSQL не найден в $PgDistDir" }
-    # MSI ставит только программу: initdb внутри инсталлятора падает (например, на спецсимволах
-    # пароля) и удаляет свой лог, а служба по умолчанию лезет на занятый порт 5432.
-    # Кластер и службу создаём сами — ошибки initdb видны прямо в консоли.
-    $code = Invoke-Msi '/i' $pgMsi.FullName "/qn INTERNALLAUNCH=1 DOSERVICE=0 DOINITDB=0 LISTENPORT=$PgPort" 'postgres_msi.log'
-    if ($code -notin 0, 3010) { throw "Установка PostgreSQL завершилась с кодом $code (см. logs\postgres_msi.log)" }
-    $PgBin = Find-PgBin
-    if (-not $PgBin) { throw 'PostgreSQL установлен, но bin\pg_ctl.exe не найден' }
+    if ($PgSetupFile) {
+        Step "2. Установка PostgreSQL для 1С из $($PgSetupFile.Name)"
+        $PgBin = Install-PgFromSetup $PgSetupFile $PgMajor
+        $pgSvcName = "postgresql-1c-$PgMajor"
+    } else {
+        Step '2. Установка PostgreSQL 15.13-1.1C (архив)'
+        $pgMsi = Get-ChildItem $PgDistDir -Recurse -Filter '*.msi' | Select-Object -First 1
+        if (-not $pgMsi) { throw "MSI PostgreSQL не найден в $PgDistDir" }
+        # MSI ставит только программу: initdb внутри инсталлятора падает (например, на спецсимволах
+        # пароля) и удаляет свой лог, а служба по умолчанию лезет на занятый порт 5432.
+        # Кластер и службу создаём сами — ошибки initdb видны прямо в консоли.
+        $code = Invoke-Msi '/i' $pgMsi.FullName "/qn INTERNALLAUNCH=1 DOSERVICE=0 DOINITDB=0 LISTENPORT=$PgPort" 'postgres_msi.log'
+        if ($code -notin 0, 3010) { throw "Установка PostgreSQL завершилась с кодом $code (см. logs\postgres_msi.log)" }
+        $PgBin = Find-PgBin
+        if (-not $PgBin) { throw 'PostgreSQL установлен, но bin\pg_ctl.exe не найден' }
+        $pgSvcName = 'postgresql-1c-15'
+    }
     Ok "PostgreSQL: $PgBin"
 
     # Если инсталлятор всё же создал свою службу — убираем, чтобы не конфликтовала
     Get-CimInstance Win32_Service | Where-Object { $_.PathName -like "*$PgBin*" } | ForEach-Object {
         Stop-Service -Name $_.Name -Force -ErrorAction SilentlyContinue
         & sc.exe delete "$($_.Name)" | Out-Null
+    }
+    # Каталог данных с кластером, но без службы (например, после ручного удаления службы) — не затираем молча
+    if ((Test-Path (Join-Path $PgDataDir 'PG_VERSION')) -and -not $ReinstallPostgres) {
+        throw "В $PgDataDir уже есть кластер PostgreSQL без службы. Зарегистрируйте службу для него (pg_ctl register) или удалите каталог / запустите с -ReinstallPostgres."
     }
 
     # Сразу после установки postgres.exe может ещё не запускаться (проверка антивирусом,
@@ -593,17 +816,20 @@ try {
     Add-Content $conf "`nport = $PgPort`nlisten_addresses = '*'"
     & icacls $PgDataDir /grant '*S-1-5-20:(OI)(CI)F' /T /Q | Out-Null   # NETWORK SERVICE
 
-    $pgSvcName = 'postgresql-1c-15'
     & (Join-Path $PgBin 'pg_ctl.exe') register -N $pgSvcName -U 'NT AUTHORITY\NetworkService' -D $PgDataDir -S auto -w
     if ($LASTEXITCODE -ne 0) { throw 'Не удалось зарегистрировать службу PostgreSQL' }
     try { Start-Service -Name $pgSvcName }
     catch { throw "Служба $pgSvcName не запустилась — смотрите $PgDataDir\log и журнал событий Windows (Application)" }
     Ok "служба PostgreSQL: $pgSvcName (Running, порт $PgPort)"
+    }
 
     # Ранняя проверка входа: ловим проблему с паролем здесь, а не на шаге 4
     $chk = Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -Sql 'select 1' -PwPlain $PgPasswordPlain -Tuple
-    if ($chk.Code -ne 0) { throw "PostgreSQL запущен, но вход $PgUser не проходит: $($chk.Out)" }
-    Ok "вход $PgUser на порт $PgPort проверен"
+    if ($chk.Code -ne 0) {
+        if ($PgExisting) { throw "Вход $PgUser в установленный PostgreSQL (служба $($PgExisting.Service), порт $PgPort) не проходит — введите пароль, заданный при его установке: $($chk.Out)" }
+        throw "PostgreSQL запущен, но вход $PgUser не проходит: $($chk.Out)"
+    }
+    Ok "вход $PgUser на порт $PgPort проверен ($((Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -Sql 'show server_version' -PwPlain $PgPasswordPlain -Tuple).Out))"
 
     # =================================================================
     Step "3. Установка 1С:Предприятие $PlatformVersion"
@@ -634,6 +860,14 @@ try {
     }
     if ($agentSvc.State -ne 'Running') { Start-Service -Name $agentSvc.Name }
     Ok "служба сервера 1С: $($agentSvc.Name) (Running)"
+    # COM-соединитель этой платформы (сброс пароля «Администратора», seed): регистрация класса и библиотеки типов —
+    # после переустановки старая регистрация указывает на удалённую платформу («Error in loading DLL»)
+    $comDll = Join-Path $Bin1C 'comcntr.dll'
+    if (Test-Path $comDll) {
+        $regsvr = if ($Bin1C -like "${env:ProgramFiles(x86)}*") { "$env:WINDIR\SysWOW64\regsvr32.exe" } else { "$env:WINDIR\System32\regsvr32.exe" }
+        $rp = Start-Process $regsvr -ArgumentList "/s `"$comDll`"" -Wait -PassThru
+        if ($rp.ExitCode -eq 0) { Ok "COM-соединитель зарегистрирован: $comDll" } else { Warn "regsvr32 $comDll вернул $($rp.ExitCode)" }
+    }
     Start-Sleep -Seconds 10   # даём кластеру подняться
 
     # =================================================================
@@ -701,6 +935,12 @@ try {
 
     # Пакетный 1cv8. Долгие операции (-Title) показывают ход: время, объём, процент и ожидаемое окончание.
     # -Progress — scriptblock, возвращающий @{ Done = байт; Total = байт (оценка) }; без него — только время.
+    # Ошибка входа (пользователь/пароль) в логе последнего запуска 1С с этим тегом
+    function Test-AuthErrorLog([string]$Tag) {
+        $log = Join-Path $LogDir "1c_$Tag.log"
+        (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'не идентифицирован|Неправильн|пароль')
+    }
+
     function Invoke-1C([string]$ArgsLine, [string]$Tag, [string]$Title, [scriptblock]$Progress, [int]$EveryS = 20) {
         $out = Join-Path $LogDir "1c_$Tag.log"
         $res = Join-Path $LogDir "1c_$Tag.result"
@@ -735,11 +975,31 @@ try {
 
     $extBaked = $false   # расширение уже встроено в .dt (применено к файловой базе до миграции)
     $dtPath   = $null    # .dt, выгруженный из файловой базы (остаётся резервной копией для повторных запусков)
-    # Сначала — готовый .dt (резервная копия от прошлого запуска или из архива): выгрузка файловой базы долгая.
-    # Рядом с выгрузкой этого скрипта лежит <имя>.dt.ext — какое расширение в неё встроено.
-    $cfFile = Get-ChildItem $ConfDir -Recurse -Include '*.dt', '*.cf' | Sort-Object { $_.Extension -ne '.dt' } | Select-Object -First 1
-    if ($cfFile -and $cfFile.Extension -eq '.dt') {
-        Ok ("найдена резервная копия .dt: {0} ({1:N0} МБ, от {2:dd.MM.yyyy HH:mm}) — выгрузка файловой базы не нужна" -f
+    # Приоритет — база из autoservice.zip (1Cv8.1CD в $ConfDir): в ней больше всего данных.
+    #  1) её выгрузка этим скриптом (<IbName>.dt + метка .src/.ext) — берём, выгрузка долгая;
+    #  2) иначе выгружаем базу из архива заново;
+    #  3) .dt/.cf, лежащие в архиве, — только если 1Cv8.1CD в архиве нет. Посторонние .dt не используются.
+    # 0) ВЫШЕ ВСЕГО — бэкап рабочей базы в -BaseDir («бэкап 20260805.dt» и более свежие): самая полная и свежая база.
+    $backupDt = if ($NoBackupDt) { $null } else { Find-BackupDt }
+    $zipDb  = Get-ChildItem $ConfDir -Recurse -Filter '1Cv8.1CD' | Where-Object Length -gt 0 | Select-Object -First 1
+    $ourDt  = Join-Path $ConfDir "$IbName.dt"
+    $ourDtOk = (Test-Path $ourDt) -and ((Test-Path "$ourDt.src") -or (Test-Path "$ourDt.ext")) -and (Get-Item $ourDt).Length -gt 0
+    if ($backupDt) {
+        $cfFile = $backupDt.File
+        Ok ("источник — бэкап рабочей базы: {0} ({1:N0} МБ, от {2:dd.MM.yyyy}) — приоритет над {3}" -f $cfFile.FullName, ($cfFile.Length / 1MB), $backupDt.Date, $Sources.Config.File)
+        foreach ($o in $backupDt.Older) { Write-Host ("  более старый бэкап не используется: {0} ({1:dd.MM.yyyy})" -f $o.File.Name, $o.Date) }
+        $SourceIsBackup = $true
+    } elseif ($zipDb) {
+        Ok ("база из {0}: {1} ({2:N0} МБ) — основной источник" -f $Sources.Config.File, $zipDb.FullName, ($zipDb.Length / 1MB))
+        $cfFile = if ($ourDtOk) { Get-Item $ourDt } else { $null }
+        $foreign = Get-ChildItem $ConfDir -Recurse -Include '*.dt', '*.cf' | Where-Object { $_.FullName -ne $ourDt }
+        foreach ($x in $foreign) { Warn "$($x.FullName) — не выгрузка базы из $($Sources.Config.File), не используется" }
+    } else {
+        $cfFile = Get-ChildItem $ConfDir -Recurse -Include '*.dt', '*.cf' | Sort-Object { $_.Extension -ne '.dt' } | Select-Object -First 1
+        if ($cfFile) { Ok "в $($Sources.Config.File) нет 1Cv8.1CD — источник: $($cfFile.Name) из архива" }
+    }
+    if ($cfFile -and $cfFile.Extension -eq '.dt' -and -not $backupDt) {
+        Ok ("найдена выгрузка этой базы: {0} ({1:N0} МБ, от {2:dd.MM.yyyy HH:mm}) — повторная выгрузка не нужна" -f
             $cfFile.FullName, ($cfFile.Length / 1MB), $cfFile.LastWriteTime)
         $extMark = "$($cfFile.FullName).ext"
         if ($ExtensionFile -and (Test-Path $extMark) -and (Test-Path $ExtensionFile)) {
@@ -752,8 +1012,8 @@ try {
             } else { Warn "в .dt другое расширение ($($was -replace '\|.*$')) — $(Split-Path -Leaf $ExtensionFile) будет загружено на сервере" }
         }
         Write-Host '  (выгрузить заново: удалите этот .dt или запустите с -Redownload)'
-    } elseif (-not $cfFile) {
-        Write-Host "  Резервной копии .dt в $ConfDir нет — выгружаю из файловой базы"
+    } elseif (-not $cfFile -and $zipDb) {
+        Write-Host "  Выгрузки базы из $($Sources.Config.File) ещё нет — выгружаю её в .dt"
     }
     if (-not $cfFile) {
         # Файловая база (1Cv8.1CD) — сюда встраиваем расширение и выгружаем в .dt вместе с данными
@@ -813,6 +1073,8 @@ try {
                 Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /DumpIB `"$dtPath`"" 'dumpib' -Title 'Выгрузка в .dt' -Progress $dumpProgress
             }
             # какое расширение встроено в .dt — чтобы повторный запуск мог взять .dt как есть
+            # .src — выгрузка сделана из базы архива (иначе такой .dt на повторном запуске не берётся)
+            Set-Content "$dtPath.src" ("{0}|{1}|{2:yyyy-MM-dd HH:mm:ss}" -f $Sources.Config.File, $fileDb.FullName, (Get-Date)) -Encoding UTF8
             if ($extBaked) {
                 Set-Content "$dtPath.ext" ("{0}|{1}" -f (Split-Path -Leaf $ExtensionFile), (Get-FileHash $ExtensionFile -Algorithm SHA1).Hash) -Encoding UTF8
             } else { Remove-Item "$dtPath.ext" -ErrorAction SilentlyContinue }
@@ -831,16 +1093,21 @@ try {
     }
     if (-not $cfFile) { throw "В $ConfDir не найдены .dt/.cf/1Cv8.1CD" }
     Ok ("источник базы: {0} ({1:N0} МБ)" -f $cfFile.FullName, ($cfFile.Length / 1MB))
-    # ход загрузки .dt: рост БД в PostgreSQL против оценки (~2,5 x .dt: таблицы + индексы)
+    # ход загрузки .dt: рост БД в PostgreSQL против оценки (~1,65 x .dt — замер: бэкап 1 161 МБ -> БД 1 893 МБ)
     $restoreProgress = {
         $sz = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain -Sql "SELECT pg_database_size('$IbName')" -Tuple).Out
-        @{ Done = $(if ($sz -match '^\d+$') { [double]$sz } else { 0 }); Total = [double]$cfFile.Length * 2.5 }
+        @{ Done = $(if ($sz -match '^\d+$') { [double]$sz } else { 0 }); Total = [double]$cfFile.Length * 1.65 }
     }
 
     $exists = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain `
                            -Sql "SELECT 1 FROM pg_database WHERE datname='$IbName'" -Tuple).Out -eq '1'
     # Есть, но пустая: прошлый запуск создал базу и прервался до загрузки .dt (конфигурация пустой базы —
     # десятки строк в таблице config, загруженной УНФ — десятки тысяч) — загружаем, а не пропускаем
+    # Какой источник загружен в базу — пишется после каждой загрузки (logs\ib_<IbName>.source). Бэкап сменился
+    # (появился или стал свежее) — база уже есть: спросить, загрузить ли его поверх (-ReloadIb — без вопроса).
+    $srcSig    = "{0}|{1}|{2:yyyy-MM-dd HH:mm:ss}" -f $cfFile.FullName, $cfFile.Length, $cfFile.LastWriteTime
+    $stateFile = Join-Path $LogDir "ib_$IbName.source"
+    $loadedSig = if (Test-Path $stateFile) { (Get-Content $stateFile -Raw).Trim() } else { '' }
     $emptyIb = $false
     if ($exists -and $cfFile.Extension -ne '.cf') {
         $cfgRows = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db $IbName -PwPlain $PgPasswordPlain `
@@ -850,10 +1117,29 @@ try {
     if ($emptyIb) {
         Warn "база '$IbName' есть в PostgreSQL, но пустая (конфигурация: $cfgRows записей) — загружаю $($cfFile.Name)"
         Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore' -Title 'Загрузка .dt в базу на сервере' -Progress $restoreProgress -EveryS 30
+        Set-Content $stateFile $srcSig -Encoding UTF8
         Add-ServerIbToList
         Ok "база загружена: $ibPath"
+    } elseif ($exists -and $SourceIsBackup -and $loadedSig -ne $srcSig) {
+        $was = if ($loadedSig) { Split-Path -Leaf ($loadedSig -replace '\|.*$') } else { 'неизвестно (загружена до этой версии скрипта)' }
+        Warn "база '$IbName' уже есть, но в ней не $($cfFile.Name) (загружено: $was)"
+        $reload = $ReloadIb -or ((Read-Host "  Загрузить $($cfFile.Name) поверх базы '$IbName'? Все данные в ней будут заменены (Y/N)") -match '^[YyДд]')
+        if ($reload) {
+            # загрузка поверх — под пользователем существующей базы: без пользователя -> Админ / Администратор / Автосервис
+            $reloaded = $false
+            foreach ($a in @($(if ($ibAuth) { $ibAuth }), '', '/N "Админ" /P ""', '/N "Администратор" /P ""', '/N "Автосервис" /P ""') | Select-Object -Unique) {
+                try {
+                    Invoke-1C "DESIGNER /S `"$ibPath`" $a /RestoreIB `"$($cfFile.FullName)`"" 'restore' -Title "Загрузка $($cfFile.Name) поверх базы" -Progress $restoreProgress -EveryS 30
+                    $reloaded = $true; break
+                } catch { if (-not (Test-AuthErrorLog 'restore')) { throw } }
+            }
+            if (-not $reloaded) { throw "Не удалось войти в базу '$IbName' для загрузки (нужен пользователь без пароля с правами администратора) — или удалите базу и запустите снова" }
+            Set-Content $stateFile $srcSig -Encoding UTF8
+            Ok "база '$IbName' заменена содержимым $($cfFile.Name)"
+        } else { Ok "база '$IbName' оставлена как есть (загрузить бэкап позже: -ReloadIb)" }
+        Add-ServerIbToList
     } elseif ($exists) {
-        Ok "база '$IbName' уже есть в PostgreSQL — создание пропущено"
+        Ok "база '$IbName' уже есть в PostgreSQL — создание пропущено$(if ($loadedSig -eq $srcSig) { " (в ней уже $($cfFile.Name))" })"
         Add-ServerIbToList
     } else {
         $conn = "Srvr=`"$Server1C`";Ref=`"$IbName`";DBMS=PostgreSQL;DBSrvr=`"localhost port=$PgPort`";DB=`"$IbName`";" +
@@ -876,11 +1162,35 @@ try {
             Invoke-1C "CREATEINFOBASE $connArg" 'create' -Title 'Создание пустой базы в кластере и PostgreSQL'
             Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$($cfFile.FullName)`"" 'restore' -Title 'Загрузка .dt в базу на сервере' -Progress $restoreProgress -EveryS 30
         }
+        Set-Content $stateFile $srcSig -Encoding UTF8
         Add-ServerIbToList
         Ok "база создана: $ibPath"
     }
     # .dt не удаляем: это резервная копия, повторный запуск возьмёт её и не будет выгружать файловую базу заново
     if ($cfFile.Extension -eq '.dt') { Ok ("резервная копия сохранена: {0} ({1:N0} МБ)" -f $cfFile.FullName, ($cfFile.Length / 1MB)) }
+
+    # =================================================================
+    #  Пустой пароль «Администратора» и пользователь для конфигуратора/запуска. Вход проверяется на самой базе
+    #  на сервере: у бэкапа рабочей базы свои пользователи (там «Администратор» с паролем, «Автосервис» без пароля).
+    Step "4в. Пользователь «$AdminUser»: пустой пароль"
+    $LaunchUser = 'Админ'
+    if ($AdminUser) {
+        $rs = Reset-IbUserPassword "Srvr=`"$Server1C`";Ref=`"$IbName`";" $AdminUser
+        if (-not $rs -or -not $rs.LOGIN -or $rs.LOGIN -like 'ERR*') {
+            Warn "вход в базу через COM не удался ($(if ($rs) { $rs.LOGIN })) — пароль «$AdminUser» не изменён"
+        } else {
+            Ok "вход в базу: «$($rs.LOGIN)»; пользователи: $($rs.USERS)"
+            switch -Wildcard ($rs.RESET) {
+                'OK'      { Ok "пароль «$AdminUser» сброшен — теперь пустой" }
+                'ALREADY' { Ok "у «$AdminUser» пароль уже пустой" }
+                'NOUSER'  { Warn "пользователя «$AdminUser» в базе нет — пароль не менялся" }
+                default   { Warn "пароль «$AdminUser» не изменён: $($rs.RESET)" }
+            }
+            if ($rs.LOGIN_AFTER -eq 'OK') { $LaunchUser = $AdminUser; Ok "«$AdminUser» входит без пароля" }
+            else { $LaunchUser = $rs.LOGIN }
+            $ibAuth = "/N `"$LaunchUser`" /P `"`""     # им же — расширение, проверка, seed
+        }
+    }
 
     # =================================================================
     #  Расширение конфигурации (.cfe)
@@ -894,7 +1204,7 @@ try {
         if (-not $ExtensionName) {
             $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', ''
         }
-        if (-not $ibAuth) { $ibAuth = '/N "Админ" /P ""' }   # серверная база наследует пользователей из файловой
+        if (-not $ibAuth) { $ibAuth = "/N `"$LaunchUser`" /P `"`"" }   # серверная база наследует пользователей из источника
         Ok "файл: $ExtensionFile  ->  расширение '$ExtensionName'"
         Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" 'ext_load'
         $applied = $false
@@ -969,7 +1279,10 @@ try {
     elseif (-not $ExtensionFile) { Warn 'расширение АРМ не подключено — seed не предлагается' }
     elseif (-not (Test-Path $seedScript)) { Warn "нет $seedScript — seed не предлагается" }
     elseif ($Seed) { $doSeed = $true }
-    else { $doSeed = (Read-Host "`n  Заполнить базу демо-данными АРМ (seed: сценарии из seed\Шаблон деталей.xlsx)? (Y/N)") -match '^[YyДд]' }
+    else {
+        if ($SourceIsBackup) { Warn "база загружена из бэкапа рабочей базы ($($cfFile.Name)) — seed добавит в неё демо-заказы SEED-309-*" }
+        $doSeed = (Read-Host "`n  Заполнить базу демо-данными АРМ (seed: сценарии из seed\Шаблон деталей.xlsx)? (Y/N)") -match '^[YyДд]'
+    }
 
     # пользователь, под которым конфигуратор вошёл в базу (подобран на шаге 4); '' — в базе нет пользователей
     $seedUser = ''; $seedPwd = ''
@@ -992,13 +1305,14 @@ try {
     $seedPwd = $null
 
     # =================================================================
-    #  Запуск 1С:Предприятие под администратором 1С «Админ» (пустой пароль) — сразу в серверную базу
+    #  Запуск 1С:Предприятие под администратором 1С (пустой пароль) — сразу в серверную базу
     if ($allOk -and -not $NoLaunch) {
         Step '7. Запуск 1С:Предприятие'
         $client = Join-Path $Bin1C '1cv8c.exe'                 # тонкий клиент; нет — 1cv8.exe ENTERPRISE
         $launch = if (Test-Path $client) { @{ Exe = $client; Args = '' } } else { @{ Exe = $v8; Args = 'ENTERPRISE ' } }
-        Start-Process $launch.Exe -ArgumentList "$($launch.Args)/S `"$ibPath`" /N `"Админ`" /P `"`""
-        Ok "запущен $(Split-Path -Leaf $launch.Exe): база $ibPath, пользователь «Админ» (пароль пустой)"
+        # пользователь — «Администратор» после сброса пароля (шаг 4в) или «Админ» у базы из autoservice.zip
+        Start-Process $launch.Exe -ArgumentList "$($launch.Args)/S `"$ibPath`" /N `"$LaunchUser`" /P `"`""
+        Ok "запущен $(Split-Path -Leaf $launch.Exe): база $ibPath, пользователь «$LaunchUser» (пароль пустой)"
     }
 }
 catch {

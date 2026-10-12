@@ -314,10 +314,10 @@ try {
         Ok "база создана в кластере: $ibPath"
         Add-ServerIbToList $IbTitle
         Write-Host '  Загрузка .dt в новую базу (может занять несколько минут)...'
-        # ход: рост БД в PostgreSQL против оценки (~2,5 x .dt: таблицы + индексы)
+        # ход: рост БД в PostgreSQL против оценки (~1,65 x .dt — замер на PostgreSQL 18)
         $restoreProgress = if ($script:PgBin) {
             { $sz = (Invoke-Psql 'postgres' "SELECT pg_database_size('$($IbName.ToLower())')").Out
-              @{ Done = $(if ($sz -match '^\d+$') { [double]$sz } else { 0 }); Total = [double](Get-Item $dt).Length * 2.5 } }
+              @{ Done = $(if ($sz -match '^\d+$') { [double]$sz } else { 0 }); Total = [double](Get-Item $dt).Length * 1.65 } }
         } else { $null }
         Invoke-1C "DESIGNER /S `"$ibPath`" /RestoreIB `"$dt`"" 'restore' -Title 'Загрузка .dt в базу на сервере' -Progress $restoreProgress -EveryS 30   # новая база пуста — без пользователя
         Ok 'данные загружены'
