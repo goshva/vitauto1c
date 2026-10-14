@@ -1,7 +1,8 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  Клиент-серверный вариант: 1С:Предприятие 8.3.27.2342 (сервер) + PostgreSQL 15.13-1.1C + конфигурация "Автосервис".
+  Клиент-серверный вариант: 1С:Предприятие 8.3.27.2342 (сервер) + PostgreSQL 18 для 1С + конфигурация "Автосервис"
+  + расширения АРМЗакупокИПродаж и АРМ_OData (все .cfe рядом со скриптом, последняя версия каждого).
   Файловый вариант (база из .dt, без PostgreSQL и сервера 1С) — install-1c.ps1.
 
   Шаги:
@@ -13,7 +14,10 @@
        не удаляет; иначе — из установщика PostgreSQL_1C_*_Setup.exe: локального (-BaseDir или -PgSetup, подпись
        Postgres Professional) или скачанного с -PgSetupUrl (Яндекс.Диск, проверка SHA256 и подписи); распаковка
        программы, VC++ x64, initdb, служба postgresql-1c-<версия>. Нет и его — архив 15.13-1.1C с Яндекс.Диска (MSI).
-       -ReinstallPostgres — удалить найденный PostgreSQL для 1С вместе с данными и поставить заново
+       -ReinstallPostgres — удалить найденный PostgreSQL для 1С вместе с данными и поставить заново.
+       -PgMajor 18 (по умолчанию): найденный PostgreSQL ниже 18 (например, 15.13) не используется — ставится 18
+       рядом (свободный порт), базы кластера 1С из старого копируются в 18 (pg_dump/pg_restore) и регистрация
+       переключается на новый порт (шаг 3в; -NoMovePgBases — не переносить). Старый PostgreSQL с данными остаётся
     3. Тихая установка 1С (клиенты + сервер) + служба агента сервера
     3б. Технологический журнал: logcfg.xml в conf по разрядности установленной платформы + рестарт агента
     4. Создание базы на сервере 1С. ВЫШЕ ВСЕГО — бэкап рабочей базы в -BaseDir («бэкап 20260805.dt»; из нескольких —
@@ -39,6 +43,12 @@
   powershell -ExecutionPolicy Bypass -File .\install-1c-pgsql.ps1
   powershell -ExecutionPolicy Bypass -File .\install-1c-pgsql.ps1 -Force -DeleteArchives
   .\install-1c-pgsql.ps1 -Force -Seed -SeedKeepSafeModeOff   # без вопросов: переустановка + демо-данные АРМ
+  .\install-1c-pgsql.ps1 -ExtensionFile АРМЗакупокИПродаж,АРМ_OData   # расширения по имени (последняя версия .cfe)
+  .\install-1c-pgsql.ps1 -ExtensionFile ''                             # без расширений
+
+  Расширения на сервере: на время UpdateDBCfg регламентные задания базы запрещаются (rac), их сеансы завершаются,
+  затем запрет снимается; после — расширения включаются (активно, без безопасного режима: odata\ext-activate.js),
+  у АРМ_OData — полный состав OData (odata\enable-odata.ps1).
 #>
 param(
     [string]      $BaseDir     = $(if ($PSScriptRoot -like 'D:\*') { $PSScriptRoot } else { 'D:\1c' }),   # архивы, исходники, логи (как install-1c.ps1)
@@ -49,6 +59,9 @@ param(
     [string]      $PgSetup,                         # установщик PostgreSQL_1C_*_Setup.exe; по умолчанию — поиск в -BaseDir и рядом со скриптом
     [string]      $PgSetupUrl  = 'https://disk.yandex.ru/d/bpPS8da1z_f6dw',   # откуда скачать установщик, если его нет локально ('' — не скачивать)
     [switch]      $ReinstallPostgres,               # удалить найденный PostgreSQL для 1С (с данными!) и поставить заново
+    [int]         $PgMajor     = 18,                # нужная версия PostgreSQL для 1С: найденный старше/равен — используется; младше — ставится рядом,
+                                                    # базы кластера 1С из старого переносятся (pg_dump/pg_restore), старый с данными остаётся
+    [switch]      $NoMovePgBases,                   # не переносить базы кластера 1С из старого PostgreSQL в новый
     # --- источник базы ---
     [string]      $SourceDt,                        # бэкап .dt для базы; по умолчанию — самый свежий *.dt в -BaseDir («бэкап 20260805.dt»)
     [switch]      $NoBackupDt,                      # не брать бэкап из -BaseDir — база из autoservice.zip
@@ -63,8 +76,7 @@ param(
     [switch]      $Redownload,                      # скачать и распаковать исходники заново, даже если они уже есть
     [string]      $IbUser,                          # пользователь 1С в базе «Автосервис» (если есть список пользователей)
     [SecureString]$IbPassword,                      # его пароль; при -IbUser без пароля будет запрошен
-    [string]      $ExtensionFile,                    # путь к .cfe; не задан — последняя версия <имя>_vN.cfe рядом со скриптом; '' — не подключать
-    [string]      $ExtensionName,                    # имя расширения в базе; по умолчанию — из имени файла
+    [string[]]    $ExtensionFile,                    # .cfe или имена расширений (АРМЗакупокИПродаж,АРМ_OData); не задан — все рядом со скриптом; '' — не подключать
     [double]      $EstDbGB       = 6,                 # оценка размера базы в PostgreSQL (для проверки места)
     [switch]      $SkipSpaceCheck,                    # пропустить проверку свободного места на диске
     # --- демо-данные АРМ (seed-1c.ps1) и запуск после установки ---
@@ -94,6 +106,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     foreach ($kv in $PSBoundParameters.GetEnumerator()) {
         if ($kv.Key -in 'PgPassword', 'IbPassword') { continue }   # SecureString не передать в другой процесс — спросим заново
         if ($kv.Value -is [switch]) { if ($kv.Value) { $argList += "-$($kv.Key)" } }
+        elseif ($kv.Value -is [array]) { $argList += "-$($kv.Key)", "`"$($kv.Value -join ',')`"" }   # -ExtensionFile А,Б
         else { $argList += "-$($kv.Key)", "`"$($kv.Value)`"" }
     }
     Start-Process powershell.exe -Verb RunAs -ArgumentList $argList
@@ -513,10 +526,26 @@ function Remove-StrayLogcfg([string]$Keep) {
 
 # Удалить из списка баз (ibases.v8i) секции, указывающие на нашу серверную базу
 # и на файловую базу файлового варианта (-FileIbDir)
+# Список баз — общий для всех пользователей сервера: %ProgramData%\1C\1CEStart\ibases.v8i, подключённый в
+# %ProgramData%\1C\1CEStart\1CEStart.cfg строкой CommonInfoBases= (личный %APPDATA% видит только запустивший скрипт)
+$CommonStartDir = Join-Path $env:ProgramData '1C\1CEStart'
+$CommonIbList   = Join-Path $CommonStartDir 'ibases.v8i'
+function Register-CommonIbList {
+    New-Item -ItemType Directory -Force -Path $CommonStartDir | Out-Null
+    $cfg  = Join-Path $CommonStartDir '1CEStart.cfg'
+    $text = if (Test-Path $cfg) { [IO.File]::ReadAllText($cfg) } else { '' }   # 1CEStart.cfg — UTF-16 LE с BOM (ReadAllText определяет по BOM)
+    $line = "CommonInfoBases=$CommonIbList"
+    if ($text -match "(?mi)^CommonInfoBases=$([regex]::Escape($CommonIbList))\s*$") { return }
+    if ($text -and -not $text.EndsWith("`n")) { $text += "`r`n" }
+    [IO.File]::WriteAllText($cfg, $text + $line + "`r`n", [Text.Encoding]::Unicode)
+    # читать общий список должны все пользователи (наследование ProgramData обычно уже даёт Users чтение)
+    & icacls $CommonStartDir /grant '*S-1-5-32-545:(OI)(CI)RX' /Q | Out-Null
+    Ok "общий список баз для всех пользователей: $CommonIbList (подключён в $cfg)"
+}
 function Remove-IbFromList {
     $pattern     = "Srvr=`"?$([regex]::Escape($Server1C))`"?;Ref=`"?$([regex]::Escape($IbName))`"?;"
     $filePattern = "File=`"?$([regex]::Escape($FileIbDir.TrimEnd('\')))\\?`"?;"
-    foreach ($f in @("$env:APPDATA\1C\1CEStart\ibases.v8i")) {
+    foreach ($f in @("$env:APPDATA\1C\1CEStart\ibases.v8i", $CommonIbList)) {
         if (-not (Test-Path $f)) { continue }
         $text  = [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8)
         $parts = [regex]::Split($text, '(?m)^(?=\[)')
@@ -532,10 +561,19 @@ function Remove-IbFromList {
 # «Автосервис» от install-1c.ps1) — запись получает имя «<IbTitle> (PostgreSQL)». 1cv8 /AddToList в этом случае
 # падает с «уже зарегистрирована», поэтому список ведём сами.
 function Add-ServerIbToList {
-    $f = "$env:APPDATA\1C\1CEStart\ibases.v8i"
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $f) | Out-Null
+    Register-CommonIbList
+    $refPattern = "Srvr=`"?$([regex]::Escape($Server1C))`"?;Ref=`"?$([regex]::Escape($IbName))`"?;"
+    # запись прошлых версий скрипта в личном списке администратора — убрать, иначе у него база будет дважды
+    $personal = "$env:APPDATA\1C\1CEStart\ibases.v8i"
+    if (Test-Path $personal) {
+        $pt = [IO.File]::ReadAllText($personal, [Text.Encoding]::UTF8)
+        $parts = [regex]::Split($pt, '(?m)^(?=\[)')
+        $kept = $parts | Where-Object { $_ -notmatch $refPattern }
+        if (@($kept).Count -ne @($parts).Count) { [IO.File]::WriteAllText($personal, (-join $kept), (New-Object Text.UTF8Encoding $true)); Ok "база перенесена из личного списка ($personal) в общий" }
+    }
+    $f = $CommonIbList
     $text = if (Test-Path $f) { [IO.File]::ReadAllText($f, [Text.Encoding]::UTF8) } else { '' }
-    if ($text -match "Srvr=`"?$([regex]::Escape($Server1C))`"?;Ref=`"?$([regex]::Escape($IbName))`"?;") { Ok 'база уже в списке баз'; return }
+    if ($text -match $refPattern) { Ok 'база уже в общем списке баз'; return }
     $title = $IbTitle
     for ($n = 1; $text -match "(?m)^\[$([regex]::Escape($title))\]\s*$"; $n++) {
         $title = if ($n -eq 1) { "$IbTitle (PostgreSQL)" } else { "$IbTitle (PostgreSQL $n)" }
@@ -562,35 +600,107 @@ function Clear-PgPasswordInFile([string]$Path) {
     if ($clean -ne $text) { [IO.File]::WriteAllText($Path, $clean, $enc) }
 }
 
-# Последняя версия расширения рядом со скриптом: <имя>_v<версия>.cfe с наибольшей версией
-# (v1 < v2.0 < v2.1 < v10). Файл без суффикса версии считается версией 0. Нет .cfe — ''.
-function Find-LatestExtension([string]$Dir) {
-    $cands = Get-ChildItem $Dir -Filter '*.cfe' -File -ErrorAction SilentlyContinue | ForEach-Object {
+# Расширения .cfe: <имя>_v<версия>.cfe (v1 < v2.0 < v2.1 < v10; без суффикса — версия 0).
+# Порядок подключения: АРМЗакупокИПродаж -> прочие -> АРМ_OData (его команды вызывают код АРМ).
+$ExtOrder = @{ 'АРМЗакупокИПродаж' = 0; 'АРМ_OData' = 9 }
+function Get-ExtCandidates([string[]]$Dirs) {
+    Get-ChildItem ($Dirs | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique) -Filter '*.cfe' -File -ErrorAction SilentlyContinue | ForEach-Object {
         $m   = [regex]::Match($_.BaseName, '^(.+?)_v(\d+(?:\.\d+){0,3})$')
         $ver = if ($m.Success) { $m.Groups[2].Value } else { '0' }
         if ($ver -notmatch '\.') { $ver += '.0' }
-        [pscustomobject]@{
-            File    = $_.FullName
-            Name    = if ($m.Success) { $m.Groups[1].Value } else { $_.BaseName }
-            Version = [version]$ver
+        [pscustomobject]@{ File = $_.FullName; Name = $(if ($m.Success) { $m.Groups[1].Value } else { $_.BaseName }); Version = [version]$ver }
+    }
+}
+# -ExtensionFile: пути к .cfe и/или имена расширений (имя -> последняя версия <имя>_v*.cfe рядом со скриптом / в -BaseDir).
+# Не задан — все расширения рядом со скриптом (последняя версия каждого). '' — не подключать.
+function Resolve-Extensions([string[]]$Spec, [bool]$Bound, [string[]]$Dirs) {
+    $all = @(Get-ExtCandidates $Dirs)
+    $latest = { param($name) $all | Where-Object Name -eq $name | Sort-Object Version -Descending | Select-Object -First 1 }
+    $list = @()
+    if (-not $Bound) {
+        foreach ($n in ($all | Select-Object -ExpandProperty Name -Unique)) { $list += & $latest $n }
+    } else {
+        # «А,Б» одной строкой (так приходит при перезапуске с правами администратора) — тоже список
+        foreach ($s in ($Spec | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+            if (Test-Path -LiteralPath $s -PathType Leaf) {
+                $m = [regex]::Match([IO.Path]::GetFileNameWithoutExtension($s), '^(.+?)(?:_v[\d.]+)?$')
+                $list += [pscustomobject]@{ File = (Resolve-Path -LiteralPath $s).Path; Name = $m.Groups[1].Value; Version = [version]'0.0' }
+            } else {
+                $n = [IO.Path]::GetFileNameWithoutExtension($s) -replace '_v[\d.]+$', ''
+                $f = & $latest $n
+                if (-not $f) { throw "Расширение «$s» не найдено: нет файла $n`_v*.cfe в $(($Dirs | Where-Object { $_ }) -join ', ')" }
+                $list += $f
+            }
         }
     }
-    if (-not $cands) { return '' }
-    $names = @($cands | Select-Object -ExpandProperty Name -Unique)
-    if ($names.Count -gt 1) {
-        throw "Рядом со скриптом несколько разных расширений ($($names -join ', ')) — укажите нужное ключом -ExtensionFile"
+    @($list | Sort-Object { if ($ExtOrder.ContainsKey($_.Name)) { $ExtOrder[$_.Name] } else { 5 } }, Name)
+}
+# Метка набора расширений (для .dt.ext): имя|файл|SHA1 по строке на расширение
+function Get-ExtSignature($Exts) { ($Exts | ForEach-Object { "{0}|{1}|{2}" -f $_.Name, (Split-Path -Leaf $_.File), (Get-FileHash $_.File -Algorithm SHA1).Hash }) -join "`n" }
+
+# ---------- Сервер администрирования 1С (ras/rac): на время работы скрипта ras запускается процессом ----------
+$script:RasProc = $null
+function Start-Rac {
+    if ($script:RasProc -and -not $script:RasProc.HasExited) { return }
+    $script:RasProc = Start-Process (Join-Path $Bin1C 'ras.exe') -ArgumentList 'cluster --port=1545 localhost:1540' -PassThru -WindowStyle Hidden
+    Start-Sleep -Seconds 4
+}
+function Stop-Rac { if ($script:RasProc) { Stop-Process -Id $script:RasProc.Id -Force -ErrorAction SilentlyContinue; $script:RasProc = $null } }
+function Invoke-Rac { $o = & (Join-Path $Bin1C 'rac.exe') localhost:1545 @args 2>&1; [pscustomobject]@{ Code = $LASTEXITCODE; Out = @($o | ForEach-Object { "$_" }) } }
+function Get-ClusterId { Start-Rac; ((Invoke-Rac cluster list).Out | Select-String '^cluster\s+:\s+(\S+)' | Select-Object -First 1).Matches[0].Groups[1].Value }
+# Базы кластера: [{ Id; Name }]
+function Get-ClusterIbs([string]$Cl) {
+    $out = (Invoke-Rac infobase summary list "--cluster=$Cl").Out; $res = @(); $id = $null
+    foreach ($l in $out) {
+        if ($l -match '^infobase\s+:\s+(\S+)') { $id = $Matches[1] }
+        elseif ($l -match '^name\s+:\s+(.+)$' -and $id) { $res += [pscustomobject]@{ Id = $id; Name = $Matches[1].Trim() }; $id = $null }
     }
-    ($cands | Sort-Object Version -Descending | Select-Object -First 1).File
+    $res
+}
+# Свойства базы (нужен пользователь базы): кандидаты — заданный, без пользователя, Админ / Администратор / Автосервис без пароля
+function Get-IbInfo([string]$Cl, [string]$Ib, [string[]]$Users) {
+    foreach ($u in $Users) {
+        $r = Invoke-Rac infobase info "--cluster=$Cl" "--infobase=$Ib" "--infobase-user=$u" '--infobase-pwd='
+        if ($r.Code -eq 0) {
+            $h = @{ User = $u }
+            foreach ($l in $r.Out) { if ($l -match '^([\w-]+)\s+:\s*(.*)$') { $h[$Matches[1]] = $Matches[2].Trim().Trim('"') } }
+            return $h
+        }
+    }
+    $null
+}
+# Запрет регламентных заданий и завершение сеансов базы (фоновые задания держат базу — UpdateDBCfg не проходит)
+function Set-IbJobsDeny([string]$Cl, [string]$Ib, [string]$User, [string]$Pwd, [bool]$On) {
+    $v = if ($On) { 'on' } else { 'off' }
+    $r = Invoke-Rac infobase update "--cluster=$Cl" "--infobase=$Ib" "--infobase-user=$User" "--infobase-pwd=$Pwd" "--scheduled-jobs-deny=$v"
+    if ($r.Code -ne 0) { Warn "регламентные задания: запрет $v не установлен ($($r.Out -join ' '))"; return $false }
+    if ($On) {
+        foreach ($s in ((Invoke-Rac session list "--cluster=$Cl" "--infobase=$Ib").Out | Select-String '^session\s+:\s+(\S+)')) {
+            Invoke-Rac session terminate "--cluster=$Cl" "--session=$($s.Matches[0].Groups[1].Value)" | Out-Null
+        }
+        Start-Sleep -Seconds 3
+    }
+    $true
+}
+# COM-скрипт из odata\ (строка соединения — файлом UTF-16: кириллица и кавычки)
+function Invoke-ComJs([string]$Js, [string]$Conn, [string[]]$Rest) {
+    $tmp = Join-Path $LogDir ('comjs_' + [IO.Path]::GetFileNameWithoutExtension($Js)); New-Item -ItemType Directory -Force $tmp | Out-Null
+    [IO.File]::WriteAllText("$tmp\r.js", [IO.File]::ReadAllText($Js, [Text.Encoding]::UTF8), [Text.Encoding]::Unicode)
+    [IO.File]::WriteAllText("$tmp\c.txt", $Conn, [Text.Encoding]::Unicode)
+    $cscript = if ($Bin1C -like "${env:ProgramFiles(x86)}*") { "$env:WINDIR\SysWOW64\cscript.exe" } else { "$env:WINDIR\System32\cscript.exe" }
+    & $cscript //nologo //E:JScript "$tmp\r.js" "$tmp\c.txt" "$tmp\out.txt" @Rest | Out-Null
+    $out = if (Test-Path "$tmp\out.txt") { [IO.File]::ReadAllLines("$tmp\out.txt", [Text.Encoding]::Unicode) } else { @('ERROR=нет отчёта (COM-соединитель не зарегистрирован?)') }
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    $out
 }
 
 # =====================================================================
 try {
-    if (-not $PSBoundParameters.ContainsKey('ExtensionFile')) {
-        $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
-        $ExtensionFile = Find-LatestExtension $scriptDir
-        if ($ExtensionFile) { Ok "расширение: последняя версия рядом со скриптом — $(Split-Path -Leaf $ExtensionFile)" }
-        else { Warn 'рядом со скриптом нет .cfe — расширение подключено не будет' }
-    }
+    $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $Exts = @(Resolve-Extensions $ExtensionFile $PSBoundParameters.ContainsKey('ExtensionFile') @($scriptDir, $BaseDir))
+    if ($Exts) { foreach ($e in $Exts) { Ok "расширение $($e.Name): $(Split-Path -Leaf $e.File)" } }
+    else { Warn 'расширения подключены не будут (нет .cfe рядом со скриптом или -ExtensionFile "")' }
+    $HasArm = [bool]($Exts | Where-Object Name -eq 'АРМЗакупокИПродаж')
     if (-not $PgPassword) { $PgPassword = Read-Host -AsSecureString 'Пароль суперпользователя PostgreSQL (установленного — его пароль; для новой установки — новый)' }
     if ($PgPassword.Length -eq 0) { throw 'Пароль PostgreSQL не задан' }
     if ($IbUser -and -not $IbPassword) { $IbPassword = Read-Host -AsSecureString "Пароль пользователя 1С '$IbUser' (Enter — пустой)" }
@@ -612,18 +722,29 @@ try {
     #  PostgreSQL: уже установленный для 1С -> используем (шаг 0 его не трогает); нет -> локальный установщик
     #  PostgreSQL_1C_*_Setup.exe; нет и его -> архив 15.13-1.1C с Яндекс.Диска (как раньше)
     $PgAll      = @(Find-ExistingPg)
-    $PgExisting = if ($ReinstallPostgres) { $null } else { $PgAll | Where-Object For1C | Sort-Object { $_.State -ne 'Running' } | Select-Object -First 1 }
+    $pgMajorOf  = { param($p) if ("$($p.Version)" -match '^(\d+)') { [int]$Matches[1] } else { 0 } }
+    $Pg1C       = @($PgAll | Where-Object For1C | Sort-Object { & $pgMajorOf $_ } -Descending)
+    # найденный PostgreSQL для 1С подходит, если его версия не ниже -PgMajor (по умолчанию 18)
+    $PgExisting = if ($ReinstallPostgres) { $null } else { $Pg1C | Where-Object { (& $pgMajorOf $_) -ge $PgMajor } | Sort-Object { $_.State -ne 'Running' } | Select-Object -First 1 }
+    # старый (ниже -PgMajor) остаётся с данными; базы кластера 1С из него переносятся в новый на шаге 3в
+    $PgOld      = if ($PgExisting -or $ReinstallPostgres) { $null } else { $Pg1C | Where-Object { $_.State -eq 'Running' } | Select-Object -First 1 }
+    if ($PgOld) { Warn "PostgreSQL для 1С $($PgOld.Version) (служба $($PgOld.Service), порт $($PgOld.Port)) ниже $PgMajor — будет установлен PostgreSQL $PgMajor рядом$(if (-not $NoMovePgBases) { ', базы кластера 1С перенесены в него' }); старый с данными остаётся" }
     $PgSetupFile = if ($PgExisting) { $null } else { Find-PgSetup }
+    if ($PgSetupFile -and $PgSetupFile.Name -match 'PostgreSQL_1C_(\d+)' -and [int]$Matches[1] -lt $PgMajor) { Warn "$($PgSetupFile.Name) — версия ниже $PgMajor, не используется"; $PgSetupFile = $null }
     # локального установщика нет — скачаем его на шаге 1 с -PgSetupUrl (здесь только узнаём имя, размер, SHA256)
     $PgSetupRemote = if ($PgExisting -or $PgSetupFile) { $null } else { Get-PgSetupRemote }
+    if ($PgSetupRemote -and $PgSetupRemote.Name -match 'PostgreSQL_1C_(\d+)' -and [int]$Matches[1] -lt $PgMajor) { Warn "$($PgSetupRemote.Name) по -PgSetupUrl — версия ниже $PgMajor"; $PgSetupRemote = $null }
     $pgSetupName = if ($PgSetupFile) { $PgSetupFile.Name } elseif ($PgSetupRemote) { $PgSetupRemote.Name } else { '' }
-    $PgMajor = if ($pgSetupName -match 'PostgreSQL_1C_(\d+)') { $Matches[1] } else { '' }
+    $PgMajorSetup = if ($pgSetupName -match 'PostgreSQL_1C_(\d+)') { $Matches[1] } else { '' }
+    if (-not $PgExisting -and -not $pgSetupName -and $PgMajor -gt 15) {
+        throw "Нужен PostgreSQL для 1С ${PgMajor}: нет ни установленного, ни установщика PostgreSQL_1C_$PgMajor*_Setup.exe в $BaseDir / рядом со скриптом, ни по -PgSetupUrl. Положите установщик в $BaseDir (или -PgMajor 15 — архив 15.13)."
+    }
     foreach ($p in $PgAll | Where-Object { -not $_.For1C }) { Warn "PostgreSQL $($p.Version) (служба $($p.Service), порт $($p.Port)) — не сборка для 1С, не используется" }
     if ($PgExisting) {
         $PgDataDir = $PgExisting.Data; $PgPort = $PgExisting.Port
         Ok "PostgreSQL для 1С уже установлен: $($PgExisting.Version), служба $($PgExisting.Service) ($($PgExisting.State)), порт $PgPort, данные $PgDataDir — будет использован"
     } elseif ($pgSetupName) {
-        if (-not $PSBoundParameters.ContainsKey('PgDataDir')) { $PgDataDir = "$(Split-Path -Qualifier $BaseDir)\PostgreSQL 1C\$PgMajor\data" }
+        if (-not $PSBoundParameters.ContainsKey('PgDataDir')) { $PgDataDir = "$(Split-Path -Qualifier $BaseDir)\PostgreSQL 1C\$PgMajorSetup\data" }
         $from = if ($PgSetupFile) { $PgSetupFile.FullName } else { "{0} ({1:N0} МБ, будет скачан с {2})" -f $PgSetupRemote.Name, ($PgSetupRemote.Size / 1MB), $PgSetupUrl }
         Ok "PostgreSQL для 1С не установлен — будет установлен из $from (данные: $PgDataDir)"
     } else {
@@ -649,7 +770,7 @@ try {
     # файловая база файлового варианта (install-1c.ps1) — только с -RemoveFileIb (источник для migrate-1c-pgsql.ps1)
     $srcDirs = if ($Redownload) { $Sources.Values | ForEach-Object { Join-Path $BaseDir $_.Dir } } else { @() }
     $fileIb  = if ($RemoveFileIb) { @($FileIbDir) } else { @() }
-    $keepCluster = [bool]$PgExisting
+    $keepCluster = [bool]($PgExisting -or $PgOld)   # базы кластера лежат в найденном PostgreSQL (или переносятся из старого)
     $pgDirs  = if ($pgRemove) { @($PgDataDir) + @($pgTargets | ForEach-Object { $_.Data; $_.Root }) } else { @() }
     $oldDirs = @($pgDirs) + @($(if (-not $keepCluster) { $SrvInfoDir })) + @($fileIb) + @($srcDirs) |
                Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
@@ -761,8 +882,8 @@ try {
     }
     if ($PgSetupFile) {
         Step "2. Установка PostgreSQL для 1С из $($PgSetupFile.Name)"
-        $PgBin = Install-PgFromSetup $PgSetupFile $PgMajor
-        $pgSvcName = "postgresql-1c-$PgMajor"
+        $PgBin = Install-PgFromSetup $PgSetupFile $PgMajorSetup
+        $pgSvcName = "postgresql-1c-$PgMajorSetup"
     } else {
         Step '2. Установка PostgreSQL 15.13-1.1C (архив)'
         $pgMsi = Get-ChildItem $PgDistDir -Recurse -Filter '*.msi' | Select-Object -First 1
@@ -838,7 +959,9 @@ try {
     $msiDir = $msi1C.DirectoryName
     $mst = @('adminstallrelogon.mst', '1049.mst') | Where-Object { Test-Path (Join-Path $msiDir $_) }
     $transforms = if ($mst) { "TRANSFORMS=`"$($mst -join ';')`"" } else { '' }
-    $args1C = "/qn $transforms DESIGNERALLCLIENTS=1 THICKCLIENT=1 THINCLIENTFILE=1 THINCLIENT=1 " +
+    # ALLUSERS=1 — установка для всех пользователей (Program Files, HKLM, общие ярлыки «Пуск» и рабочего стола);
+    # у MSI 1С по умолчанию ALLUSERS=2 — «для всех» только при запуске от администратора, здесь — всегда
+    $args1C = "/qn ALLUSERS=1 $transforms DESIGNERALLCLIENTS=1 THICKCLIENT=1 THINCLIENTFILE=1 THINCLIENT=1 " +
               "WEBSERVEREXT=0 SERVER=1 SERVERCLIENT=1 CONFREPOSSERVER=0 CONVERTER77=0 LANGUAGES=RU"
     Push-Location $msiDir
     try { $code = Invoke-Msi '/i' $msi1C.FullName $args1C '1c_msi.log' } finally { Pop-Location }
@@ -922,6 +1045,55 @@ try {
     }
 
     # =================================================================
+    #  3в. Базы кластера 1С, лежащие в старом PostgreSQL (ниже -PgMajor), -> новый: pg_dump / pg_restore и переключение
+    #  регистрации базы в кластере на новый порт. Старый PostgreSQL и его данные не трогаются (откат — вернуть порт).
+    if ($PgOld -and -not $NoMovePgBases) {
+        Step "3в. Перенос баз 1С: PostgreSQL $($PgOld.Version) (порт $($PgOld.Port)) -> $PgMajorSetup (порт $PgPort)"
+        try {
+            $cl = Get-ClusterId
+            $ibUsers = @($(if ($IbUser) { $IbUser }), '', 'Админ', 'Администратор', 'Автосервис') | Select-Object -Unique
+            foreach ($b in @(Get-ClusterIbs $cl)) {
+                $info = Get-IbInfo $cl $b.Id $ibUsers
+                if (-not $info) { Warn "база $($b.Name): нет входа пользователем без пароля ($(($ibUsers | Where-Object { $_ }) -join ', ')) — не переносится"; continue }
+                $srv = "$($info['db-server'])"; $db = "$($info['db-name'])"
+                $port = if ($srv -match 'port\s*=\s*(\d+)') { [int]$Matches[1] } else { 5432 }
+                if ($info['dbms'] -ne 'PostgreSQL' -or $port -ne $PgOld.Port) { Ok "база $($b.Name): $($info['dbms']) «$srv» — переносить не нужно"; continue }
+                $inNew = (Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain -Sql "SELECT 1 FROM pg_database WHERE datname='$db'" -Tuple).Out -eq '1'
+                [void](Set-IbJobsDeny $cl $b.Id $info.User '' $true)
+                try {
+                    if ($inNew) { Ok "БД $db уже есть в PostgreSQL $PgMajorSetup — копирование пропущено" }
+                    else {
+                        $loc = (Invoke-Psql -Bin $PgOld.Bin -Port $PgOld.Port -User $PgUser -Db postgres -PwPlain $PgPasswordPlain -Sql "SELECT datcollate FROM pg_database WHERE datname='$db'" -Tuple).Out
+                        if (-not $loc) { $loc = 'Russian_Russia.1251' }
+                        $dump = Join-Path $BaseDir "pgmove_$db.dump"
+                        $t0m = Get-Date
+                        Write-Host "  $($b.Name): pg_dump из $($PgOld.Version) ..."
+                        $env:PGPASSWORD = $PgPasswordPlain
+                        & (Join-Path $PgBin 'pg_dump.exe') -w -h 127.0.0.1 -p $PgOld.Port -U $PgUser -Fc -Z 1 -f $dump $db
+                        if ($LASTEXITCODE) { throw "pg_dump $db из PostgreSQL $($PgOld.Version) не выполнен" }
+                        $c = Invoke-Psql -Bin $PgBin -Port $PgPort -User $PgUser -Db postgres -PwPlain $PgPasswordPlain -Sql "CREATE DATABASE `"$db`" WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = '$loc'"
+                        if ($c.Code) { throw "CREATE DATABASE ${db}: $($c.Out)" }
+                        Write-Host ("  $($b.Name): pg_restore в {0} ({1:N0} МБ) ..." -f $PgMajorSetup, ((Get-Item $dump).Length / 1MB))
+                        $env:PGPASSWORD = $PgPasswordPlain
+                        & (Join-Path $PgBin 'pg_restore.exe') -w -h 127.0.0.1 -p $PgPort -U $PgUser -d $db --no-owner -j 4 $dump
+                        if ($LASTEXITCODE) { throw "pg_restore $db в PostgreSQL ${PgMajorSetup}: код $LASTEXITCODE" }
+                        Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+                        Remove-Item $dump -Force -ErrorAction SilentlyContinue
+                        Ok ("БД $db скопирована в PostgreSQL $PgMajorSetup за {0:N0} мин" -f ((Get-Date) - $t0m).TotalMinutes)
+                    }
+                    $u = Invoke-Rac infobase update "--cluster=$cl" "--infobase=$($b.Id)" "--infobase-user=$($info.User)" '--infobase-pwd=' `
+                        "--db-server=localhost port=$PgPort" "--db-user=$PgUser" "--db-pwd=$PgPasswordPlain"
+                    if ($u.Code) { throw "регистрация базы $($b.Name) не переключена: $(Hide-PgPassword ($u.Out -join ' '))" }
+                    Ok "база $($b.Name): кластер 1С -> PostgreSQL $PgMajorSetup (localhost port=$PgPort); в $($PgOld.Version) осталась копия"
+                } finally {
+                    Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+                    [void](Set-IbJobsDeny $cl $b.Id $info.User '' $false)
+                }
+            }
+        } finally { Stop-Rac }
+    }
+
+    # =================================================================
     Step "4. Создание информационной базы '$IbName'"
     $v8     = Join-Path $Bin1C '1cv8.exe'
     $ibPath = "$Server1C\$IbName"
@@ -1002,14 +1174,12 @@ try {
         Ok ("найдена выгрузка этой базы: {0} ({1:N0} МБ, от {2:dd.MM.yyyy HH:mm}) — повторная выгрузка не нужна" -f
             $cfFile.FullName, ($cfFile.Length / 1MB), $cfFile.LastWriteTime)
         $extMark = "$($cfFile.FullName).ext"
-        if ($ExtensionFile -and (Test-Path $extMark) -and (Test-Path $ExtensionFile)) {
-            $was = (Get-Content $extMark -Raw).Trim()
-            $now = "{0}|{1}" -f (Split-Path -Leaf $ExtensionFile), (Get-FileHash $ExtensionFile -Algorithm SHA1).Hash
-            if ($was -eq $now) {
-                if (-not $ExtensionName) { $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', '' }
+        if ($Exts -and (Test-Path $extMark)) {
+            $was = (Get-Content $extMark -Raw).Trim() -replace "`r", ''
+            if ($was -eq (Get-ExtSignature $Exts)) {
                 $extBaked = $true
-                Ok "в .dt уже встроено расширение $(Split-Path -Leaf $ExtensionFile)"
-            } else { Warn "в .dt другое расширение ($($was -replace '\|.*$')) — $(Split-Path -Leaf $ExtensionFile) будет загружено на сервере" }
+                Ok "в .dt уже встроены расширения: $(($Exts | ForEach-Object { Split-Path -Leaf $_.File }) -join ', ')"
+            } else { Warn "в .dt другой набор расширений — $(($Exts | ForEach-Object Name) -join ', ') будут загружены на сервере" }
         }
         Write-Host '  (выгрузить заново: удалите этот .dt или запустите с -Redownload)'
     } elseif (-not $cfFile -and $zipDb) {
@@ -1026,22 +1196,19 @@ try {
             # Расширение выгодно применить здесь, к файловой базе: доступ монопольный,
             # фоновых заданий нет. Тогда .dt уже содержит расширение и на сервере
             # не потребуется UpdateDBCfg (который упирается в блокировку фоновыми заданиями).
-            $applyExt = [bool]$ExtensionFile
-            if ($applyExt -and -not (Test-Path $ExtensionFile)) { throw "Файл расширения не найден: $ExtensionFile" }
-            if ($applyExt -and -not $ExtensionName) {
-                $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', ''
-            }
+            $applyExt = [bool]$Exts
+            $ext0 = if ($applyExt) { $Exts[0] } else { $null }
 
-            # Первая операция служит и проверкой входа: LoadCfg расширения (если есть) либо сразу DumpIB.
+            # Первая операция служит и проверкой входа: LoadCfg первого расширения (если есть) либо сразу DumpIB.
             # Подбор пользователя: заданный -> без пользователя -> Админ/Администратор -> запрос (3 раза).
             $tries    = if ($ibAuth) { @($ibAuth) } else { @('', '/N "Админ" /P ""', '/N "Администратор" /P ""') }
-            $firstOp  = if ($applyExt) { "/LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" } else { "/DumpIB `"$dtPath`"" }
+            $firstOp  = if ($applyExt) { "/LoadCfg `"$($ext0.File)`" -Extension `"$($ext0.Name)`"" } else { "/DumpIB `"$dtPath`"" }
             $firstTag = if ($applyExt) { 'ext_load' } else { 'dumpib' }
             # ход выгрузки: размер .dt против оценки (~55% от 1Cv8.1CD — по замерам «Автосервиса»: 1,8 ГБ -> 1 011 МБ)
             $dumpProgress = { @{ Done = [double](Get-Item $dtPath -ErrorAction SilentlyContinue).Length; Total = [double]$fileDb.Length * 0.55 } }
-            $firstTitle = if ($applyExt) { 'Подключение расширения' } else { 'Выгрузка в .dt' }
+            $firstTitle = if ($applyExt) { "Подключение расширения $($ext0.Name)" } else { 'Выгрузка в .dt' }
             $firstProg  = if ($applyExt) { $null } else { $dumpProgress }
-            if ($applyExt) { Write-Host "  Подключение расширения '$ExtensionName' к файловой базе..." }
+            if ($applyExt) { Write-Host "  Подключение расширений к файловой базе: $(($Exts | ForEach-Object Name) -join ', ')..." }
             else           { Write-Host '  Выгрузка в .dt (может занять несколько минут)...' }
             $done = $false
             for ($i = 0; -not $done; $i++) {
@@ -1065,9 +1232,12 @@ try {
                 }
             }
             if ($applyExt) {
-                # применяем расширение к файловой базе (монопольно) и выгружаем один раз
-                Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply' -Title 'Применение расширения'
-                Ok "расширение '$ExtensionName' встроено в базу до миграции"
+                # применяем расширения к файловой базе (монопольно, фоновых заданий нет) и выгружаем один раз
+                foreach ($e in $Exts) {
+                    if ($e -ne $ext0) { Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /LoadCfg `"$($e.File)`" -Extension `"$($e.Name)`"" 'ext_load' -Title "Подключение расширения $($e.Name)" }
+                    Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /UpdateDBCfg -Extension `"$($e.Name)`"" 'ext_apply' -Title "Применение расширения $($e.Name)"
+                    Ok "расширение $($e.Name) ($(Split-Path -Leaf $e.File)) встроено в базу до миграции"
+                }
                 $extBaked = $true
                 Write-Host '  Выгрузка в .dt (может занять несколько минут)...'
                 Invoke-1C "DESIGNER /F `"$fdir`" $ibAuth /DumpIB `"$dtPath`"" 'dumpib' -Title 'Выгрузка в .dt' -Progress $dumpProgress
@@ -1076,7 +1246,7 @@ try {
             # .src — выгрузка сделана из базы архива (иначе такой .dt на повторном запуске не берётся)
             Set-Content "$dtPath.src" ("{0}|{1}|{2:yyyy-MM-dd HH:mm:ss}" -f $Sources.Config.File, $fileDb.FullName, (Get-Date)) -Encoding UTF8
             if ($extBaked) {
-                Set-Content "$dtPath.ext" ("{0}|{1}" -f (Split-Path -Leaf $ExtensionFile), (Get-FileHash $ExtensionFile -Algorithm SHA1).Hash) -Encoding UTF8
+                Set-Content "$dtPath.ext" (Get-ExtSignature $Exts) -Encoding UTF8
             } else { Remove-Item "$dtPath.ext" -ErrorAction SilentlyContinue }
             Ok ("выгружено: {0} ({1:N0} МБ) — остаётся резервной копией для повторных запусков" -f $dtPath, ((Get-Item $dtPath).Length / 1MB))
             $cfFile = Get-Item $dtPath
@@ -1194,33 +1364,62 @@ try {
 
     # =================================================================
     #  Расширение конфигурации (.cfe)
-    if ($ExtensionFile -and $extBaked) {
-        Ok "расширение '$ExtensionName' уже в базе (встроено до миграции)"
-    } elseif ($ExtensionFile) {
-        # Источник — не файловая база (.dt/.cf/шаблон): применяем на сервере.
-        # Здесь возможна блокировка фоновыми заданиями — ретраим с паузой.
-        Step '4б. Подключение расширения конфигурации'
-        if (-not (Test-Path $ExtensionFile)) { throw "Файл расширения не найден: $ExtensionFile" }
-        if (-not $ExtensionName) {
-            $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', ''
+    if (-not $ibAuth) { $ibAuth = "/N `"$LaunchUser`" /P `"`"" }   # серверная база наследует пользователей из источника
+    $ibUserName = if ($ibAuth -match '/N "([^"]*)"') { $Matches[1] } else { '' }
+    $ibUserPwd  = if ($ibAuth -match '/P "([^"]*)"') { $Matches[1] } else { '' }
+    if ($Exts -and $extBaked) {
+        Ok "расширения уже в базе (встроены до миграции): $(($Exts | ForEach-Object Name) -join ', ')"
+    } elseif ($Exts) {
+        # Источник — не файловая база (.dt/.cf/шаблон): применяем на сервере. Новые объекты расширения требуют
+        # монопольного режима, а его держат фоновые задания сервера — на время применения регламентные задания
+        # запрещаются (rac), их сеансы завершаются; после — запрет снимается.
+        Step '4б. Подключение расширений конфигурации'
+        $cl = Get-ClusterId
+        $ibId = (Get-ClusterIbs $cl | Where-Object Name -eq $IbName | Select-Object -First 1).Id
+        if (-not $ibId) { Warn "база $IbName не найдена в кластере через rac — фоновые задания не запрещаются" }
+        $denied = $ibId -and (Set-IbJobsDeny $cl $ibId $ibUserName $ibUserPwd $true)
+        if ($denied) { Ok 'регламентные задания запрещены, сеансы базы завершены' }
+        try {
+            foreach ($e in $Exts) {
+                Ok "файл: $(Split-Path -Leaf $e.File)  ->  расширение '$($e.Name)'"
+                Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /LoadCfg `"$($e.File)`" -Extension `"$($e.Name)`"" 'ext_load'
+                $applied = $false
+                for ($i = 1; $i -le 6 -and -not $applied; $i++) {
+                    try {
+                        Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /UpdateDBCfg -Extension `"$($e.Name)`"" 'ext_apply'
+                        $applied = $true
+                    } catch {
+                        $log = Join-Path $LogDir '1c_ext_apply.log'
+                        $locked = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'блокировк|заблокирована|monopol|exclusive')
+                        if (-not $locked -or $i -eq 6) { throw }
+                        Warn "база занята (сеанс фонового задания), повтор через 15 с (попытка $i из 6)"
+                        if ($ibId) { [void](Set-IbJobsDeny $cl $ibId $ibUserName $ibUserPwd $true) }
+                        Start-Sleep -Seconds 15
+                    }
+                }
+                Ok "расширение '$($e.Name)' подключено и применено"
+            }
+        } finally {
+            if ($denied) { [void](Set-IbJobsDeny $cl $ibId $ibUserName $ibUserPwd $false); Ok 'регламентные задания снова разрешены' }
+            Stop-Rac
         }
-        if (-not $ibAuth) { $ibAuth = "/N `"$LaunchUser`" /P `"`"" }   # серверная база наследует пользователей из источника
-        Ok "файл: $ExtensionFile  ->  расширение '$ExtensionName'"
-        Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" 'ext_load'
-        $applied = $false
-        for ($i = 1; $i -le 6 -and -not $applied; $i++) {
-            try {
-                Invoke-1C "DESIGNER /S `"$ibPath`" $ibAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply'
-                $applied = $true
-            } catch {
-                $log = Join-Path $LogDir '1c_ext_apply.log'
-                $locked = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'блокировк|заблокирована|monopol|exclusive')
-                if (-not $locked -or $i -eq 6) { throw }
-                Warn "база занята фоновыми заданиями, повтор через 15 с (попытка $i из 6)"
-                Start-Sleep -Seconds 15
+    }
+    # Расширения включены (активно, без безопасного режима — иначе АРМ не видит своих данных, а АРМ_OData не может
+    # менять состав OData); у АРМ_OData — полный состав стандартного интерфейса OData
+    if ($Exts) {
+        $comConn = "Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$ibUserName`";Pwd=`"$ibUserPwd`""
+        $activateJs = Join-Path $scriptDir 'odata\ext-activate.js'
+        foreach ($e in $Exts) {
+            if (-not (Test-Path $activateJs)) { Warn "нет $activateJs — проверьте вручную, что расширение $($e.Name) активно и не в безопасном режиме"; break }
+            foreach ($l in (Invoke-ComJs $activateJs $comConn @($e.Name))) {
+                if ($l -match '^ERROR=(.*)') { Warn "$($e.Name): $($Matches[1])" } else { Ok ($l -replace '^OK ', '') }
             }
         }
-        Ok "расширение '$ExtensionName' подключено и применено"
+        $enableOData = Join-Path $scriptDir 'odata\enable-odata.ps1'
+        if (($Exts | Where-Object Name -eq 'АРМ_OData') -and (Test-Path $enableOData)) {
+            & $enableOData -ConnectionString $comConn | Select-Object -First 2
+        }
+        $comConn = $null
     }
 
     # =================================================================
@@ -1276,7 +1475,7 @@ try {
     $doSeed = $false
     if ($NoSeed) { }
     elseif (-not $allOk) { Warn 'установка с предупреждениями — seed не предлагается (запустите seed-1c.ps1 вручную)' }
-    elseif (-not $ExtensionFile) { Warn 'расширение АРМ не подключено — seed не предлагается' }
+    elseif (-not $HasArm) { Warn 'расширение АРМ не подключено — seed не предлагается' }
     elseif (-not (Test-Path $seedScript)) { Warn "нет $seedScript — seed не предлагается" }
     elseif ($Seed) { $doSeed = $true }
     else {
@@ -1299,7 +1498,7 @@ try {
         $seedConn = $null; $seedArgs = $null
         if ($seedCode -eq 0) { Ok 'демо-данные АРМ загружены' }
         else { Warn "seed завершился с кодом $seedCode — повторить: .\seed-1c.ps1 -ConnectionString 'Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$seedUser`";Pwd=`"`"'" }
-    } elseif (-not $NoSeed -and $allOk -and $ExtensionFile) {
+    } elseif (-not $NoSeed -and $allOk -and $HasArm) {
         Write-Host "  seed пропущен. Позже: .\seed-1c.ps1 -ConnectionString 'Srvr=`"$Server1C`";Ref=`"$IbName`";Usr=`"$seedUser`";Pwd=`"`"'"
     }
     $seedPwd = $null

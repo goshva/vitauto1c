@@ -119,6 +119,35 @@ function Add-ServerIbToList([string]$Title) {
     [IO.File]::WriteAllText($f, $text + $entry, (New-Object Text.UTF8Encoding $true))
     Ok "база добавлена в список: $t"
 }
+# Запрет регламентных заданий базы на время применения расширения (rac через временный ras): фоновые задания
+# сервера держат базу, и UpdateDBCfg с новыми объектами расширения не получает монопольный доступ.
+# Возвращает объект для Unlock-IbJobs или $null (rac недоступен / пользователь не подошёл).
+function Lock-IbJobs([string]$Name, [string]$User, [string]$Pwd) {
+    $rac = Join-Path $Bin1C 'rac.exe'; $rasExe = Join-Path $Bin1C 'ras.exe'
+    if (-not (Test-Path $rac) -or -not (Test-Path $rasExe)) { return $null }
+    $ras = Start-Process $rasExe -ArgumentList 'cluster --port=1545 localhost:1540' -PassThru -WindowStyle Hidden
+    Start-Sleep -Seconds 4
+    $cl = ((& $rac localhost:1545 cluster list 2>&1 | Select-String '^cluster\s+:\s+(\S+)' | Select-Object -First 1).Matches[0].Groups[1].Value)
+    $list = @(& $rac localhost:1545 infobase summary list "--cluster=$cl" 2>&1 | ForEach-Object { "$_" })
+    $ib = $null
+    for ($i = 1; $i -lt $list.Count; $i++) { if ($list[$i] -match '^name\s+:\s+(\S+)$' -and $Matches[1] -eq $Name) { $ib = ($list[$i - 1] -split ':\s+')[1].Trim() } }
+    $auth = @("--infobase-user=$User", "--infobase-pwd=$Pwd")
+    if ($ib) { & $rac localhost:1545 infobase update "--cluster=$cl" "--infobase=$ib" @auth '--scheduled-jobs-deny=on' 2>&1 | Out-Null }
+    if (-not $ib -or $LASTEXITCODE) { Warn "регламентные задания базы $Name не запрещены (rac) — возможна блокировка фоновыми заданиями"; Stop-Process -Id $ras.Id -Force -ErrorAction SilentlyContinue; return $null }
+    foreach ($s in (& $rac localhost:1545 session list "--cluster=$cl" "--infobase=$ib" 2>&1 | Select-String '^session\s+:\s+(\S+)')) {
+        & $rac localhost:1545 session terminate "--cluster=$cl" "--session=$($s.Matches[0].Groups[1].Value)" 2>&1 | Out-Null
+    }
+    Start-Sleep -Seconds 3
+    Ok 'регламентные задания запрещены, сеансы базы завершены'
+    [pscustomobject]@{ Rac = $rac; Cl = $cl; Ib = $ib; Auth = $auth; Ras = $ras }
+}
+function Unlock-IbJobs($Lock) {
+    if (-not $Lock) { return }
+    & $Lock.Rac localhost:1545 infobase update "--cluster=$($Lock.Cl)" "--infobase=$($Lock.Ib)" @($Lock.Auth) '--scheduled-jobs-deny=off' 2>&1 | Out-Null
+    Stop-Process -Id $Lock.Ras.Id -Force -ErrorAction SilentlyContinue
+    Ok 'регламентные задания снова разрешены'
+}
+
 # Пакетный запуск 1cv8; код результата — из /DumpResult
 # Долгие операции (-Title) показывают ход: время, объём, процент и ожидаемое окончание.
 # -Progress — scriptblock, возвращающий @{ Done = байт; Total = байт (оценка) }; без него — только время.
@@ -329,15 +358,20 @@ try {
         if (-not (Test-Path $ExtensionFile)) { throw "Файл расширения не найден: $ExtensionFile" }
         if (-not $ExtensionName) { $ExtensionName = ([IO.Path]::GetFileNameWithoutExtension($ExtensionFile)) -replace '_v[\d.]+$', '' }
         Invoke-1C "DESIGNER /S `"$ibPath`" $srcAuth /LoadCfg `"$ExtensionFile`" -Extension `"$ExtensionName`"" 'ext_load'
-        for ($i = 1; ; $i++) {
-            try { Invoke-1C "DESIGNER /S `"$ibPath`" $srcAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply' -Title 'Применение расширения'; break }
-            catch {
-                $log = Join-Path $LogDir '1c_ext_apply.log'
-                $locked = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'блокировк|заблокирована|monopol|exclusive')
-                if (-not $locked -or $i -ge 6) { throw }
-                Warn "база занята фоновыми заданиями, повтор через 15 с (попытка $i из 6)"; Start-Sleep -Seconds 15
+        $u = if ($srcAuth -match '/N "([^"]*)"') { $Matches[1] } else { '' }
+        $p = if ($srcAuth -match '/P "([^"]*)"') { $Matches[1] } else { '' }
+        $jobsLock = Lock-IbJobs $IbName $u $p
+        try {
+            for ($i = 1; ; $i++) {
+                try { Invoke-1C "DESIGNER /S `"$ibPath`" $srcAuth /UpdateDBCfg -Extension `"$ExtensionName`"" 'ext_apply' -Title 'Применение расширения'; break }
+                catch {
+                    $log = Join-Path $LogDir '1c_ext_apply.log'
+                    $locked = (Test-Path $log) -and ((Get-Content $log -Raw -Encoding UTF8) -match 'блокировк|заблокирована|monopol|exclusive')
+                    if (-not $locked -or $i -ge 6) { throw }
+                    Warn "база занята фоновыми заданиями, повтор через 15 с (попытка $i из 6)"; Start-Sleep -Seconds 15
+                }
             }
-        }
+        } finally { Unlock-IbJobs $jobsLock }
         Ok "расширение '$ExtensionName' загружено и применено ($(Split-Path -Leaf $ExtensionFile))"
     } elseif ($ExtensionFile) { Warn '-ExtensionFile с -Method Ibcmd не применяется: загрузите расширение после регистрации базы в кластере' }
 
