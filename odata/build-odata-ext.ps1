@@ -10,15 +10,20 @@
 .EXAMPLE
   .\odata\build-odata-ext.ps1 -IbDir D:\1c\test_v215
   .\odata\build-odata-ext.ps1 -IbDir D:\1c\test_v215 -IbUser Админ -Version 1.1
+  .\odata\build-odata-ext.ps1 -IbServer 'localhost\autoservice_main' -IbUser Администратор   # серверная база
 #>
 param(
-    [Parameter(Mandatory)] [string]$IbDir,
+    [string]$IbDir,
+    [string]$IbServer,                 # серверная база: <кластер>\<имя базы>
     [string]$IbUser = 'Админ',
     [string]$IbPassword = '',
     [string]$Version = '1.1',
     [string]$V8
 )
 $ErrorActionPreference = 'Stop'
+if (-not $IbDir -and -not $IbServer) { throw 'Укажите -IbDir (файловая база) или -IbServer (серверная: кластер\база)' }
+$IbArg = if ($IbServer) { "/S `"$IbServer`"" } else { "/F `"$IbDir`"" }
+$IbName = if ($IbServer) { $IbServer } else { $IbDir }
 $Here = $PSScriptRoot; $Root = Split-Path -Parent $Here
 $ExtName = 'АРМ_OData'; $Module = 'АрмOData_Интерфейс'; $CmdModule = 'АрмOData_Команды'; $CmdReg = 'АрмOData_КомандыPWA'
 if (-not $V8) {
@@ -242,14 +247,14 @@ $log = Join-Path $x 'designer.log'
 function Run1C([string]$ArgsLine, [string]$What) {
     $res = Join-Path $x 'result.txt'; Remove-Item $res, $log -ErrorAction SilentlyContinue
     $auth = if ($IbUser) { "/N `"$IbUser`" /P `"$IbPassword`"" } else { '' }
-    Start-Process $V8 -ArgumentList "DESIGNER /F `"$IbDir`" $auth $ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$log`" /DumpResult `"$res`"" -Wait
+    Start-Process $V8 -ArgumentList "DESIGNER $IbArg $auth $ArgsLine /DisableStartupDialogs /DisableStartupMessages /Out `"$log`" /DumpResult `"$res`"" -Wait
     $code = if (Test-Path $res) { "$(Get-Content $res -Raw)".Trim() } else { '-1' }
     $text = if (Test-Path $log) { "$(Get-Content $log -Raw -Encoding UTF8)".Trim() } else { '' }
     if ($code -ne '0') { throw "$What — код $code`n$text" }
     Write-Host "  [OK] $What$(if ($text) { ": $($text -replace '\s+', ' ')" })" -ForegroundColor Green
 }
 $cfe = Join-Path $Root "АРМ_OData_v$Version.cfe"
-Run1C "/LoadConfigFromFiles `"$x`" -Extension $ExtName -Format Hierarchical" "загрузка XML в базу $IbDir"
+Run1C "/LoadConfigFromFiles `"$x`" -Extension $ExtName -Format Hierarchical" "загрузка XML в базу $IbName"
 Run1C "/UpdateDBCfg -Extension $ExtName" 'применение расширения'
 Run1C "/CheckModules -Server -ExternalConnection -ThinClient -Extension $ExtName" 'проверка модулей'
 Run1C "/DumpCfg `"$cfe`" -Extension $ExtName" "выгрузка $(Split-Path -Leaf $cfe)"

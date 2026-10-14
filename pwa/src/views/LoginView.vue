@@ -24,7 +24,9 @@ async function submit() {
     await session.login(login.value.trim(), password.value);
     router.replace(route.query.next || '/');
   } catch (e) {
-    error.value = `${e.status || ''} ${e.code}: ${e.message}`;
+    error.value = e.status === 401
+      ? `401 unauthorized: неверный логин или пароль пользователя 1С (${login.value.trim()})`
+      : `${e.status || ''} ${e.code}: ${e.message}`;
   } finally {
     busy.value = false;
   }

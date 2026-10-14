@@ -9,6 +9,7 @@ const routes = [
     } },
   { path: '/lines/:view(sales|purchases|supply)', name: 'lines', component: () => import('./views/LinesView.vue') },
   { path: '/import', name: 'import', component: () => import('./views/ImportView.vue') },
+  { path: '/catalog/:kind(goods|services|cars)', name: 'catalog', component: () => import('./views/CatalogView.vue') },
   { path: '/documents/:kind/:id', name: 'document', component: () => import('./views/DocumentView.vue') },
   { path: '/directories/:name?', name: 'directories', component: () => import('./views/DirectoriesView.vue') },
   { path: '/matrix', name: 'matrix', component: () => import('./views/MatrixView.vue') },

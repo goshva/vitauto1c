@@ -13,13 +13,18 @@ export default defineConfig(({ mode }) => {
       target,
       changeOrigin: true,
       rewrite: path => path.replace(/^\/odata/, ''),
-      // 1С недоступна — понятная ошибка OData вместо пустого 500
-      configure: proxyServer => proxyServer.on('error', (err, req, res) => {
-        if (!res || res.headersSent || typeof res.writeHead !== 'function') return;
-        res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ 'odata.error': { code: 'api_unavailable', message: { lang: 'ru',
-          value: `Публикация OData 1С ${target} недоступна (${err.code || err.message}): запущен ли Apache (npm run api)?` } } }));
-      })
+      configure: proxyServer => {
+        // 401 от 1С приходит с «WWW-Authenticate: Basic» — браузер показал бы своё окно логина/пароля.
+        // Заголовок убираем: вход только через форму PWA, ошибка 401 показывается в ней.
+        proxyServer.on('proxyRes', proxyRes => { delete proxyRes.headers['www-authenticate']; });
+        // 1С недоступна — понятная ошибка OData вместо пустого 500
+        proxyServer.on('error', (err, req, res) => {
+          if (!res || res.headersSent || typeof res.writeHead !== 'function') return;
+          res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ 'odata.error': { code: 'api_unavailable', message: { lang: 'ru',
+            value: `Публикация OData 1С ${target} недоступна (${err.code || err.message}): запущен ли Apache (npm run api)?` } } }));
+        });
+      }
     }
   };
   return {

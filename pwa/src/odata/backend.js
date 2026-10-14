@@ -397,9 +397,189 @@ export function createBackend({ baseUrl, session, log }) {
         return (await od.list('Catalog_Арм_ВидыУслуги', { $filter: notDeleted, $select: 'Ref_Key,Description', $orderby: 'Description' })).map(named);
       case 'payment-forms':
         return (await od.list('Catalog_Арм_ФормыОплаты', { $filter: notDeleted, $select: 'Ref_Key,Description', $orderby: 'Description' })).map(named);
+      case 'units':
+        return Object.values(await unitsAll()).map(u => ({ id: u.id, name: u.name }));
+      case 'car-models':
+        return (await od.list('Catalog_асМодели', { $filter: [notDeleted, 'IsFolder eq false', q.q ? like(q.q) : ''].filter(Boolean).join(' and '),
+          $select: 'Ref_Key,Description', $orderby: 'Description', $top: 100 })).map(named);
+      case 'car-groups':
+        return (await od.list('Catalog_асАвтомобили', { $filter: `${notDeleted} and IsFolder eq true`, $select: 'Ref_Key,Description', $orderby: 'Description' })).map(named);
       default:
-        return fail(404, 'not_found', 'Справочник: counterparties, contracts, nomenclature, batches, service-types, payment-forms');
+        return fail(404, 'not_found', 'Справочник: counterparties, contracts, nomenclature, batches, service-types, payment-forms, units, car-models, car-groups');
     }
+  }
+
+  // ---------------------------------------------------------------- разделы «Товары», «Услуги», «Машины»
+  // Номенклатура (тип Запас / Услуга) и асАвтомобили — через OData; цена (регистр ЦеныНоменклатуры) и госномер
+  // (периодический регистр асАвтомобили) пишутся командами АРМ_OData ЦенаНоменклатуры и ДанныеАвтомобиля.
+  const CATALOG_EDIT = { goods: ['admin', 'manager', 'storekeeper'], services: ['admin', 'manager', 'chief_mechanic'], cars: ['admin', 'manager', 'chief_mechanic'] };
+  const NOM_KIND = { goods: 'Запас', services: 'Услуга' };
+  const PRICE_KIND = 'Розничная цена';
+  const canEdit = kind => (CATALOG_EDIT[kind] || []).includes(role());
+  const requireEdit = kind => { if (!canEdit(kind)) fail(403, 'matrix_denied', `Роль «${role()}» не может менять этот справочник`); };
+  let unitsCache, priceKindRef, modelsCache;
+  async function unitsAll() {
+    if (!unitsCache) {
+      const rows = await od.list('Catalog_КлассификаторЕдиницИзмерения', { $filter: 'DeletionMark eq false', $select: 'Ref_Key,Description', $orderby: 'Description' });
+      unitsCache = Object.fromEntries(rows.map(r => [r.Ref_Key, { id: r.Ref_Key, name: r.Description }]));
+    }
+    return unitsCache;
+  }
+  async function priceKind() {
+    if (priceKindRef === undefined) {
+      const v = await od.list('Catalog_ВидыЦен', { $filter: `Description eq ${lit(PRICE_KIND)}`, $select: 'Ref_Key', $top: 1 });
+      priceKindRef = v.length ? v[0].Ref_Key : null;
+    }
+    return priceKindRef;
+  }
+  // последняя цена вида «Розничная цена» по каждой номенклатуре
+  async function pricesOf(ids) {
+    const out = {};
+    const kind = await priceKind();
+    if (!kind || !ids.length) return out;
+    for (let i = 0; i < ids.length; i += 40) {
+      const part = ids.slice(i, i + 40).map(id => `Номенклатура_Key eq ${guid(id)}`).join(' or ');
+      for (const r of await od.list('InformationRegister_ЦеныНоменклатуры', { $filter: `ВидЦен_Key eq ${guid(kind)} and (${part})`, $select: 'Номенклатура_Key,Цена,Period' })) {
+        const p = out[r.Номенклатура_Key];
+        if (!p || r.Period > p.date) out[r.Номенклатура_Key] = { price: r.Цена, date: r.Period };
+      }
+    }
+    return out;
+  }
+  // последний госномер по каждому автомобилю
+  async function platesOf(ids) {
+    const out = {};
+    for (let i = 0; i < ids.length; i += 40) {
+      const part = ids.slice(i, i + 40).map(id => `Автомобиль_Key eq ${guid(id)}`).join(' or ');
+      for (const r of await od.list('InformationRegister_асАвтомобили', { $filter: `ВидЗначения eq 'ГосНомер' and (${part})`, $select: 'Автомобиль_Key,Значение,Period' })) {
+        const p = out[r.Автомобиль_Key];
+        if (!p || r.Period > p.date) out[r.Автомобиль_Key] = { plate: String(r.Значение || ''), date: r.Period };
+      }
+    }
+    return out;
+  }
+  async function models() {
+    if (!modelsCache) modelsCache = Object.fromEntries((await od.list('Catalog_асМодели', { $select: 'Ref_Key,Description' })).map(r => [r.Ref_Key, r.Description]));
+    return modelsCache;
+  }
+  const NOM_SELECT = 'Ref_Key,Description,НаименованиеПолное,Артикул,ЕдиницаИзмерения_Key,Комментарий,DeletionMark,ТипНоменклатуры,Code';
+  async function nomItems(recs) {
+    const [units, prices] = await Promise.all([unitsAll(), pricesOf(recs.map(r => r.Ref_Key))]);
+    return recs.map(r => ({ id: r.Ref_Key, code: r.Code, name: r.Description, fullName: r.НаименованиеПолное || r.Description, article: r.Артикул || '',
+      unit: units[r.ЕдиницаИзмерения_Key] || null, comment: r.Комментарий || '', deleted: !!r.DeletionMark, type: r.ТипНоменклатуры,
+      price: prices[r.Ref_Key] ? prices[r.Ref_Key].price : null, priceDate: prices[r.Ref_Key] ? prices[r.Ref_Key].date.slice(0, 10) : null }));
+  }
+  const CAR_SELECT = 'Ref_Key,Code,Description,VIN,ГодВыпуска,Модель_Key,Parent_Key,Комментарий,DeletionMark,НомерШасси,НомерДвигателя';
+  async function carItems(recs) {
+    const [mods, plates, groups] = await Promise.all([models(), platesOf(recs.map(r => r.Ref_Key)), directory('car-groups', {})]);
+    const g = Object.fromEntries(groups.map(x => [x.id, x.name]));
+    return recs.map(r => ({ id: r.Ref_Key, code: r.Code, name: r.Description, vin: r.VIN || '', year: r.ГодВыпуска && !r.ГодВыпуска.startsWith('0001') ? Number(r.ГодВыпуска.slice(0, 4)) : null,
+      model: r.Модель_Key !== EMPTY ? { id: r.Модель_Key, name: mods[r.Модель_Key] || '' } : null,
+      group: r.Parent_Key !== EMPTY ? { id: r.Parent_Key, name: g[r.Parent_Key] || '' } : null,
+      plate: plates[r.Ref_Key] ? plates[r.Ref_Key].plate : '', chassis: r.НомерШасси || '', engine: r.НомерДвигателя || '',
+      comment: r.Комментарий || '', deleted: !!r.DeletionMark }));
+  }
+
+  async function catalogList(kind, q) {
+    const top = Math.min(Number(q.limit) || 50, 200);
+    const skip = Number(q.skip) || 0;
+    const s = String(q.q || '').trim();
+    const f = ['IsFolder eq false'];
+    if (q.deleted !== 'true') f.push('DeletionMark eq false');
+    let recs;
+    if (kind === 'cars') {
+      if (q.groupId) f.push(`Parent_Key eq ${guid(q.groupId)}`);
+      if (s) f.push(`(${like(s)} or substringof(${lit(s)}, VIN))`);
+      recs = await od.list('Catalog_асАвтомобили', { $filter: f.join(' and '), $select: CAR_SELECT, $orderby: 'Description', $top: top + 1, $skip: skip });
+    } else {
+      f.push(`ТипНоменклатуры eq ${lit(NOM_KIND[kind])}`);
+      if (s) f.push(`(${like(s)} or substringof(${lit(s)}, Артикул))`);
+      recs = await od.list('Catalog_Номенклатура', { $filter: f.join(' and '), $select: NOM_SELECT, $orderby: 'Description', $top: top + 1, $skip: skip });
+    }
+    const more = recs.length > top;
+    const page = recs.slice(0, top);
+    return { items: kind === 'cars' ? await carItems(page) : await nomItems(page), nextSkip: more ? skip + top : null, canEdit: canEdit(kind) };
+  }
+  async function catalogItem(kind, id) {
+    const set = kind === 'cars' ? 'Catalog_асАвтомобили' : 'Catalog_Номенклатура';
+    const recs = await od.list(set, { $filter: `Ref_Key eq ${guid(id)}`, $select: kind === 'cars' ? CAR_SELECT : NOM_SELECT });
+    if (!recs.length) fail(404, 'not_found', 'Элемент не найден');
+    const item = (kind === 'cars' ? await carItems(recs) : await nomItems(recs))[0];
+    if (kind === 'services') item.modelPrices = await autoworkPrices(id);
+    return item;
+  }
+  // цены авторабот (регистр асЦеныАвторабот, подчинён документу «Установка цен авторабот»): по моделям, последняя цена
+  async function autoworkPrices(nomId) {
+    const last = {};
+    for (const rec of await od.list('InformationRegister_асЦеныАвторабот')) {
+      for (const x of rec.RecordSet || []) {
+        if (x.Номенклатура_Key !== nomId || x.Active === false) continue;
+        const p = last[x.Модель_Key];
+        if (!p || x.Period >= p.date) last[x.Модель_Key] = { price: x.Цена, date: x.Period };
+      }
+    }
+    const mods = await models();
+    return Object.entries(last).map(([m, p]) => ({ model: m === EMPTY ? null : { id: m, name: mods[m] || '' }, price: p.price, date: p.date.slice(0, 10) }))
+      .sort((a, b) => a.price - b.price || String(a.model && a.model.name).localeCompare(String(b.model && b.model.name)));
+  }
+  function nomBody(b) {
+    const body = {};
+    if (b.name !== undefined) {
+      const name = String(b.name).trim();
+      if (!name) fail(400, 'bad_request', 'Наименование не заполнено', 'name');
+      Object.assign(body, { Description: name.slice(0, 100), НаименованиеПолное: String(b.fullName || name) });
+    }
+    if (b.article !== undefined) body.Артикул = String(b.article || '').trim();
+    if (b.unitId !== undefined) body.ЕдиницаИзмерения_Key = b.unitId || EMPTY;
+    if (b.comment !== undefined) body.Комментарий = String(b.comment || '');
+    return body;
+  }
+  function carBody(b) {
+    const body = {};
+    if (b.vin !== undefined) body.VIN = String(b.vin || '').trim();
+    if (b.modelId !== undefined) body.Модель_Key = b.modelId || EMPTY;
+    if (b.groupId !== undefined) body.Parent_Key = b.groupId || EMPTY;
+    if (b.year !== undefined) body.ГодВыпуска = b.year ? `${Number(b.year)}-01-01T00:00:00` : '0001-01-01T00:00:00';
+    if (b.chassis !== undefined) body.НомерШасси = String(b.chassis || '');
+    if (b.engine !== undefined) body.НомерДвигателя = String(b.engine || '');
+    if (b.comment !== undefined) body.Комментарий = String(b.comment || '');
+    if (b.name !== undefined && String(b.name).trim()) body.Description = String(b.name).trim().slice(0, 100);
+    return body;
+  }
+  async function catalogSave(kind, id, b) {
+    requireEdit(kind);
+    let ref = id;
+    if (kind === 'cars') {
+      const body = carBody(b);
+      if (!id) {
+        if (!body.VIN) fail(400, 'bad_request', 'VIN не заполнен', 'vin');
+        const dup = await od.list('Catalog_асАвтомобили', { $filter: `VIN eq ${lit(body.VIN)} and IsFolder eq false and DeletionMark eq false`, $select: 'Ref_Key', $top: 1 });
+        if (dup.length) fail(409, 'duplicate', `Машина с VIN ${body.VIN} уже есть`, 'vin');
+        if (!body.Description) body.Description = `${b.modelId ? (await models())[b.modelId] || '' : ''} VIN ${body.VIN}`.trim().slice(0, 100);
+        ref = (await od.post('Catalog_асАвтомобили', body)).Ref_Key;
+      } else if (Object.keys(body).length) await od.patch(`Catalog_асАвтомобили(${guid(id)})`, body);
+      if (b.plate !== undefined) await command('ДанныеАвтомобиля', { id: ref, plate: String(b.plate || '') });
+    } else {
+      const body = nomBody(b);
+      if (!id) {
+        if (!body.Description) fail(400, 'bad_request', 'Наименование не заполнено', 'name');
+        // новый элемент — командой 1С: Заполнить() по типу (счета учёта, ставка НДС, метод оценки … как из формы)
+        ref = (await command('СоздатьНоменклатуру', { type: NOM_KIND[kind], name: body.Description, fullName: body.НаименованиеПолное,
+          article: body.Артикул || '', unitId: body.ЕдиницаИзмерения_Key && body.ЕдиницаИзмерения_Key !== EMPTY ? body.ЕдиницаИзмерения_Key : '',
+          comment: body.Комментарий || '' })).id;
+      } else if (Object.keys(body).length) await od.patch(`Catalog_Номенклатура(${guid(id)})`, body);
+      if (b.price !== undefined && b.price !== null && b.price !== '') {
+        const price = Number(String(b.price).replace(',', '.'));
+        if (Number.isNaN(price) || price < 0) fail(400, 'bad_request', 'Цена — неотрицательное число', 'price');
+        await command('ЦенаНоменклатуры', { id: ref, price, priceKind: PRICE_KIND });
+      }
+    }
+    return catalogItem(kind, ref);
+  }
+  async function catalogDelete(kind, id, restore) {
+    requireEdit(kind);
+    await od.patch(`${kind === 'cars' ? 'Catalog_асАвтомобили' : 'Catalog_Номенклатура'}(${guid(id)})`, { DeletionMark: !restore });
+    return catalogItem(kind, id);
   }
 
   // ---------------------------------------------------------------- маршрутизация
@@ -440,6 +620,15 @@ export function createBackend({ baseUrl, session, log }) {
     if (method === 'GET' && seg[0] === 'jobs' && seg.length === 2) return ok(await job(decodeURIComponent(seg[1])));
     if (method === 'GET' && seg[0] === 'documents' && seg.length === 3) return ok(await documentCard(seg[1], seg[2]));
     if (method === 'GET' && seg[0] === 'directories' && seg.length === 2) return ok(await directory(seg[1], query));
+    if (seg[0] === 'catalog' && ['goods', 'services', 'cars'].includes(seg[1])) {
+      const id = seg[2] ? decodeURIComponent(seg[2]) : null;
+      if (method === 'GET' && !id) return ok(await catalogList(seg[1], query));
+      if (method === 'GET' && id) return ok(await catalogItem(seg[1], id));
+      if (method === 'POST' && !id) return ok(await catalogSave(seg[1], null, body || {}), 201);
+      if (method === 'PATCH' && id) return ok(await catalogSave(seg[1], id, body || {}));
+      if (method === 'DELETE' && id) return ok(await catalogDelete(seg[1], id, false));
+      if (method === 'POST' && id && seg[3] === 'restore') return ok(await catalogDelete(seg[1], id, true));
+    }
     if (key === 'POST /session') return ok(await login(body || {}));
     return fail(404, 'not_found', `Нет операции ${method} ${path}`);
   };

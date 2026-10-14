@@ -315,7 +315,7 @@ describe('PWA против 1С', () => {
     const w = await mountAt('/');
     await until(() => router.currentRoute.value.name === 'lines');
     expect(router.currentRoute.value.params.view).toBe('supply');
-    expect(w.findAll('.navbar a').map(a => a.text().trim())).toEqual(['Снабжение', 'Справочники', 'Матрица', 'Консоль', 'Журнал']);
+    expect(w.findAll('.navbar a').map(a => a.text().trim())).toEqual(['Снабжение', 'Товары', 'Услуги', 'Машины', 'Справочники', 'Матрица', 'Консоль', 'Журнал']);
     await until(() => w.find('[aria-label=Действия]').exists());
     await w.find('[aria-label=Действия]').trigger('click');
     await until(() => w.findAll('[data-supply]').length === 6);

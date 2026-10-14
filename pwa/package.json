@@ -8,6 +8,8 @@
     "api": "powershell -NoProfile -ExecutionPolicy Bypass -File ../odata/start-apache.ps1",
     "dev": "vite",
     "dev:test": "vite --mode test",
+    "dev:main": "vite --mode main",
+    "dev:prod": "vite --mode prod",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

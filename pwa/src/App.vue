@@ -24,6 +24,9 @@ const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Сп�
 const nav = computed(() => [
   ...session.views.map(v => ({ to: { name: 'lines', params: { view: v } }, title: VIEW_TITLES[v], icon: v, main: true })),
   ...(session.isSupply ? [] : [{ to: '/import', title: 'Загрузка', icon: 'upload', main: true }]),
+  { to: '/catalog/goods', title: 'Товары', icon: 'tag' },
+  { to: '/catalog/services', title: 'Услуги', icon: 'wrench' },
+  { to: '/catalog/cars', title: 'Машины', icon: 'car' },
   { to: '/directories', title: 'Справочники', icon: 'book' },
   { to: '/matrix', title: 'Матрица', icon: 'grid' },
   { to: '/console', title: 'Консоль', icon: 'terminal' },
@@ -32,7 +35,9 @@ const nav = computed(() => [
 const more = ref(false);
 const moreActive = computed(() => nav.value.some(n => !n.main && typeof n.to === 'string' && route.path.startsWith(n.to)));
 
-const title = computed(() => (route.name === 'lines' ? VIEW_TITLES[route.params.view] : PAGE_TITLES[route.name] || 'АРМ'));
+const CATALOG_TITLES = { goods: 'Товары', services: 'Услуги', cars: 'Машины' };
+const title = computed(() => (route.name === 'lines' ? VIEW_TITLES[route.params.view]
+  : route.name === 'catalog' ? CATALOG_TITLES[route.params.kind] : PAGE_TITLES[route.name] || 'АРМ'));
 
 // Сессия истекла (401) — на вход
 watch(() => session.expired, v => {
