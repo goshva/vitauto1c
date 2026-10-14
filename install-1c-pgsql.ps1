@@ -149,20 +149,36 @@ function Get-7Zip {
     return $candidates[0]
 }
 
+# API публичных ресурсов Яндекс.Диска: несколько попыток с растущим таймаутом; на каждой — сначала curl.exe
+# (быстрый: ~3 с), при сбое — Invoke-RestMethod (в Windows PowerShell 5.1 запрос .NET бывает в разы медленнее —
+# автоопределение прокси, TLS — и упирался в 30 с). Ошибка — после всех попыток.
+function Invoke-YandexApi([string]$Path, [string]$PublicUrl) {
+    $uri  = "https://cloud-api.yandex.net/v1/disk/public/resources$Path" + "?public_key=$([uri]::EscapeDataString($PublicUrl))"
+    $last = ''
+    foreach ($t in 30, 60, 120, 180) {
+        $json = & curl.exe -s -L --fail --connect-timeout 30 --max-time $t $uri 2>$null
+        if ($LASTEXITCODE -eq 0 -and $json) {
+            try { return ($json -join "`n") | ConvertFrom-Json } catch { $last = "ответ не JSON: $($_.Exception.Message)" }
+        } else { $last = "curl: код $LASTEXITCODE" }
+        try { return Invoke-RestMethod -Uri $uri -UseBasicParsing -TimeoutSec $t }
+        catch { $last = "$last; $($_.Exception.Message)" }
+        Warn "Яндекс.Диск не ответил за $t с ($last) — повтор"
+        Start-Sleep -Seconds 5
+    }
+    throw "Яндекс.Диск недоступен ($PublicUrl): $last"
+}
 function Get-YandexSize([string]$PublicUrl) {
-    $key = [uri]::EscapeDataString($PublicUrl)
-    [int64](Invoke-RestMethod -Uri "https://cloud-api.yandex.net/v1/disk/public/resources?public_key=$key" -UseBasicParsing).size
+    [int64](Invoke-YandexApi '' $PublicUrl).size
 }
 
 # Скачивание с докачкой до нужного размера
 function Get-YandexFile([string]$PublicUrl, [string]$OutFile, [int64]$Size) {
-    $key = [uri]::EscapeDataString($PublicUrl)
     for ($try = 1; $try -le 10; $try++) {
         $have = if (Test-Path $OutFile) { (Get-Item $OutFile).Length } else { 0 }
         if ($have -eq $Size) { break }
         if ($have -gt $Size) { Remove-Item $OutFile -Force; $have = 0 }
         # ссылка на скачивание живёт недолго — берём новую на каждую попытку
-        $href = (Invoke-RestMethod -Uri "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=$key" -UseBasicParsing).href
+        $href = (Invoke-YandexApi '/download' $PublicUrl).href
         if (-not $href) { throw "Яндекс.Диск не вернул ссылку для $PublicUrl" }
         Write-Host ("  Скачивание -> {0} ({1:N0} из {2:N0} МБ, попытка {3})" -f $OutFile, ($have / 1MB), ($Size / 1MB), $try)
         # обрыв «зависших» соединений: меньше 1 КБ/с дольше минуты — следующая попытка с докачкой
@@ -420,8 +436,7 @@ function Test-PgSetupSigned([string]$Path) {
 function Get-PgSetupRemote {
     if (-not $PgSetupUrl) { return $null }
     try {
-        $key  = [uri]::EscapeDataString($PgSetupUrl)
-        $meta = Invoke-RestMethod -Uri "https://cloud-api.yandex.net/v1/disk/public/resources?public_key=$key" -UseBasicParsing -TimeoutSec 30
+        $meta = Invoke-YandexApi '' $PgSetupUrl
         if ($meta.type -ne 'file' -or $meta.name -notmatch '^PostgreSQL_1C_\d+.*\.exe$') { Warn "по $PgSetupUrl не установщик PostgreSQL_1C_*.exe ($($meta.type) $($meta.name))"; return $null }
         [pscustomobject]@{ Name = $meta.name; Size = [int64]$meta.size; Sha256 = $meta.sha256 }
     } catch { Warn "Яндекс.Диск недоступен ($PgSetupUrl): $($_.Exception.Message)"; return $null }
@@ -737,7 +752,7 @@ try {
     $pgSetupName = if ($PgSetupFile) { $PgSetupFile.Name } elseif ($PgSetupRemote) { $PgSetupRemote.Name } else { '' }
     $PgMajorSetup = if ($pgSetupName -match 'PostgreSQL_1C_(\d+)') { $Matches[1] } else { '' }
     if (-not $PgExisting -and -not $pgSetupName -and $PgMajor -gt 15) {
-        throw "Нужен PostgreSQL для 1С ${PgMajor}: нет ни установленного, ни установщика PostgreSQL_1C_$PgMajor*_Setup.exe в $BaseDir / рядом со скриптом, ни по -PgSetupUrl. Положите установщик в $BaseDir (или -PgMajor 15 — архив 15.13)."
+        throw "Нужен PostgreSQL для 1С ${PgMajor}: нет ни установленного, ни установщика PostgreSQL_1C_$PgMajor*_Setup.exe в $BaseDir / рядом со скриптом, ни по -PgSetupUrl. Скачайте его вручную с $PgSetupUrl и положите в $BaseDir (или -PgMajor 15 — архив 15.13)."
     }
     foreach ($p in $PgAll | Where-Object { -not $_.For1C }) { Warn "PostgreSQL $($p.Version) (служба $($p.Service), порт $($p.Port)) — не сборка для 1С, не используется" }
     if ($PgExisting) {
