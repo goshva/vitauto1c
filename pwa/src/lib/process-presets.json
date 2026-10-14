@@ -1,0 +1,836 @@
+{
+ "source": "process.html",
+ "groups": {
+  "order_header": [
+   "order_date",
+   "order_internal_number",
+   "order_client_number",
+   "customer",
+   "contract",
+   "service_type"
+  ],
+  "fact": [
+   "brand_fact",
+   "model_fact",
+   "aggregate_fact",
+   "gosnomer_fact",
+   "grz_fact",
+   "vin_fact",
+   "engine_fact",
+   "urgency_fact",
+   "vehicle_plate_fact",
+   "territory_fact",
+   "name_fact",
+   "article_fact",
+   "qty_fact",
+   "unit_fact"
+  ],
+  "nomenclature": [
+   "name",
+   "article",
+   "code_aa",
+   "unit"
+  ],
+  "stock": [
+   "stock_qty",
+   "reserve_qty",
+   "ordered_in_transit_qty"
+  ],
+  "receipt": [
+   "receipt_date"
+  ]
+ },
+ "context": [
+  "order_client_number",
+  "name_fact",
+  "name",
+  "qty"
+ ],
+ "nodes": [
+  {
+   "id": "N1",
+   "role": "client",
+   "roleTitle": "Клиент",
+   "title": "Заявка: Excel / фото",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article_fact",
+    "qty_fact",
+    "vehicle_plate_fact",
+    "comment"
+   ]
+  },
+  {
+   "id": "N2a",
+   "role": "client",
+   "roleTitle": "Клиент",
+   "title": "Получение товара",
+   "statuses": [
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "shipment_date",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "N3",
+   "role": "client",
+   "roleTitle": "Клиент",
+   "title": "Возврат товара",
+   "statuses": [
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "comment"
+   ]
+  },
+  {
+   "id": "N4",
+   "role": "client",
+   "roleTitle": "Клиент",
+   "title": "Самовывоз у внешнего поставщика",
+   "statuses": [
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "shipment_date"
+   ]
+  },
+  {
+   "id": "M1",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Загрузка заявки в 1С",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "order_date",
+    "order_internal_number",
+    "customer",
+    "contract",
+    "service_type",
+    "brand_fact",
+    "model_fact",
+    "aggregate_fact",
+    "gosnomer_fact",
+    "grz_fact",
+    "vin_fact",
+    "engine_fact",
+    "urgency_fact",
+    "vehicle_plate_fact",
+    "territory_fact",
+    "article_fact",
+    "qty_fact",
+    "unit_fact"
+   ]
+  },
+  {
+   "id": "M2",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Поиск + подбор номенклатуры",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article",
+    "code_aa",
+    "unit",
+    "comment"
+   ]
+  },
+  {
+   "id": "M2a",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Создание номенклатуры",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article",
+    "code_aa",
+    "unit",
+    "comment"
+   ]
+  },
+  {
+   "id": "M3",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Резервирование на складе",
+   "statuses": [
+    "reserve"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "stock_qty",
+    "reserve_qty",
+    "batch_fifo"
+   ]
+  },
+  {
+   "id": "M4",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Заказ поставщику",
+   "statuses": [
+    "ordered"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "supplier",
+    "price",
+    "line_status",
+    "comment"
+   ]
+  },
+  {
+   "id": "M7",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Контроль оплаты",
+   "statuses": [
+    "paid"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "paid_status",
+    "payment_form",
+    "price"
+   ]
+  },
+  {
+   "id": "M8",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Уведомление о приходе",
+   "statuses": [
+    "acceptance"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status"
+   ]
+  },
+  {
+   "id": "M9",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Задание на комплектацию",
+   "statuses": [
+    "assembly"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "stock_qty",
+    "reserve_qty",
+    "ordered_in_transit_qty"
+   ]
+  },
+  {
+   "id": "M10",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Контроль комплектации",
+   "statuses": [
+    "assembly",
+    "ready_to_ship"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "comment"
+   ]
+  },
+  {
+   "id": "M11",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Уведомление о готовности",
+   "statuses": [
+    "ready_to_ship"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "M12",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Отгрузочная ведомость",
+   "statuses": [
+    "ready_to_ship"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "shipment_date",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "M13",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Недостаточно прав, обратись к админу",
+   "statuses": [
+    "ordered",
+    "new",
+    "ready_to_ship"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment"
+   ]
+  },
+  {
+   "id": "M15",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Контроль документов",
+   "statuses": [
+    "closed",
+    "shipped",
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "doc_signed_original",
+    "shipment_date",
+    "shipment_number",
+    "comment"
+   ]
+  },
+  {
+   "id": "M16",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Заявка на возврат поставщику",
+   "statuses": [
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "supplier",
+    "comment"
+   ]
+  },
+  {
+   "id": "M17",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Уведомление о самовывозе",
+   "statuses": [
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "shipment_date",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "M18",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Неопознанная позиция",
+   "statuses": [
+    "new",
+    "acceptance"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article_fact",
+    "comment"
+   ]
+  },
+  {
+   "id": "M19",
+   "role": "manager",
+   "roleTitle": "Менеджер",
+   "title": "Отгрузочная ведомость (корректировка)",
+   "statuses": [
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "shipment_number",
+    "shipment_date",
+    "comment"
+   ]
+  },
+  {
+   "id": "A1",
+   "role": "admin",
+   "roleTitle": "Админ",
+   "title": "Неопознанные + фото",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article",
+    "comment"
+   ]
+  },
+  {
+   "id": "A2",
+   "role": "admin",
+   "roleTitle": "Админ",
+   "title": "Создание номенклатуры/подтверждение/изменение позиции",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article",
+    "code_aa",
+    "unit"
+   ]
+  },
+  {
+   "id": "A3",
+   "role": "admin",
+   "roleTitle": "Админ",
+   "title": "Подтверждение чека админом",
+   "statuses": [
+    "ordered",
+    "paid"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "price",
+    "supplier"
+   ]
+  },
+  {
+   "id": "A0",
+   "role": "admin",
+   "roleTitle": "Админ",
+   "title": "НСИ: РРЦ / НМЦК / права",
+   "statuses": [],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "rrc",
+    "coefficient"
+   ]
+  },
+  {
+   "id": "P1",
+   "role": "supplier",
+   "roleTitle": "Поставщик",
+   "title": "Обработка заказа",
+   "statuses": [
+    "ordered"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "supplier"
+   ]
+  },
+  {
+   "id": "P2",
+   "role": "supplier",
+   "roleTitle": "Поставщик",
+   "title": "Отгрузка → В пути",
+   "statuses": [
+    "in_transit"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "ordered_in_transit_qty",
+    "comment"
+   ]
+  },
+  {
+   "id": "P3",
+   "role": "supplier",
+   "roleTitle": "Поставщик",
+   "title": "Приём возврата",
+   "statuses": [
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "supplier"
+   ]
+  },
+  {
+   "id": "K1",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Приёмка (УПД)",
+   "statuses": [
+    "acceptance"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "receipt_date",
+    "upd_date",
+    "upd_number",
+    "supplier"
+   ]
+  },
+  {
+   "id": "K2",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Размещение по складам",
+   "statuses": [
+    "acceptance",
+    "reserve"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "stock_qty"
+   ]
+  },
+  {
+   "id": "K3",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Комплектация + сборочный лист",
+   "statuses": [
+    "assembly"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "article_fact"
+   ]
+  },
+  {
+   "id": "K5",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Отгрузка клиенту / ТК",
+   "statuses": [
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "shipment_date",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "K6",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Приёмка / подготовка возврата",
+   "statuses": [
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "line_status",
+    "supplier"
+   ]
+  },
+  {
+   "id": "K7",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Контроль документов",
+   "statuses": [
+    "closed",
+    "shipped",
+    "return"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "doc_signed_original",
+    "shipment_date",
+    "shipment_number",
+    "comment"
+   ]
+  },
+  {
+   "id": "K8",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Розыск позиции",
+   "statuses": [
+    "assembly",
+    "acceptance",
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "line_status",
+    "article_fact",
+    "comment"
+   ]
+  },
+  {
+   "id": "K9",
+   "role": "storekeeper",
+   "roleTitle": "Кладовщик",
+   "title": "Уведомление о самовывозе",
+   "statuses": [
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "shipment_date",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "G1",
+   "role": "chief_mechanic",
+   "roleTitle": "Гл. механик",
+   "title": "Открытие заказ-наряда",
+   "statuses": [
+    "new"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "order_date",
+    "order_internal_number",
+    "customer",
+    "contract",
+    "service_type",
+    "brand_fact",
+    "model_fact",
+    "aggregate_fact",
+    "gosnomer_fact",
+    "grz_fact",
+    "vin_fact",
+    "engine_fact",
+    "urgency_fact",
+    "vehicle_plate_fact",
+    "territory_fact",
+    "article_fact",
+    "qty_fact",
+    "unit_fact"
+   ]
+  },
+  {
+   "id": "G2",
+   "role": "chief_mechanic",
+   "roleTitle": "Гл. механик",
+   "title": "Заказ для ремонта",
+   "statuses": [
+    "ordered"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article",
+    "code_aa",
+    "unit"
+   ]
+  },
+  {
+   "id": "G3",
+   "role": "chief_mechanic",
+   "roleTitle": "Гл. механик",
+   "title": "Выдача в ремонтную зону",
+   "statuses": [
+    "assembly"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "stock_qty",
+    "reserve_qty",
+    "ordered_in_transit_qty"
+   ]
+  },
+  {
+   "id": "G7",
+   "role": "chief_mechanic",
+   "roleTitle": "Гл. механик",
+   "title": "Контроль документов",
+   "statuses": [
+    "closed",
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "shipment_date",
+    "shipment_number"
+   ]
+  },
+  {
+   "id": "G8",
+   "role": "chief_mechanic",
+   "roleTitle": "Гл. механик",
+   "title": "Неопознанная позиция",
+   "statuses": [
+    "new",
+    "acceptance"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "article_fact",
+    "comment"
+   ]
+  },
+  {
+   "id": "G9",
+   "role": "chief_mechanic",
+   "roleTitle": "Гл. механик",
+   "title": "Печать комплекта документов и выдача авто",
+   "statuses": [
+    "closed",
+    "shipped"
+   ],
+   "columns": [
+    "order_client_number",
+    "name_fact",
+    "name",
+    "qty",
+    "comment",
+    "shipment_date",
+    "shipment_number",
+    "vehicle_plate_fact"
+   ]
+  }
+ ]
+}

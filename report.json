@@ -1,0 +1,82 @@
+{
+	"time": "2026-10-08T14:25:42+03:00",
+	"id": "c498ed34-164e-46b8-b063-6147c5267c32",
+	"clientInfo": {
+		"platformType": "Windows_x86",
+		"appVersion": "8.3.27.2342",
+		"appName": "1CV8C",
+		"systemInfo": {
+			"osVersion": "Microsoft Windows 10 version 10.0  (Build 19045)",
+			"fullRAM": 17139699712,
+			"freeRAM": 7403753472,
+			"processor": "GenuineIntel Intel64 Family 6 Model 58 Stepping 9 3392 MHz",
+			"clientID": "8824c194-7e33-4208-a3ba-25269574f22e"
+		}
+	},
+	"sessionInfo": {
+		"userName": "Админ",
+		"dataSeparation": "+,+",
+		"platformInterfaceLanguageCode": "ru_RU",
+		"configurationInterfaceLanguageCode": "ru",
+		"localeCode": "ru_RU"
+	},
+	"infoBaseInfo": {
+		"localeCode": "ru_RU"
+	},
+	"serverInfo": {
+		"appVersion": "8.3.27.2342",
+		"type": "Windows_x86",
+		"dbms": "DBEng8"
+	},
+	"configInfo": {
+		"name": "Автосервис",
+		"description": "1С:Предприятие 8. Автосервис, редакция 3.0 (3.0.10.178) (http:\/\/solutions.1c.ru\/catalog\/autoservice\/features)\nCopyright © ООО \"1С-Софт\", 2009-2024. Все права защищены\n(http:\/\/1c.ru\/)",
+		"version": "3.0.10.178",
+		"compatibilityMode": "Version8_3_24",
+		"hash": "8d88f036582db748923f8a5ae03c96e000000000",
+		"changeEnabled": false,
+		"extentions": [
+			[
+				"АРМ закупок и продаж",
+				"c69a787b36da3b61b72698865d7e62df097f2dcb"
+			]
+		]
+	},
+	"errorInfo": {
+		"systemErrorInfo": {
+			"clientStack": "frame.dll:0x0013CBE0 frame.dll:0x00080B72 mngcln.dll:0x0008153E mngcore.dll:0x0051837A mngcore.dll:0x0000E70D bsl.dll:0x000449B1 bsl.dll:0x0004642A bsl.dll:0x000446F1 bsl.dll:0x00020307 bsl.dll:0x000200A8 bsl.dll:0x00019A79 bsl.dll:0x00019C38 mngui.dll:0x001BC2EF mngui.dll:0x001BC645 mngui.dll:0x001BA642 mngcore.dll:0x00501114 mngui.dll:0x001D30D1 mngui.dll:0x002110F5 frame.dll:0x0055AE42 frame.dll:0x0003AD9B frame.dll:0x00016E94 frame.dll:0x008937CE frame.dll:0x00898C96 frame.dll:0x0005EC9B frame.dll:0x0005F2A0 frame.dll:0x0006E72A frame.dll:0x0086E3CB frame.dll:0x00092F08 frame.dll:0x0086452C frame.dll:0x00865AAC wbase83.dll:0x00020EAD frame.dll:0x001541AE frame.dll:0x00154243 frame.dll:0x001543A7 atlthunk.dll:0x00000000 USER32.dll:0x00000000 USER32.dll:0x00000000 USER32.dll:0x00000000 USER32.dll:0x00000000 WebKit.dll:0x0052BF8C USER32.dll:0x00000000 USER32.dll:0x00000000 USER32.dll:0x00000000 USER32.dll:0x00000000 wbase83.dll:0x000134F7 wbase83.dll:0x00013606 frame.dll:0x000A5EAC frame.dll:0x000A363B mngcln.dll:0x00058610 mngcln.dll:0x00057DDB 1cv8c.exe:0x0000B943 1cv8c.exe:0x00007178 core83.dll:0x00285E57 core83.dll:0x0028849E 1cv8c.exe:0x000C8ABF KERNEL32.DLL:0x00000000 ntdll.dll:0x00000000 ntdll.dll:0x00000000 ",
+			"clientStackHash": "BA49DF69D5C8AC10A1BEE97183FB337B"
+		},
+		"applicationErrorInfo": {
+			"errors": [
+				[
+					"{АРМЗакупокИПродаж Обработка.АС_АРМ2.Форма.Форма.Форма(4004)}: Ошибка при вызове метода контекста (ЗаписатьИсключениеКлиента)",
+					[
+						"ScriptRuntimeError"
+					],
+					"",
+					""
+				],
+				[
+					"Серверные вызовы при завершении работы запрещены",
+					[
+						"ScriptUseError"
+					],
+					"",
+					""
+				]
+			],
+			"stack": [
+				[
+					"АРМЗакупокИПродаж Обработка.АС_АРМ2.Форма.Форма.Форма",
+					4004,
+					"\u0009\u0009Арм_Журнал.ЗаписатьИсключениеКлиента(\"АС_АРМ2.Форма.ПередЗакрытием\", ПодробноеПредставлениеОшибки(ИнформацияОбОшибке()));"
+				]
+			],
+			"stackHash": "4DD8232493F4F2A1EDC2028A04CA6909"
+		}
+	},
+	"screenshot": {
+		"file": "screenshot.png"
+	}
+}
