@@ -12,7 +12,8 @@
        с Яндекс.Диска) -> распаковка. -Redownload — скачать и распаковать заново
     2. PostgreSQL для 1С: уже установлен (служба pg_ctl, есть расширение mchar) — используется как есть, шаг 0 его
        не удаляет; иначе — из установщика PostgreSQL_1C_*_Setup.exe: локального (-BaseDir или -PgSetup, подпись
-       Postgres Professional) или скачанного с -PgSetupUrl (Яндекс.Диск, проверка SHA256 и подписи); распаковка
+       Postgres Professional) или скачанного с -PgSetupUrl (repo.postgres.ru, запасной — Яндекс.Диск; проверка
+       подписи, для Яндекс.Диска и SHA256); распаковка
        программы, VC++ x64, initdb, служба postgresql-1c-<версия>. Нет и его — архив 15.13-1.1C с Яндекс.Диска (MSI).
        -ReinstallPostgres — удалить найденный PostgreSQL для 1С вместе с данными и поставить заново.
        -PgMajor 18 (по умолчанию): найденный PostgreSQL ниже 18 (например, 15.13) не используется — ставится 18
@@ -57,7 +58,9 @@ param(
     [int]         $PgPort      = 5432,              # для новой установки; у найденного PostgreSQL — его порт
     [string]      $PgDataDir   = 'C:\PGDATA15',     # для новой установки из архива (MSI 15.13); из -PgSetup — <диск BaseDir>:\PostgreSQL 1C\<версия>\data
     [string]      $PgSetup,                         # установщик PostgreSQL_1C_*_Setup.exe; по умолчанию — поиск в -BaseDir и рядом со скриптом
-    [string]      $PgSetupUrl  = 'https://disk.yandex.ru/d/bpPS8da1z_f6dw',   # откуда скачать установщик, если его нет локально ('' — не скачивать)
+    # откуда скачать установщик PostgreSQL для 1С, если его нет локально: ссылки по порядку, первая доступная ('' — не скачивать)
+    [string[]]    $PgSetupUrl  = @('https://repo.postgres.ru/1c/1c-18/win/PostgreSQL_1C_18.4_64bit_Setup.exe',
+                                   'https://disk.yandex.ru/d/bpPS8da1z_f6dw'),
     [switch]      $ReinstallPostgres,               # удалить найденный PostgreSQL для 1С (с данными!) и поставить заново
     [int]         $PgMajor     = 18,                # нужная версия PostgreSQL для 1С: найденный старше/равен — используется; младше — ставится рядом,
                                                     # базы кластера 1С из старого переносятся (pg_dump/pg_restore), старый с данными остаётся
@@ -432,26 +435,67 @@ function Test-PgSetupSigned([string]$Path) {
     return [bool]$ok
 }
 
-# Установщик на Яндекс.Диске (-PgSetupUrl): имя, размер и SHA256 — из API публичного ресурса; $null — недоступен
-function Get-PgSetupRemote {
-    if (-not $PgSetupUrl) { return $null }
-    try {
-        $meta = Invoke-YandexApi '' $PgSetupUrl
-        if ($meta.type -ne 'file' -or $meta.name -notmatch '^PostgreSQL_1C_\d+.*\.exe$') { Warn "по $PgSetupUrl не установщик PostgreSQL_1C_*.exe ($($meta.type) $($meta.name))"; return $null }
-        [pscustomobject]@{ Name = $meta.name; Size = [int64]$meta.size; Sha256 = $meta.sha256 }
-    } catch { Warn "Яндекс.Диск недоступен ($PgSetupUrl): $($_.Exception.Message)"; return $null }
+# Прямая ссылка (https://repo.postgres.ru/…): HEAD через curl.exe (с переходами) — код и размер последнего ответа
+function Get-DirectHead([string]$Url) {
+    for ($i = 1; $i -le 3; $i++) {
+        $h = & curl.exe -sIL --connect-timeout 30 --max-time 90 $Url 2>$null
+        if ($LASTEXITCODE -eq 0 -and $h) {
+            $code = 0; $size = 0
+            foreach ($l in $h) {
+                if ($l -match '^HTTP/\S+\s+(\d+)') { $code = [int]$Matches[1]; $size = 0 }
+                elseif ($l -match '^(?i)content-length:\s*(\d+)') { $size = [int64]$Matches[1] }
+            }
+            if ($code -eq 200 -and $size -gt 0) { return [pscustomobject]@{ Code = $code; Size = $size } }
+            Warn "$Url — ответ $code"
+        } else { Warn "$Url не ответил (curl: код $LASTEXITCODE), повтор" }
+        Start-Sleep -Seconds 5
+    }
+    $null
+}
+# Скачивание по прямой ссылке с докачкой (curl -C -): обрывы и «зависшие» соединения — следующая попытка
+function Get-DirectFile([string]$Url, [string]$OutFile, [int64]$Size) {
+    for ($try = 1; $try -le 10; $try++) {
+        $have = if (Test-Path $OutFile) { (Get-Item $OutFile).Length } else { 0 }
+        if ($have -eq $Size) { break }
+        if ($have -gt $Size) { Remove-Item $OutFile -Force; $have = 0 }
+        Write-Host ("  Скачивание -> {0} ({1:N0} из {2:N0} МБ, попытка {3})" -f $OutFile, ($have / 1MB), ($Size / 1MB), $try)
+        $curlOpt = @('-L', '--fail', '--connect-timeout', '30', '--speed-limit', '1024', '--speed-time', '60')
+        if ($have -gt 0) { & curl.exe @curlOpt -C - -o $OutFile $Url } else { & curl.exe @curlOpt -o $OutFile $Url }
+        if ($LASTEXITCODE -ne 0) { Warn "curl вернул $LASTEXITCODE, продолжаю докачку"; Start-Sleep -Seconds 5 }
+    }
+    if (-not (Test-Path $OutFile) -or (Get-Item $OutFile).Length -ne $Size) { throw "Не удалось полностью скачать $Url" }
 }
 
-# Скачать установщик в -BaseDir (с докачкой) и проверить SHA256 и подпись
+# Установщик по -PgSetupUrl (ссылки по порядку, первая доступная): прямая ссылка — имя из адреса, размер из HEAD;
+# Яндекс.Диск — имя, размер и SHA256 из API публичного ресурса. $null — ни одна не доступна.
+function Get-PgSetupRemote {
+    foreach ($u in ($PgSetupUrl | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+        try {
+            if ($u -match '^https?://(disk\.yandex\.|yadi\.sk)') {
+                $meta = Invoke-YandexApi '' $u
+                if ($meta.type -ne 'file' -or $meta.name -notmatch '^PostgreSQL_1C_\d+.*\.exe$') { Warn "по $u не установщик PostgreSQL_1C_*.exe ($($meta.type) $($meta.name))"; continue }
+                return [pscustomobject]@{ Name = $meta.name; Size = [int64]$meta.size; Sha256 = $meta.sha256; Url = $u; Yandex = $true }
+            }
+            $name = [uri]::UnescapeDataString(([uri]$u).Segments[-1])
+            if ($name -notmatch '^PostgreSQL_1C_\d+.*\.exe$') { Warn "$u — не установщик PostgreSQL_1C_*.exe"; continue }
+            $head = Get-DirectHead $u
+            if (-not $head) { Warn "$u недоступен"; continue }
+            return [pscustomobject]@{ Name = $name; Size = $head.Size; Sha256 = $null; Url = $u; Yandex = $false }
+        } catch { Warn "$u недоступен: $($_.Exception.Message)" }
+    }
+    $null
+}
+
+# Скачать установщик в -BaseDir (с докачкой) и проверить SHA256 (Яндекс.Диск) и подпись Postgres Professional
 function Get-PgSetupDownload($Remote) {
     $out = Join-Path $BaseDir $Remote.Name
-    Write-Host ("  Скачивание {0} ({1:N0} МБ) с {2}" -f $Remote.Name, ($Remote.Size / 1MB), $PgSetupUrl)
-    Get-YandexFile $PgSetupUrl $out $Remote.Size
+    Write-Host ("  Скачивание {0} ({1:N0} МБ) с {2}" -f $Remote.Name, ($Remote.Size / 1MB), $Remote.Url)
+    if ($Remote.Yandex) { Get-YandexFile $Remote.Url $out $Remote.Size } else { Get-DirectFile $Remote.Url $out $Remote.Size }
     if ($Remote.Sha256 -and (Get-FileHash $out -Algorithm SHA256).Hash -ne $Remote.Sha256.ToUpper()) {
         Remove-Item $out -Force; throw "SHA256 скачанного $($Remote.Name) не совпадает с Яндекс.Диском — файл удалён, запустите снова"
     }
     if (-not (Test-PgSetupSigned $out)) { Remove-Item $out -Force; throw "$($Remote.Name): подпись Postgres Professional не подтверждена — файл удалён" }
-    Ok ("скачано и проверено (SHA256, подпись Postgres Professional): {0}" -f $out)
+    Ok ("скачано и проверено ({0}подпись Postgres Professional): {1}" -f $(if ($Remote.Sha256) { 'SHA256, ' } else { '' }), $out)
     return Get-Item $out
 }
 
@@ -752,7 +796,7 @@ try {
     $pgSetupName = if ($PgSetupFile) { $PgSetupFile.Name } elseif ($PgSetupRemote) { $PgSetupRemote.Name } else { '' }
     $PgMajorSetup = if ($pgSetupName -match 'PostgreSQL_1C_(\d+)') { $Matches[1] } else { '' }
     if (-not $PgExisting -and -not $pgSetupName -and $PgMajor -gt 15) {
-        throw "Нужен PostgreSQL для 1С ${PgMajor}: нет ни установленного, ни установщика PostgreSQL_1C_$PgMajor*_Setup.exe в $BaseDir / рядом со скриптом, ни по -PgSetupUrl. Скачайте его вручную с $PgSetupUrl и положите в $BaseDir (или -PgMajor 15 — архив 15.13)."
+        throw "Нужен PostgreSQL для 1С ${PgMajor}: нет ни установленного, ни установщика PostgreSQL_1C_$PgMajor*_Setup.exe в $BaseDir / рядом со скриптом, ни по -PgSetupUrl. Скачайте его вручную с $($PgSetupUrl[0]) и положите в $BaseDir (или -PgMajor 15 — архив 15.13)."
     }
     foreach ($p in $PgAll | Where-Object { -not $_.For1C }) { Warn "PostgreSQL $($p.Version) (служба $($p.Service), порт $($p.Port)) — не сборка для 1С, не используется" }
     if ($PgExisting) {
@@ -760,7 +804,7 @@ try {
         Ok "PostgreSQL для 1С уже установлен: $($PgExisting.Version), служба $($PgExisting.Service) ($($PgExisting.State)), порт $PgPort, данные $PgDataDir — будет использован"
     } elseif ($pgSetupName) {
         if (-not $PSBoundParameters.ContainsKey('PgDataDir')) { $PgDataDir = "$(Split-Path -Qualifier $BaseDir)\PostgreSQL 1C\$PgMajorSetup\data" }
-        $from = if ($PgSetupFile) { $PgSetupFile.FullName } else { "{0} ({1:N0} МБ, будет скачан с {2})" -f $PgSetupRemote.Name, ($PgSetupRemote.Size / 1MB), $PgSetupUrl }
+        $from = if ($PgSetupFile) { $PgSetupFile.FullName } else { "{0} ({1:N0} МБ, будет скачан с {2})" -f $PgSetupRemote.Name, ($PgSetupRemote.Size / 1MB), $PgSetupRemote.Url }
         Ok "PostgreSQL для 1С не установлен — будет установлен из $from (данные: $PgDataDir)"
     } else {
         Warn "PostgreSQL для 1С не установлен, установщика PostgreSQL_1C_*_Setup.exe нет ни в $BaseDir, ни по -PgSetupUrl — будет архив $($Sources.Postgres.File) с Яндекс.Диска"
