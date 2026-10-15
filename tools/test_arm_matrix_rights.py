@@ -35,6 +35,7 @@ V211 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.11')
 V212 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.12')
 V213 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.13')
 V214 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.14')
+V215 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.15')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -972,11 +973,11 @@ class TestV213(MatrixCase):
     def test_v214_changes_only_expected_bsl(self):
         """v2.14 относительно v2.13: код меняется только в общем модуле, форме АРМ и модуле прав."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V214):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V214).replace('\\', '/')
                 q = os.path.join(V213, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -998,15 +999,64 @@ class TestV213(MatrixCase):
     def test_v215_changes_only_form(self):
         """v2.15 относительно v2.14: код меняется только в модуле формы АРМ."""
         changed = []
+        for dp, _dn, fns in os.walk(V215):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), V215).replace('\\', '/')
+                q = os.path.join(V214, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(changed, ['DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl'])
+
+    def test_v216_changes_only_expected_bsl(self):
+        """v2.16 относительно v2.15: ставка НДС, транзакция загрузки, «В работе», отборы — 4 модуля."""
+        changed = []
         for dp, _dn, fns in os.walk(EXT):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
                 rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
-                q = os.path.join(V214, rel)
+                q = os.path.join(V215, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
-        self.assertEqual(changed, ['DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl'])
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаЗагрузкиДанных/Form.obj.bsl']))
+
+    def test_v216_vat_rate_from_nomenclature(self):
+        """v2.16: ставка НДС строк — по виду ставки номенклатуры/организации, не зашитые 20%."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        oan = read(OAN)
+        for text in (fon, oan):
+            self.assertNotIn('СтавкаНДС20', text)
+        self.assertEqual(fon.count('Арм_ОбщегоНазначенияАРМ.СтавкаНДСНоменклатуры(НоваяСтр.Номенклатура,'), 7)
+        self.assertIn('НоваяСтрПН.СтавкаНДС = Арм_ОбщегоНазначенияАРМ.СтавкаНДСНоменклатуры(НоваяСтрПН.Номенклатура, ПН_Объект.Организация, ПН_Объект.Дата', oan)
+        rate = procedure_text(oan, 'СтавкаНДСНоменклатуры')
+        self.assertIn('"ВидСтавкиНДС"', rate)
+        self.assertIn('"ВидСтавкиНДСПоУмолчанию"', rate)
+        self.assertIn('Справочники.СтавкиНДС.СтавкаНДС(ВидСтавки', rate)
+
+    def test_v216_in_work_state_created_when_missing(self):
+        """v2.16: НайтиПоНаименованию возвращает пустую ссылку, а не Неопределено."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        self.assertNotIn('СостояниеВРаботе = Неопределено', fon)
+        self.assertEqual(fon.count('Если Не ЗначениеЗаполнено(СостояниеВРаботе) Тогда'), 3)
+        self.assertNotIn('Если СостояниеЗаказа = Неопределено Тогда', self.form)
+        self.assertIn('ЗаказОбъект.СостояниеЗаказа = СостояниеЗаказа;', self.form)
+
+    def test_v216_import_closes_transaction_without_rows(self):
+        """v2.16: пустой заказ при загрузке — транзакция отменяется до возврата."""
+        imp = read(os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаЗагрузкиДанных', 'Form.obj.bsl'))
+        body = procedure_text(imp, 'ЗагрузитьДанныеНаСервере')
+        self.assertLess(body.index('ОтменитьТранзакцию();'), body.index('Возврат Неопределено;'))
+
+    def test_v216_filter_items_removed_after_loop(self):
+        """v2.16: элементы отбора удаляются после обхода коллекции."""
+        self.assertNotIn('ГруппаОтбора.Элементы.Удалить(Элемент);\n\t\t\tКонецЕсли;', self.form.replace('\r\n', '\n'))
+        self.assertEqual(self.form.count('Удаляемые = Новый Массив;'), 2)
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
