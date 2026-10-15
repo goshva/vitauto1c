@@ -36,6 +36,8 @@ V212 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.12')
 V213 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.13')
 V214 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.14')
 V215 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.15')
+V216 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.16')
+FORM_V216 = os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -1012,11 +1014,11 @@ class TestV213(MatrixCase):
     def test_v216_changes_only_expected_bsl(self):
         """v2.16 относительно v2.15: ставка НДС, транзакция загрузки, «В работе», отборы — 4 модуля."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V216):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V216).replace('\\', '/')
                 q = os.path.join(V215, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -1028,8 +1030,8 @@ class TestV213(MatrixCase):
 
     def test_v216_vat_rate_from_nomenclature(self):
         """v2.16: ставка НДС строк — по виду ставки номенклатуры/организации, не зашитые 20%."""
-        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
-        oan = read(OAN)
+        fon = read(os.path.join(V216, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        oan = read(os.path.join(V216, 'CommonModule', 'Арм_ОбщегоНазначенияАРМ', 'CommonModule.obj.bsl'))
         for text in (fon, oan):
             self.assertNotIn('СтавкаНДС20', text)
         self.assertEqual(fon.count('Арм_ОбщегоНазначенияАРМ.СтавкаНДСНоменклатуры(НоваяСтр.Номенклатура,'), 7)
@@ -1041,22 +1043,79 @@ class TestV213(MatrixCase):
 
     def test_v216_in_work_state_created_when_missing(self):
         """v2.16: НайтиПоНаименованию возвращает пустую ссылку, а не Неопределено."""
-        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        fon = read(os.path.join(V216, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
         self.assertNotIn('СостояниеВРаботе = Неопределено', fon)
         self.assertEqual(fon.count('Если Не ЗначениеЗаполнено(СостояниеВРаботе) Тогда'), 3)
-        self.assertNotIn('Если СостояниеЗаказа = Неопределено Тогда', self.form)
-        self.assertIn('ЗаказОбъект.СостояниеЗаказа = СостояниеЗаказа;', self.form)
+        self.assertNotIn('Если СостояниеЗаказа = Неопределено Тогда', read(FORM_V216))
+        self.assertIn('ЗаказОбъект.СостояниеЗаказа = СостояниеЗаказа;', read(FORM_V216))
 
     def test_v216_import_closes_transaction_without_rows(self):
         """v2.16: пустой заказ при загрузке — транзакция отменяется до возврата."""
-        imp = read(os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаЗагрузкиДанных', 'Form.obj.bsl'))
+        imp = read(os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаЗагрузкиДанных', 'Form.obj.bsl'))
         body = procedure_text(imp, 'ЗагрузитьДанныеНаСервере')
         self.assertLess(body.index('ОтменитьТранзакцию();'), body.index('Возврат Неопределено;'))
 
     def test_v216_filter_items_removed_after_loop(self):
         """v2.16: элементы отбора удаляются после обхода коллекции."""
-        self.assertNotIn('ГруппаОтбора.Элементы.Удалить(Элемент);\n\t\t\tКонецЕсли;', self.form.replace('\r\n', '\n'))
-        self.assertEqual(self.form.count('Удаляемые = Новый Массив;'), 2)
+        self.assertNotIn('ГруппаОтбора.Элементы.Удалить(Элемент);\n\t\t\tКонецЕсли;', read(FORM_V216).replace('\r\n', '\n'))
+        self.assertEqual(read(FORM_V216).count('Удаляемые = Новый Массив;'), 2)
+
+    def test_v217_changes_only_expected_bsl(self):
+        """v2.17 относительно v2.16: оптимизация и чистка — 6 модулей, без изменений метаданных."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V216, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаСнабжение/Form.obj.bsl',
+            'Document/ЗаказПокупателя/Document.obj.bsl',
+            'Document/ПриходнаяНакладная/Document.obj.bsl']))
+
+    def test_v217_no_query_in_loop_for_receipts_and_order_delete(self):
+        """v2.17: строки прихода и данные удаляемых заказов читаются одним запросом до цикла."""
+        oan = read(OAN)
+        supply = procedure_text(oan, 'ИзменитьСтатусыВРегистреСнабжения')
+        self.assertIn('Т.ДокументЗаказПоставщика В (&МассивЗаказовПоставщиков)', supply)
+        self.assertIn('ВсеСтрокиПрихода.НайтиСтроки(Новый Структура("ДокументЗаказПоставщика", ЗаказПост))', supply)
+        self.assertEqual(supply.count('ЗапросСтрокПрихода = Новый Запрос;'), 1)
+        self.assertLess(supply.index('ЗапросСтрокПрихода = Новый Запрос;'), supply.index('Для каждого ЗаказПост Из МассивЗаказовПоставщиков Цикл'))
+        delete = procedure_text(self.form, 'УдалитьВыбранныеЗаказыНаСервере')
+        self.assertNotIn('ЗапросСвязи', delete)
+        self.assertNotIn('ЗапросНоменклатура', delete)
+        self.assertIn('ТаблицаЗаказов.Свернуть("Заказ");', delete)
+        self.assertLess(delete.index('ЗапросДанныхЗаказов.ВыполнитьПакет()'), delete.index('Для Каждого ТекущийЗаказ Из ВыбранныеЗаказы Цикл'))
+
+    def test_v217_dead_code_removed(self):
+        """v2.17: удалены неиспользуемые процедуры, пустые перехваты ПриходнойНакладной, лишние переменные."""
+        oan = read(OAN)
+        for name in ('ЗаписатьСтрокуАРМ', 'СоздатьНовуюСтрокуПродажи'):
+            self.assertNotIn('Процедура ' + name + '(', oan)
+        self.assertNotIn('СоздатьЗаказыПоставщикамНаСервере_________2', self.form)
+        pn = read(os.path.join(EXT, 'Document', 'ПриходнаяНакладная', 'Document.obj.bsl'))
+        self.assertEqual(pn.strip(), '')
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        self.assertNotIn('ТекущийЗаказТребуетСплита', fon)
+        self.assertNotIn('Пользователь = ПараметрыПроцедуры.ТекущийПользователь;', fon)
+        # ПоляВводаПоACL модуля прав не удаляется: эталон для проверки формы (test_input_fields_acl_*)
+        self.assertIn('Функция ПоляВводаПоACL()', read(os.path.join(EXT, 'CommonModule', 'Арм_МатрицаПрав', 'CommonModule.obj.bsl')))
+
+    def test_v217_session_date_and_deletion_mark(self):
+        """v2.17: на клиенте дата сеанса через БСП; пометка удаления — у записываемого объекта."""
+        supply_form = read(FORM_SUPPLY)
+        for text in (self.form, supply_form):
+            self.assertNotIn('ТекущаяДата()', text)
+            self.assertIn('ОбщегоНазначенияКлиент.ДатаСеанса()', text)
+        zp = read(os.path.join(EXT, 'Document', 'ЗаказПокупателя', 'Document.obj.bsl'))
+        self.assertNotIn('Ссылка.ПометкаУдаления', zp)
+        self.assertEqual(zp.count('Если ЭтотОбъект.ПометкаУдаления Тогда'), 2)
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
@@ -1124,11 +1183,11 @@ class TestV213(MatrixCase):
             'Document/ПриходнаяНакладная/Document.obj.bsl',
         }
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V213):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V213).replace('\\', '/')
                 q = os.path.join(V212, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
