@@ -37,6 +37,7 @@ V213 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.13')
 V214 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.14')
 V215 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.15')
 V216 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.16')
+V217 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.17')
 FORM_V216 = os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
@@ -1063,11 +1064,11 @@ class TestV213(MatrixCase):
     def test_v217_changes_only_expected_bsl(self):
         """v2.17 относительно v2.16: оптимизация и чистка — 6 модулей, без изменений метаданных."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V217):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V217).replace('\\', '/')
                 q = os.path.join(V216, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -1116,6 +1117,39 @@ class TestV213(MatrixCase):
         zp = read(os.path.join(EXT, 'Document', 'ЗаказПокупателя', 'Document.obj.bsl'))
         self.assertNotIn('Ссылка.ПометкаУдаления', zp)
         self.assertEqual(zp.count('Если ЭтотОбъект.ПометкаУдаления Тогда'), 2)
+
+    def test_v218_changes_only_expected_bsl(self):
+        """v2.18 относительно v2.17: состояние заказа покупателя в «В работу» — 2 модуля, без изменений метаданных."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V217, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl']))
+
+    def test_v218_customer_order_state_from_order_kind(self):
+        """v2.18: заказу покупателя — состояние из его вида заказа, а не состояние заказа поставщику (K5 e2e)."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        for name in ('ОбработатьЧистыеПродажиВФоне', 'ОбработатьЗаказыПокупателей'):
+            body = procedure_text(fon, name)
+            self.assertNotIn('СостоянияЗаказовПоставщикам', body)
+            self.assertNotIn('СостояниеВРаботе', body)
+            self.assertIn('Арм_ОбщегоНазначенияАРМ.СостояниеЗаказаПокупателяВРаботе(ДокОбъект)', body)
+        # заказ поставщику по-прежнему получает состояние заказа поставщику
+        self.assertIn('Справочники.СостоянияЗаказовПоставщикам.НайтиПоНаименованию("В работе")', procedure_text(fon, 'СоздатьЗаказыПоставщикамНаСервере'))
+        # в ОбработатьЗаказыПокупателей состояние ставится после Заполнить(), которое его не перетирает
+        body = procedure_text(fon, 'ОбработатьЗаказыПокупателей')
+        self.assertLess(body.index('ДокОбъект.Заполнить(Неопределено);'), body.index('ДокОбъект.СостояниеЗаказа = '))
+        oan = read(OAN)
+        st = procedure_text(oan, 'СостояниеЗаказаПокупателяВРаботе')
+        self.assertIn('ЗаказОбъект.ВидЗаказа.ПорядокСостояний', st)
+        self.assertIn('Справочники.СостоянияЗаказовПокупателей.НайтиПоНаименованию("В работе")', st)
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
