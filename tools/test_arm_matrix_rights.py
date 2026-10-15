@@ -38,6 +38,7 @@ V214 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.14')
 V215 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.15')
 V216 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.16')
 V217 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.17')
+V218 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.18')
 FORM_V216 = os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
@@ -1121,11 +1122,11 @@ class TestV213(MatrixCase):
     def test_v218_changes_only_expected_bsl(self):
         """v2.18 относительно v2.17: состояние заказа покупателя в «В работу» — 2 модуля, без изменений метаданных."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V218):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V218).replace('\\', '/')
                 q = os.path.join(V217, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -1151,6 +1152,54 @@ class TestV213(MatrixCase):
         self.assertIn('ЗаказОбъект.ВидЗаказа.ПорядокСостояний', st)
         self.assertIn('Справочники.СостоянияЗаказовПокупателей.НайтиПоНаименованию("В работе")', st)
 
+    def test_v219_changes_only_expected_bsl(self):
+        """v2.19 относительно v2.18: транзакции по стандарту и проведение заказа после сплита — 2 модуля."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V218, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl']))
+
+    def test_v219_transactions_follow_standard(self):
+        """v2.19 (п. 4 проверки кода): НачатьТранзакцию → Попытка … ЗафиксироватьТранзакцию последней → Исключение: откат первым."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        oan = read(OAN)
+        for text, name in ((fon, 'СформироватьЗаказыФоновоеЗадание'), (oan, 'ПолучитьОстаткиПоСтрокам'),
+                           (oan, 'ИзменитьСтатусыВРегистреСнабжения')):
+            body = procedure_text(text, name).replace('\r\n', '\n')
+            self.assertEqual(body.count('НачатьТранзакцию();'), 1, name)
+            self.assertEqual(body.count('ОтменитьТранзакцию();'), 1, name)
+            # фиксация — последний оператор «Попытки», откат — первый в «Исключении»
+            fix = body.index('ЗафиксироватьТранзакцию();')
+            after = [x.strip() for x in body[fix:].split('\n')[1:] if x.strip()]
+            if after[0] == 'КонецЕсли;':
+                after = after[1:]
+            self.assertEqual(after[0], 'Исключение', name)
+            self.assertTrue(after[1].startswith('Если ') and 'ТранзакцияАктивна()' in after[1], name)
+            self.assertEqual(after[2], 'ОтменитьТранзакцию();', name)
+        main = procedure_text(fon, 'СформироватьЗаказыФоновоеЗадание')
+        self.assertIn('ТребуетсяПодтверждение = ГлобальноТребуетсяСплит И Не ФлагРазрешитьСплит;', main)
+        self.assertNotIn('ЗаблокироватьСтроки(', main)   # строки блокируются только без подтверждения
+        self.assertIn('ЗаблокироватьСтроки(', procedure_text(fon, 'ОбработатьОтмеченныеЗаказы'))
+        rest = procedure_text(oan, 'ПолучитьОстаткиПоСтрокам')
+        self.assertIn('ПересчитатьОстаткиПоСтрокам(НоменклатураНовоеЗначение, СсылкаНаЗаказ);', rest)
+        self.assertIn('ЗаблокироватьНоменклатуруФИФО(НоменклатураНовоеЗначение);', rest)
+
+    def test_v219_split_order_posted(self):
+        """v2.19: заказ покупателя с оставшимися после сплита строками проводится (был только записан)."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        self.assertNotIn('НовыйДокОбъект.Записать(РежимЗаписиДокумента.Запись)', fon)
+        self.assertEqual(fon.count('НовыйДокОбъект.Записать(РежимЗаписиДокумента.Проведение)'), 2)
+        # без даты отгрузки проведение падает: «Период не может быть пустым» (График движения запасов)
+        self.assertEqual(fon.count('НовыйДокОбъект.ДатаОтгрузки = ДокОбъект.ДатаОтгрузки;'), 2)
+
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
         self.assertIn('ОбщийВводАдминистратора = РежимАдминистратораАРМ = Истина', sel)
@@ -1171,7 +1220,10 @@ class TestV213(MatrixCase):
                 lines = read(p).split('\r\n')
                 for i, ln in enumerate(lines):
                     if re.match(r'^\s*Исключение\s*$', ln):
-                        nxt = next((x for x in lines[i + 1:] if x.strip()), '')
+                        rest = [x for x in lines[i + 1:] if x.strip()]
+                        while rest and re.match(r'^\s*(Если (ВнутренняяТранзакцияОткрыта И )?ТранзакцияАктивна\(\) Тогда|ОтменитьТранзакцию\(\);|КонецЕсли;)\s*$', rest[0]):
+                            rest = rest[1:]
+                        nxt = rest[0] if rest else ''
                         if 'Арм_Журнал.' not in nxt and 'ОшибкаКлиентаАРМ(' not in ''.join(lines[i + 1:i + 3]):
                             missing.append('%s:%d' % (os.path.relpath(p, EXT), i + 1))
         self.assertEqual(missing, [])
