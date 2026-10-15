@@ -68,7 +68,8 @@ async function mark(role, id) {
   if (!l.marked) await call(role, 'POST', `/lines/${l.id}/mark`);
 }
 async function clearMarks() {
-  for (const [role, views] of [['manager', ['sales', 'purchases']], ['storekeeper', ['sales', 'purchases']], ['supply', ['supply']]]) {
+  for (const [role, views] of [['manager', ['sales', 'purchases']], ['storekeeper', ['sales', 'purchases']], ['supply', ['supply']],
+    ['admin', ['sales', 'purchases']], ['mechanic', ['sales', 'purchases']]]) {
     for (const v of views) {
       const items = (await call(role, 'GET', `/lines?view=${v}&limit=500`)).data.items || [];
       for (const l of items) if (l.marked && l.markedBy === T[role].userName) await call(role, 'POST', `/lines/${l.id}/mark`);
@@ -203,8 +204,118 @@ const SCENARIOS = {
     const pl = await line(p);
     if (pl.receipt) current.docs.push('ПриходнаяНакладная ' + pl.receipt.number);
     await shipAndClose([a, b]);
+  },
+  // самовывоз у поставщика: закупка оплачена, клиент забрал товар у поставщика, документы на приёмку
+  async delivery_split() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Колодки самовывозом у поставщика']);
+    await pick('M2', s, D.general, D.alpha, 1200);
+    const p = await buy('M4', s, D.general, D.alpha, 1200);
+    await supplyTo(p, s, 'paid');
+    await transition('manager', 'N4', 'purchases', 'shipped', [p]);
+    await expectStatus('N4', 'продажа вместе с закупкой', [s], 'shipped');
+    await patch('manager', 'M17', s, 'КомментарийКСтроке', 'Клиент забрал у поставщика');
+    await patch('storekeeper', 'K9', s, 'КомментарийКСтроке', 'Самовывоз: документы на приёмку');
+    await transition('storekeeper', 'K1', 'purchases', 'acceptance', [p]);
+    await expectStatus('K1', 'продажа вместе с закупкой', [s], 'acceptance');
+    await transition('manager', 'M9', 'sales', 'assembly', [s]);
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
+    await shipments('M12', [s], 'ОТГ-' + current.no);
+    await transition('manager', 'M15,K7', 'sales', 'closed', [s]);
+  },
+  // срочная закупка без документов: менеджеру правка количества в «Заказано» запрещена матрицей, администратору — разрешена
+  async virtual_buy() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Срочные колодки без документов']);
+    await pick('M2', s, D.general, D.alpha, 1200);
+    const p = await buy('M13', s, D.general, D.alpha, 1200);
+    const r = await call('manager', 'PATCH', '/lines/' + (await line(p)).id, { field: 'Количество', value: 2 });
+    check('M13', 'manager: PATCH Количество в «Заказано» → 403 (матрица)', r.status === 403, String(r.status) + problem(r));
+    await patch('admin', 'A3', p, 'Количество', 2);
+    await mark('admin', p);
+    const r2 = await call('admin', 'POST', '/supply/status', { status: 'paid' });
+    await expectStatus('A3', 'admin: статус снабжения paid', [p], 'paid', r2);
+  },
+  // комплектация отклонена менеджером, повторная комплектация, отгрузка (со склада: Фильтр без НДС)
+  async defect() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Фильтр: комплектация с отклонением']);
+    await pick('M2', s, D.noVat, D.alpha, 450);
+    await stockToReady(s);
+    await patch('manager', 'M10', s, 'КомментарийКСтроке', 'Комплектация отклонена: не та позиция');
+    await transition('manager', 'M10', 'sales', 'assembly', [s]);
+    await patch('storekeeper', 'K8', s, 'КомментарийКСтроке', 'Розыск позиции');
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
+    await shipAndClose([s]);
+  },
+  // отмена у поставщика после оплаты: закупка и продажа уходят в «Возврат» (поставщик Бета)
+  async cancel_supplier() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Колодки: отмена у поставщика']);
+    await pick('M2', s, D.general, D.beta, 1250);
+    const p = await buy('M4', s, D.general, D.beta, 1250);
+    await supplyTo(p, s, 'paid');
+    await patch('manager', 'M15', p, 'КомментарийКСтроке', 'Документы проверены перед возвратом');
+    await transition('manager', 'M16', 'purchases', 'return', [p]);
+    await expectStatus('M16', 'продажа вместе с закупкой', [s], 'return');
+  },
+  // возврат от клиента после отгрузки со склада (Фильтр), корректировка отгрузки
+  async return() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Фильтр: возврат от клиента']);
+    await toShipped(s, D.noVat, D.alpha, 450);
+    await transition('manager', 'N3', 'sales', 'return', [s]);
+    await patch('storekeeper', 'K6', s, 'КомментарийКСтроке', 'Возврат принят на склад');
+    await shipments('M19', [s], 'КОР-' + current.no);
+    await patch('manager', 'M16', s, 'КомментарийКСтроке', 'Заявка на возврат поставщику');
+    await patch('storekeeper', 'K6', s, 'КомментарийКСтроке', 'Подготовлено к возврату поставщику');
+    await expectStatus('P3', 'строка в «Возврат»', [s], 'return');
+  },
+  // возврат поставщику товара, пришедшего на склад; закрытие закупки закрывает продажу
+  async return_mgr() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Колодки: возврат поставщику']);
+    await pick('M2', s, D.general, D.alpha, 1200);
+    const p = await buy('M4', s, D.general, D.alpha, 1200);
+    await supplyTo(p, s, 'to_stock');
+    const pl = await line(p);
+    if (pl.receipt) current.docs.push('ПриходнаяНакладная ' + pl.receipt.number);
+    await transition('manager', 'M16', 'purchases', 'return', [p]);
+    await expectStatus('M16', 'продажа вместе с закупкой', [s], 'return');
+    await patch('storekeeper', 'K6', p, 'КомментарийКСтроке', 'Передано поставщику');
+    await transition('manager', 'M15,K7', 'purchases', 'closed', [p]);
+    await expectStatus('M15,K7', 'продажа вместе с закупкой', [s], 'closed');
+  },
+  // отказ клиента при получении: возврат на склад, повторная комплектация и отгрузка (Книга 10%)
+  async return_internal() {
+    const [s] = await newOrder('manager', 'N1,M1', ['Книга: отказ при получении']);
+    await toShipped(s, D.reduced, D.alpha, 300);
+    await transition('manager', 'N3', 'sales', 'return', [s]);
+    await patch('storekeeper', 'K6', s, 'КомментарийКСтроке', 'Отказ: товар на складе');
+    await transition('manager', 'M10', 'sales', 'assembly', [s]);
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
+    await shipments('M12', [s], 'ОТГ2-' + current.no);
+    await transition('manager', 'M15,K7', 'sales', 'closed', [s]);
+  },
+  // ремонт авто: заказ от главного механика, запчасть со склада + под заказ, норма-часы, закрытие механиком
+  async car_repair_in() {
+    const [a, b] = await newOrder('mechanic', 'N1,G1', ['Книга со склада (ремонт)', 'Колодки под заказ (ремонт)']);
+    await pick('M2', a, D.reduced, D.alpha, 300);
+    await pick('M2', b, D.general, D.beta, 1250);
+    await transition('manager', 'M3', 'sales', 'reserve', [a]);
+    const p = await buy('M4', b, D.general, D.beta, 1250);
+    await supplyTo(p, b, 'to_stock');
+    await transition('manager', 'M9', 'sales', 'assembly', [a]);
+    await supply('M9', p, 'assembly', 'assembly');
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [a]);
+    await supply('K3', p, 'assembled', 'ready_to_ship');
+    await transition('mechanic', 'G3', 'sales', 'assembly', [a, b]);
+    await patch('mechanic', 'G4', a, 'КоличествоНормаЧас', 1.5);
+    await transition('mechanic', 'G9', 'sales', 'closed', [a, b]);
   }
 };
+async function toShipped(id, nom, supplier, cost) {
+  await pick('M2', id, nom, supplier, cost);
+  await stockToReady(id);
+  await shipments('M12', [id], 'ОТГ-' + current.no);
+  await job('manager', 'K5', [id], 'shipped');
+  const l = await line(id);
+  if (l.shipmentDoc) current.docs.push('РасходнаяНакладная ' + l.shipmentDoc.number);
+}
 
 async function find(dir, q) {
   const r = await call('manager', 'GET', `/directories/${dir}?q=${encodeURIComponent(q)}`);

@@ -35,3 +35,4 @@ Apache должен быть запущен. Если запускать его 
 
 - v2.17: все три сценария падают на K5 («состояние заказа "" не принадлежит виду заказа»).
 - v2.18: все три OK. Отчёт и проверка НДС: `tasks/e2e-report-v2.18.md`, `tasks/patch-notes-v2.18.md`.
+- v2.18, остальные 8 (delivery_split, virtual_buy, defect, cancel_supplier, return, return_mgr, return_internal, car_repair_in): все OK. Отчёт — `tasks/e2e-report-v2.18-8.md`, что получилось в учёте — `tasks/e2e-findings-v2.18.md`.
