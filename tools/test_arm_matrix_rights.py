@@ -35,6 +35,12 @@ V211 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.11')
 V212 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.12')
 V213 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.13')
 V214 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.14')
+V215 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.15')
+V216 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.16')
+V217 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.17')
+V218 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.18')
+V219 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.19')
+FORM_V216 = os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_SUPPLY = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаСнабжение', 'Form.obj.bsl')
@@ -972,11 +978,11 @@ class TestV213(MatrixCase):
     def test_v214_changes_only_expected_bsl(self):
         """v2.14 относительно v2.13: код меняется только в общем модуле, форме АРМ и модуле прав."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V214):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V214).replace('\\', '/')
                 q = os.path.join(V213, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -998,15 +1004,230 @@ class TestV213(MatrixCase):
     def test_v215_changes_only_form(self):
         """v2.15 относительно v2.14: код меняется только в модуле формы АРМ."""
         changed = []
+        for dp, _dn, fns in os.walk(V215):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), V215).replace('\\', '/')
+                q = os.path.join(V214, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(changed, ['DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl'])
+
+    def test_v216_changes_only_expected_bsl(self):
+        """v2.16 относительно v2.15: ставка НДС, транзакция загрузки, «В работе», отборы — 4 модуля."""
+        changed = []
+        for dp, _dn, fns in os.walk(V216):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), V216).replace('\\', '/')
+                q = os.path.join(V215, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаЗагрузкиДанных/Form.obj.bsl']))
+
+    def test_v216_vat_rate_from_nomenclature(self):
+        """v2.16: ставка НДС строк — по виду ставки номенклатуры/организации, не зашитые 20%."""
+        fon = read(os.path.join(V216, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        oan = read(os.path.join(V216, 'CommonModule', 'Арм_ОбщегоНазначенияАРМ', 'CommonModule.obj.bsl'))
+        for text in (fon, oan):
+            self.assertNotIn('СтавкаНДС20', text)
+        self.assertEqual(fon.count('Арм_ОбщегоНазначенияАРМ.СтавкаНДСНоменклатуры(НоваяСтр.Номенклатура,'), 7)
+        self.assertIn('НоваяСтрПН.СтавкаНДС = Арм_ОбщегоНазначенияАРМ.СтавкаНДСНоменклатуры(НоваяСтрПН.Номенклатура, ПН_Объект.Организация, ПН_Объект.Дата', oan)
+        rate = procedure_text(oan, 'СтавкаНДСНоменклатуры')
+        self.assertIn('"ВидСтавкиНДС"', rate)
+        self.assertIn('"ВидСтавкиНДСПоУмолчанию"', rate)
+        self.assertIn('Справочники.СтавкиНДС.СтавкаНДС(ВидСтавки', rate)
+
+    def test_v216_in_work_state_created_when_missing(self):
+        """v2.16: НайтиПоНаименованию возвращает пустую ссылку, а не Неопределено."""
+        fon = read(os.path.join(V216, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        self.assertNotIn('СостояниеВРаботе = Неопределено', fon)
+        self.assertEqual(fon.count('Если Не ЗначениеЗаполнено(СостояниеВРаботе) Тогда'), 3)
+        self.assertNotIn('Если СостояниеЗаказа = Неопределено Тогда', read(FORM_V216))
+        self.assertIn('ЗаказОбъект.СостояниеЗаказа = СостояниеЗаказа;', read(FORM_V216))
+
+    def test_v216_import_closes_transaction_without_rows(self):
+        """v2.16: пустой заказ при загрузке — транзакция отменяется до возврата."""
+        imp = read(os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'ФормаЗагрузкиДанных', 'Form.obj.bsl'))
+        body = procedure_text(imp, 'ЗагрузитьДанныеНаСервере')
+        self.assertLess(body.index('ОтменитьТранзакцию();'), body.index('Возврат Неопределено;'))
+
+    def test_v216_filter_items_removed_after_loop(self):
+        """v2.16: элементы отбора удаляются после обхода коллекции."""
+        self.assertNotIn('ГруппаОтбора.Элементы.Удалить(Элемент);\n\t\t\tКонецЕсли;', read(FORM_V216).replace('\r\n', '\n'))
+        self.assertEqual(read(FORM_V216).count('Удаляемые = Новый Массив;'), 2)
+
+    def test_v217_changes_only_expected_bsl(self):
+        """v2.17 относительно v2.16: оптимизация и чистка — 6 модулей, без изменений метаданных."""
+        changed = []
+        for dp, _dn, fns in os.walk(V217):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), V217).replace('\\', '/')
+                q = os.path.join(V216, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl',
+            'DataProcessor/АС_АРМ2/Form/ФормаСнабжение/Form.obj.bsl',
+            'Document/ЗаказПокупателя/Document.obj.bsl',
+            'Document/ПриходнаяНакладная/Document.obj.bsl']))
+
+    def test_v217_no_query_in_loop_for_receipts_and_order_delete(self):
+        """v2.17: строки прихода и данные удаляемых заказов читаются одним запросом до цикла."""
+        oan = read(OAN)
+        supply = procedure_text(oan, 'ИзменитьСтатусыВРегистреСнабжения')
+        self.assertIn('Т.ДокументЗаказПоставщика В (&МассивЗаказовПоставщиков)', supply)
+        self.assertIn('ВсеСтрокиПрихода.НайтиСтроки(Новый Структура("ДокументЗаказПоставщика", ЗаказПост))', supply)
+        self.assertEqual(supply.count('ЗапросСтрокПрихода = Новый Запрос;'), 1)
+        self.assertLess(supply.index('ЗапросСтрокПрихода = Новый Запрос;'), supply.index('Для каждого ЗаказПост Из МассивЗаказовПоставщиков Цикл'))
+        delete = procedure_text(self.form, 'УдалитьВыбранныеЗаказыНаСервере')
+        self.assertNotIn('ЗапросСвязи', delete)
+        self.assertNotIn('ЗапросНоменклатура', delete)
+        self.assertIn('ТаблицаЗаказов.Свернуть("Заказ");', delete)
+        self.assertLess(delete.index('ЗапросДанныхЗаказов.ВыполнитьПакет()'), delete.index('Для Каждого ТекущийЗаказ Из ВыбранныеЗаказы Цикл'))
+
+    def test_v217_dead_code_removed(self):
+        """v2.17: удалены неиспользуемые процедуры, пустые перехваты ПриходнойНакладной, лишние переменные."""
+        oan = read(OAN)
+        for name in ('ЗаписатьСтрокуАРМ', 'СоздатьНовуюСтрокуПродажи'):
+            self.assertNotIn('Процедура ' + name + '(', oan)
+        self.assertNotIn('СоздатьЗаказыПоставщикамНаСервере_________2', self.form)
+        pn = read(os.path.join(EXT, 'Document', 'ПриходнаяНакладная', 'Document.obj.bsl'))
+        self.assertEqual(pn.strip(), '')
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        self.assertNotIn('ТекущийЗаказТребуетСплита', fon)
+        self.assertNotIn('Пользователь = ПараметрыПроцедуры.ТекущийПользователь;', fon)
+        # ПоляВводаПоACL модуля прав не удаляется: эталон для проверки формы (test_input_fields_acl_*)
+        self.assertIn('Функция ПоляВводаПоACL()', read(os.path.join(EXT, 'CommonModule', 'Арм_МатрицаПрав', 'CommonModule.obj.bsl')))
+
+    def test_v217_session_date_and_deletion_mark(self):
+        """v2.17: на клиенте дата сеанса через БСП; пометка удаления — у записываемого объекта."""
+        supply_form = read(FORM_SUPPLY)
+        for text in (self.form, supply_form):
+            self.assertNotIn('ТекущаяДата()', text)
+            self.assertIn('ОбщегоНазначенияКлиент.ДатаСеанса()', text)
+        zp = read(os.path.join(EXT, 'Document', 'ЗаказПокупателя', 'Document.obj.bsl'))
+        self.assertNotIn('Ссылка.ПометкаУдаления', zp)
+        self.assertEqual(zp.count('Если ЭтотОбъект.ПометкаУдаления Тогда'), 2)
+
+    def test_v218_changes_only_expected_bsl(self):
+        """v2.18 относительно v2.17: состояние заказа покупателя в «В работу» — 2 модуля, без изменений метаданных."""
+        changed = []
+        for dp, _dn, fns in os.walk(V218):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), V218).replace('\\', '/')
+                q = os.path.join(V217, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl']))
+
+    def test_v218_customer_order_state_from_order_kind(self):
+        """v2.18: заказу покупателя — состояние из его вида заказа, а не состояние заказа поставщику (K5 e2e)."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        for name in ('ОбработатьЧистыеПродажиВФоне', 'ОбработатьЗаказыПокупателей'):
+            body = procedure_text(fon, name)
+            self.assertNotIn('СостоянияЗаказовПоставщикам', body)
+            self.assertNotIn('СостояниеВРаботе', body)
+            self.assertIn('Арм_ОбщегоНазначенияАРМ.СостояниеЗаказаПокупателяВРаботе(ДокОбъект)', body)
+        # заказ поставщику по-прежнему получает состояние заказа поставщику
+        self.assertIn('Справочники.СостоянияЗаказовПоставщикам.НайтиПоНаименованию("В работе")', procedure_text(fon, 'СоздатьЗаказыПоставщикамНаСервере'))
+        # в ОбработатьЗаказыПокупателей состояние ставится после Заполнить(), которое его не перетирает
+        body = procedure_text(fon, 'ОбработатьЗаказыПокупателей')
+        self.assertLess(body.index('ДокОбъект.Заполнить(Неопределено);'), body.index('ДокОбъект.СостояниеЗаказа = '))
+        oan = read(OAN)
+        st = procedure_text(oan, 'СостояниеЗаказаПокупателяВРаботе')
+        self.assertIn('ЗаказОбъект.ВидЗаказа.ПорядокСостояний', st)
+        self.assertIn('Справочники.СостоянияЗаказовПокупателей.НайтиПоНаименованию("В работе")', st)
+
+    def test_v219_changes_only_expected_bsl(self):
+        """v2.19 относительно v2.18: транзакции по стандарту и проведение заказа после сплита — 2 модуля."""
+        changed = []
+        for dp, _dn, fns in os.walk(V219):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), V219).replace('\\', '/')
+                q = os.path.join(V218, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl']))
+
+    def test_v219_transactions_follow_standard(self):
+        """v2.19 (п. 4 проверки кода): НачатьТранзакцию → Попытка … ЗафиксироватьТранзакцию последней → Исключение: откат первым."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        oan = read(OAN)
+        for text, name in ((fon, 'СформироватьЗаказыФоновоеЗадание'), (oan, 'ПолучитьОстаткиПоСтрокам'),
+                           (oan, 'ИзменитьСтатусыВРегистреСнабжения')):
+            body = procedure_text(text, name).replace('\r\n', '\n')
+            self.assertEqual(body.count('НачатьТранзакцию();'), 1, name)
+            self.assertEqual(body.count('ОтменитьТранзакцию();'), 1, name)
+            # фиксация — последний оператор «Попытки», откат — первый в «Исключении»
+            fix = body.index('ЗафиксироватьТранзакцию();')
+            after = [x.strip() for x in body[fix:].split('\n')[1:] if x.strip()]
+            if after[0] == 'КонецЕсли;':
+                after = after[1:]
+            self.assertEqual(after[0], 'Исключение', name)
+            self.assertTrue(after[1].startswith('Если ') and 'ТранзакцияАктивна()' in after[1], name)
+            self.assertEqual(after[2], 'ОтменитьТранзакцию();', name)
+        main = procedure_text(fon, 'СформироватьЗаказыФоновоеЗадание')
+        self.assertIn('ТребуетсяПодтверждение = ГлобальноТребуетсяСплит И Не ФлагРазрешитьСплит;', main)
+        self.assertNotIn('ЗаблокироватьСтроки(', main)   # строки блокируются только без подтверждения
+        self.assertIn('ЗаблокироватьСтроки(', procedure_text(fon, 'ОбработатьОтмеченныеЗаказы'))
+        rest = procedure_text(oan, 'ПолучитьОстаткиПоСтрокам')
+        self.assertIn('ПересчитатьОстаткиПоСтрокам(НоменклатураНовоеЗначение, СсылкаНаЗаказ);', rest)
+        self.assertIn('ЗаблокироватьНоменклатуруФИФО(НоменклатураНовоеЗначение);', rest)
+
+    def test_v219_split_order_posted(self):
+        """v2.19: заказ покупателя с оставшимися после сплита строками проводится (был только записан)."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        self.assertNotIn('НовыйДокОбъект.Записать(РежимЗаписиДокумента.Запись)', fon)
+        self.assertEqual(fon.count('НовыйДокОбъект.Записать(РежимЗаписиДокумента.Проведение)'), 2)
+        # без даты отгрузки проведение падает: «Период не может быть пустым» (График движения запасов)
+        self.assertEqual(fon.count('НовыйДокОбъект.ДатаОтгрузки = ДокОбъект.ДатаОтгрузки;'), 2)
+
+    def test_v220_changes_only_expected_bsl(self):
+        """v2.20 относительно v2.19: общая ставка НДС 22% с 2026 — только Арм_ОбщегоНазначенияАРМ."""
+        changed = []
         for dp, _dn, fns in os.walk(EXT):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
                 rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
-                q = os.path.join(V214, rel)
+                q = os.path.join(V219, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
-        self.assertEqual(changed, ['DataProcessor/АС_АРМ2/Form/Форма/Form.obj.bsl'])
+        self.assertEqual(changed, ['CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl'])
+
+    def test_v220_vat_22_from_2026(self):
+        """v2.20: вид «Общая» (или не задан) с 01.01.2026 → элемент «22%»; прочие виды — ставкой конфигурации."""
+        oan = read(OAN)
+        st = procedure_text(oan, 'СтавкаНДСНоменклатуры')
+        self.assertIn('ВидСтавки = Перечисления.ВидыСтавокНДС.Общая Или Не ЗначениеЗаполнено(ВидСтавки)', st)
+        self.assertIn('ДатаСтавки >= ДатаНДС22()', st)
+        self.assertLess(st.index('Возврат СтавкаНДС22();'), st.index('Справочники.СтавкиНДС.СтавкаНДС(ВидСтавки, ДатаСтавки)'))
+        self.assertIn('Возврат Дата(2026, 1, 1);', procedure_text(oan, 'ДатаНДС22'))
+        s22 = procedure_text(oan, 'СтавкаНДС22')
+        self.assertIn('СтавкиНДС.Ставка = 22', s22)
+        self.assertIn('И НЕ СтавкиНДС.Расчетная', s22)
+        self.assertIn('Элемент.ВидСтавкиНДС = Перечисления.ВидыСтавокНДС.Общая;', s22)
+        self.assertIn('УстановитьПривилегированныйРежим(Истина);', s22)
+        self.assertIn('Возврат СтавкаНДС22();', procedure_text(oan, 'НайтиСтавкуНДС'))
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
@@ -1028,7 +1249,10 @@ class TestV213(MatrixCase):
                 lines = read(p).split('\r\n')
                 for i, ln in enumerate(lines):
                     if re.match(r'^\s*Исключение\s*$', ln):
-                        nxt = next((x for x in lines[i + 1:] if x.strip()), '')
+                        rest = [x for x in lines[i + 1:] if x.strip()]
+                        while rest and re.match(r'^\s*(Если (ВнутренняяТранзакцияОткрыта И )?ТранзакцияАктивна\(\) Тогда|ОтменитьТранзакцию\(\);|КонецЕсли;)\s*$', rest[0]):
+                            rest = rest[1:]
+                        nxt = rest[0] if rest else ''
                         if 'Арм_Журнал.' not in nxt and 'ОшибкаКлиентаАРМ(' not in ''.join(lines[i + 1:i + 3]):
                             missing.append('%s:%d' % (os.path.relpath(p, EXT), i + 1))
         self.assertEqual(missing, [])
@@ -1074,11 +1298,11 @@ class TestV213(MatrixCase):
             'Document/ПриходнаяНакладная/Document.obj.bsl',
         }
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V213):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V213).replace('\\', '/')
                 q = os.path.join(V212, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
