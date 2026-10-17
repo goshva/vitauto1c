@@ -141,7 +141,18 @@ async function buy(node, saleId, nom, supplier, cost) {
   const l = await line(id);
   check(node, 'заказ поставщику по закупке', !!l.supplierOrder, l.supplierOrder ? l.supplierOrder.number : '—');
   current.docs.push('ЗаказПоставщику ' + l.supplierOrder.number);
+  await orderSums(node, saleId);
   return id;
+}
+// v2.21 (тех. долг P0-1): строки заказа покупателя после «В работу» по закупке — с суммой (раньше Сумма = 0)
+async function orderSums(node, saleId) {
+  const order = (await line(saleId)).customerOrder;
+  const url = `${BASE}/Document_ЗаказПокупателя(guid'${order.id}')/Запасы?$format=json&$select=Количество,Цена,Сумма,СуммаНДС,Всего`;
+  const r = await fetch(encodeURI(url), { headers: { Authorization: basicToken(LOGINS.manager, '1') } });
+  const rows = r.ok ? ((await r.json()).value || []) : [];
+  const bad = rows.filter(x => x.Количество > 0 && x.Цена > 0 && Math.abs(x.Сумма - x.Количество * x.Цена) > 0.01);
+  check(node, 'заказ покупателя: Сумма = Количество × Цена', r.ok && rows.length > 0 && bad.length === 0,
+    `${r.status}, строк ${rows.length}: ${rows.map(x => `${x.Количество}×${x.Цена}=${x.Сумма} (НДС ${x.СуммаНДС}, всего ${x.Всего})`).join('; ')}`);
 }
 const CHAIN = [['M7', 'paid', 'paid'], ['P2', 'in_transit', 'in_transit'], ['K1', 'acceptance', 'acceptance'], ['K2', 'to_stock', 'to_stock'],
   ['M9', 'assembly', 'assembly'], ['K3', 'assembled', 'ready_to_ship']];

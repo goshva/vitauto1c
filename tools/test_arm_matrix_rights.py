@@ -40,6 +40,7 @@ V216 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.16')
 V217 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.17')
 V218 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.18')
 V219 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.19')
+V220 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.20')
 FORM_V216 = os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
@@ -1204,11 +1205,11 @@ class TestV213(MatrixCase):
     def test_v220_changes_only_expected_bsl(self):
         """v2.20 относительно v2.19: общая ставка НДС 22% с 2026 — только Арм_ОбщегоНазначенияАРМ."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V220):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V220).replace('\\', '/')
                 q = os.path.join(V219, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -1228,6 +1229,38 @@ class TestV213(MatrixCase):
         self.assertIn('Элемент.ВидСтавкиНДС = Перечисления.ВидыСтавокНДС.Общая;', s22)
         self.assertIn('УстановитьПривилегированныйРежим(Истина);', s22)
         self.assertIn('Возврат СтавкаНДС22();', procedure_text(oan, 'НайтиСтавкуНДС'))
+
+    def test_v221_changes_only_expected_bsl(self):
+        """v2.21 относительно v2.20: сумма строк заказа покупателя — только Арм_ДанныеЗакупокИПродажФон."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V220, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(changed, ['CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl'])
+
+    def test_v221_customer_order_rows_have_sum(self):
+        """v2.21 (тех. долг P0-1): каждая строка заказа покупателя получает Сумму до расчёта НДС (была 0)."""
+        fon = read(os.path.join(EXT, 'CommonModule', 'Арм_ДанныеЗакупокИПродажФон', 'CommonModule.obj.bsl'))
+        lines = [x.strip() for x in procedure_text(fon, 'ОбработатьЗаказыПокупателей').replace('\r\n', '\n').split('\n') if x.strip()]
+        calls = [i for i, x in enumerate(lines) if x.startswith('ТабличныеЧастиУНФКлиентСервер.РассчитатьСуммуНДСИВсего(НоваяСтр')]
+        self.assertEqual(len(calls), 3)
+        for i in calls:
+            self.assertTrue(lines[i - 1].startswith('НоваяСтр.Сумма = НоваяСтр.Количество * НоваяСтр.Цена;'), lines[i - 1])
+
+    def test_v221_extension_version_property(self):
+        """v2.21 (тех. долг P0-2): у расширения заполнено свойство «Версия»."""
+        cfg = read(os.path.join(EXT, 'Configuration.json')) if os.path.isfile(os.path.join(EXT, 'Configuration.json')) else ''
+        if not cfg:
+            for dp, _dn, fns in os.walk(EXT):
+                for f in fns:
+                    if f.startswith('Configuration') and f.endswith('.json'):
+                        cfg += read(os.path.join(dp, f))
+        self.assertIn('"\\"2.21\\""', cfg)   # строковое свойство Version в ConfigurationExtension.json
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
