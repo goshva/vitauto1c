@@ -39,6 +39,7 @@ V215 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.15')
 V216 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.16')
 V217 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.17')
 V218 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.18')
+V219 = os.path.join(ROOT, 'src', 'АРМЗакупокИПродаж_v2.19')
 FORM_V216 = os.path.join(V216, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM = os.path.join(EXT, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
 FORM_V210 = os.path.join(V210, 'DataProcessor', 'АС_АРМ2', 'Form', 'Форма', 'Form.obj.bsl')
@@ -1155,11 +1156,11 @@ class TestV213(MatrixCase):
     def test_v219_changes_only_expected_bsl(self):
         """v2.19 относительно v2.18: транзакции по стандарту и проведение заказа после сплита — 2 модуля."""
         changed = []
-        for dp, _dn, fns in os.walk(EXT):
+        for dp, _dn, fns in os.walk(V219):
             for f in fns:
                 if not f.endswith('.bsl'):
                     continue
-                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                rel = os.path.relpath(os.path.join(dp, f), V219).replace('\\', '/')
                 q = os.path.join(V218, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
@@ -1199,6 +1200,34 @@ class TestV213(MatrixCase):
         self.assertEqual(fon.count('НовыйДокОбъект.Записать(РежимЗаписиДокумента.Проведение)'), 2)
         # без даты отгрузки проведение падает: «Период не может быть пустым» (График движения запасов)
         self.assertEqual(fon.count('НовыйДокОбъект.ДатаОтгрузки = ДокОбъект.ДатаОтгрузки;'), 2)
+
+    def test_v220_changes_only_expected_bsl(self):
+        """v2.20 относительно v2.19: общая ставка НДС 22% с 2026 — только Арм_ОбщегоНазначенияАРМ."""
+        changed = []
+        for dp, _dn, fns in os.walk(EXT):
+            for f in fns:
+                if not f.endswith('.bsl'):
+                    continue
+                rel = os.path.relpath(os.path.join(dp, f), EXT).replace('\\', '/')
+                q = os.path.join(V219, rel)
+                if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
+                    changed.append(rel)
+        self.assertEqual(changed, ['CommonModule/Арм_ОбщегоНазначенияАРМ/CommonModule.obj.bsl'])
+
+    def test_v220_vat_22_from_2026(self):
+        """v2.20: вид «Общая» (или не задан) с 01.01.2026 → элемент «22%»; прочие виды — ставкой конфигурации."""
+        oan = read(OAN)
+        st = procedure_text(oan, 'СтавкаНДСНоменклатуры')
+        self.assertIn('ВидСтавки = Перечисления.ВидыСтавокНДС.Общая Или Не ЗначениеЗаполнено(ВидСтавки)', st)
+        self.assertIn('ДатаСтавки >= ДатаНДС22()', st)
+        self.assertLess(st.index('Возврат СтавкаНДС22();'), st.index('Справочники.СтавкиНДС.СтавкаНДС(ВидСтавки, ДатаСтавки)'))
+        self.assertIn('Возврат Дата(2026, 1, 1);', procedure_text(oan, 'ДатаНДС22'))
+        s22 = procedure_text(oan, 'СтавкаНДС22')
+        self.assertIn('СтавкиНДС.Ставка = 22', s22)
+        self.assertIn('И НЕ СтавкиНДС.Расчетная', s22)
+        self.assertIn('Элемент.ВидСтавкиНДС = Перечисления.ВидыСтавокНДС.Общая;', s22)
+        self.assertIn('УстановитьПривилегированныйРежим(Истина);', s22)
+        self.assertIn('Возврат СтавкаНДС22();', procedure_text(oan, 'НайтиСтавкуНДС'))
 
     def test_admin_general_input_for_system_columns(self):
         sel = procedure_text(self.form, 'ОбработатьВыборАдминистратора')
