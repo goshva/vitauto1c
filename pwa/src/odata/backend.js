@@ -184,8 +184,35 @@ export function createBackend({ baseUrl, session, log }) {
       }
     }
     if (field === 'ДокументПодписанОригинал' && body.ДокументПодписанОригинал) Object.assign(body, unmark);
+    if (field === 'Номенклатура' && rec.ВидОперации === 'Продажа') {
+      // v2.22 (F-2): смена номенклатуры продажи — командой АРМ, как в форме: новый ключ связи, незаказанные закупки
+      // старой номенклатуры удаляются, строка заказа покупателя и остатки пересчитываются
+      const nomId = body.Номенклатура_Key === EMPTY ? '' : body.Номенклатура_Key;
+      const r = await command('СменитьНоменклатуру', { id, nomenclatureId: nomId });
+      const ln = await lineAfterRecalc(id, rec, nomId ? `Номенклатура_Key eq ${guid(nomId)}` : null);
+      return r.warning ? { ...ln, warning: r.warning } : ln;
+    }
+    // пересчёт — после количества продажи или ручной закупки (её количество вычитается из потребности, авто-закупка
+    // уменьшается/удаляется); авто-закупку пересчёт пересоздал бы — её количество не пересчитываем
+    const recalc = field === 'Количество' && rec.Номенклатура_Key && rec.Номенклатура_Key !== EMPTY
+      && (rec.ВидОперации === 'Продажа' || rec.РучнаяПравка === true);
     await od.patch(keyPath(rec), body);
+    if (recalc) {
+      // v2.22 (F-4): как форма АРМ — деление по партиям и авто-закупка при нехватке остатка
+      await command('ПересчитатьСтроку', { id });
+      return lineAfterRecalc(id, rec, `КлючСвязиСтрок eq ${lit(rec.КлючСвязиСтрок)}`);
+    }
     return line(id);
+  }
+
+  // После пересчёта АРМ строка могла слиться с другой записью того же ключа (Арм_ОбщегоНазначенияАРМ.
+  // СхлопнутьСтрокиПродажПартии оставляет запись с наибольшим Ид) — тогда ищем продажу заказа по условию.
+  async function lineAfterRecalc(id, rec, cond) {
+    const same = await records(`ИдентификаторЗаписи eq ${lit(id)}`, { $top: 1 });
+    if (same.length) return toLine(same[0], units);
+    const alt = cond ? await records(`ДокументЗаказПокупателя_Key eq ${guid(rec.ДокументЗаказПокупателя_Key)} and ВидОперации eq 'Продажа' and Удаление eq false and ${cond}`, { $top: 1 }) : [];
+    if (!alt.length) fail(404, 'not_found', `Строка ${id} не найдена после пересчёта`);
+    return toLine(alt[0], units);
   }
 
   async function toggleMark(id) {
@@ -223,9 +250,8 @@ export function createBackend({ baseUrl, session, log }) {
     const ln = toLine(rec, units);
     if (!['new', 'in_work'].includes(ln.status)) fail(409, 'row_locked', 'Вычеркнуть можно только строку в статусе «Черновик» или «В работе»');
     if (ln.markedById && ln.markedById !== me()) fail(409, 'not_author', 'Строку отметил другой пользователь: ' + ln.markedBy);
-    for (const r of await od.list(ARM, { $filter: `КлючСвязиСтрок eq ${lit(rec.КлючСвязиСтрок)}` })) {
-      await od.patch(keyPath(r), { Удаление: true, ...unmark });
-    }
+    // v2.22 (F-1): командой АРМ — продажа и незаказанные закупки ключа вычеркиваются, строка уходит из заказа покупателя
+    await command('Вычеркнуть', { id });
     return null;
   }
 

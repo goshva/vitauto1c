@@ -47,10 +47,20 @@ async function line(id) {
     const m = META[id];
     const view = m.operation === 'purchase' ? 'purchases' : 'sales';
     const items = (await call('manager', 'GET', `/lines?view=${view}&customerOrderId=${m.order}&limit=500`)).data.items || [];
-    const next = items.find(l => l.linkKey === m.linkKey && l.operation === m.operation && !l.deleted);
+    let next = items.find(l => l.linkKey === m.linkKey && l.operation === m.operation && !l.deleted);
+    // сплит заказа (строка ушла в новый заказ с новым ключом связи) после деления/слияния строки по партиям (новый Ид):
+    // ищем по артикулу клиента из листа (уникален в сценарии) и номеру заказа клиента — они переносятся со строкой
+    if (!next && m.factArticle) {
+      const f = `НомерЗаказаКлиента eq '${m.clientOrderNumber}' and АртикулКлиента eq '${m.factArticle}' and ВидОперации eq '${m.operation === 'purchase' ? 'Закупка' : 'Продажа'}' and Удаление eq false`;
+      const res = await fetch(encodeURI(`${BASE}/InformationRegister_Арм_ДанныеЗакупокИПродаж?$format=json&$select=ИдентификаторЗаписи,РучнаяПравка&$filter=${f}`), { headers: { Authorization: basicToken(LOGINS.manager, '1') } });
+      const recs = res.ok ? (await res.json()).value : [];
+      const rec = recs.find(x => m.operation !== 'purchase' || x.РучнаяПравка === m.manual) || recs[0];
+      if (rec) next = { id: rec.ИдентификаторЗаписи };
+    }
     if (next) { ALIAS[id] = next.id; id = next.id; r = await call('manager', 'GET', '/lines/' + id); }
   }
-  if (r.status === 200) META[id] = { linkKey: r.data.linkKey, operation: r.data.operation, order: r.data.customerOrder && r.data.customerOrder.id };
+  if (r.status === 200) META[id] = { linkKey: r.data.linkKey, operation: r.data.operation, order: r.data.customerOrder && r.data.customerOrder.id,
+    clientOrderNumber: r.data.clientOrderNumber, factArticle: r.data.factArticle, manual: r.data.manual };
   return r.data || {};
 }
 async function expectStatus(node, title, ids, status, r) {
@@ -370,6 +380,12 @@ const SCENARIOS = {
     await buy('M4', a, disk, D.alpha, 1200);
     const oa = (await line(a)).customerOrder, ob = (await line(b)).customerOrder;
     check('M4', 'строка Фильтра ушла в новый заказ', oa.id !== ob.id, `${oa.number} / ${ob.number}`);
+    const lb = await line(b);   // v2.22 (BUG-1, BUG-9): номер нового заказа в строке, ключ связи строки тот же, что в документе
+    check('M4', 'в строке номер нового заказа', (lb.internalOrderNumber || '').trim() === (ob.number || '').trim(), `${lb.internalOrderNumber} / ${ob.number}`);
+    const nd = await odDoc('ЗаказПокупателя', ob.id);
+    check('M4', 'ключ строки = ключу строки нового заказа покупателя', (nd.Запасы || []).some(z => z.КлючСвязиСтрок === lb.linkKey), `${lb.linkKey} / ${(nd.Запасы || []).map(z => z.КлючСвязиСтрок).join(',')}`);
+    const moved = await orderLines('sales', ob.id);   // v2.22 (BUG-10): строка не задваивается в новом заказе
+    check('M4', 'в новом заказе одна строка АРМ', moved.length === 1, `строк ${moved.length}: ${moved.map(x => x.id.slice(0, 8)).join(', ')}`);
     const doc = await odDoc('ЗаказПокупателя', ob.id);
     check('M4', 'заказ-остаток проведён', doc.Posted === true, `${doc.Number} проведён ${doc.Posted}`);
     current.orders.push(ob.number);
@@ -381,9 +397,16 @@ const SCENARIOS = {
     await pick('M2', a, disk, D.alpha, 1200);
     const p = await addPurchase('M4', a, disk, D.alpha, 1200);
     const j = await jobRaw('manager', [p]);
-    const known = j.state !== 'done' && /Номенклатура.*пуст/i.test(j.message || '');
-    check('M4', 'BUG-4 подтверждён (после исправления в v2.22 шаг станет FAIL — тогда ждать «done»)', known || j.state === 'done', `${j.state}: ${(j.message || '').slice(0, 160)}`);
-    current.docs.push(known ? 'BUG-4 воспроизведён' : 'BUG-4 НЕ воспроизводится');
+    // v2.22 (BUG-4 исправлен): заказ-остаток со строкой без подбора записывается без проведения, задание проходит
+    check('M4', 'сплит с неподобранной строкой: заказ поставщику оформлен', j.state === 'done', `${j.state}: ${(j.message || '').slice(0, 160)}`);
+    check('M4', 'закупка заказана', (await line(p)).status === 'ordered', (await line(p)).status);
+    // v2.22 (BUG-10): перенесённая в новый заказ строка без подбора — одна запись АРМ (раньше задваивалась)
+    const lp = await line(p);
+    const f = `НомерЗаказаКлиента eq '${lp.clientOrderNumber}' and ВидОперации eq 'Продажа' and Удаление eq false`;
+    const res = await fetch(encodeURI(`${BASE}/InformationRegister_Арм_ДанныеЗакупокИПродаж?$format=json&$select=ИдентификаторЗаписи,НоменклатураКлиента,ДокументЗаказПокупателя_Key&$filter=${f}`), { headers: { Authorization: basicToken(LOGINS.manager, '1') } });
+    const recs = res.ok ? (await res.json()).value : [];
+    const unpicked = recs.filter(x => /без подбора/.test(x.НоменклатураКлиента));
+    check('M4', 'строка без подбора не задвоена', unpicked.length === 1 && recs.length === 2, `продаж ${recs.length}, «без подбора» ${unpicked.length}`);
   },
   // M6 частично со склада: Колодки 11 шт при остатке ~10 → ожидание: 10 со склада + 1 в закупку (BUG-3 искажает остаток)
   async m06_partial_stock() {
@@ -393,7 +416,12 @@ const SCENARIOS = {
     const order = (await line(a)).customerOrder.id;
     const sales = await orderLines('sales', order), purch = await orderLines('purchases', order);
     const l = await line(a);
-    check('M2', 'наблюдение: деление строки по остатку', true, `строк продаж ${sales.length} (кол. ${sales.map(x => x.quantity ?? x.Количество).join('+')}), закупок ${purch.length}, ОстатокДляСтроки ${l.stockLeft ?? l.ОстатокДляСтроки ?? '?'}`);
+    const qty = sales.reduce((s, x) => s + (+(x.quantity ?? x.Количество) || 0), 0);
+    const info = `строк продаж ${sales.length} (кол. ${sales.map(x => x.quantity ?? x.Количество).join('+')}), закупок ${purch.length} (кол. ${purch.map(x => x.quantity).join('+')}), остаток в строке ${l.stockQty ?? '?'}`;
+    // v2.22 (BUG-3 исправлен): остаток не размножается; при нехватке — деление по партиям и авто-закупка на недостачу
+    check('M2', 'количество продажи сохранено (11)', qty === 11, info);
+    // со склада целиком — одна строка с партией; при нехватке — деление по партиям или авто-закупка на недостачу
+    check('M2', 'количество покрыто: партии склада и/или закупка', sales.length > 1 || purch.length > 0 || sales.every(x => x.batch && x.batch.id), info + `, партия ${l.batch ? l.batch.name || l.batch.id : '—'}`);
   },
   // M7 пакет «Заказать»: одна некорректная закупка (без поставщика и цены) в другом заказе валит весь пакет; без неё — проходит
   async m07_batch_all_or_nothing() {
@@ -416,11 +444,9 @@ const SCENARIOS = {
     await pick('M2', a, disk, D.alpha, 1200);
     const p = await addPurchase('M4', a, disk, D.alpha, 1200);
     const j = await jobRaw('storekeeper', [p]);
-    // BUG-6: проверка роли (ОтказЕслиНеМенеджерИлиАдминАРМ) есть только в форме АРМ; команда АРМ_OData «ВРаботе» и
-    // фоновая процедура роль не проверяют — кладовщик через PWA/OData заказывает. После исправления ждать отказ.
+    // v2.22 (BUG-6 исправлен): роль проверяют команда АРМ_OData «ВРаботе» (403) и сама фоновая процедура
     const st = (await line(p)).status;
-    check('K', j.state === 'done' ? 'BUG-6 подтверждён: кладовщик оформил заказ поставщику' : 'кладовщику «Заказать» запрещено', true, `${j.state}: ${(j.message || '').slice(0, 120)} → ${st}`);
-    current.docs.push(j.state === 'done' ? 'BUG-6 воспроизведён' : 'BUG-6 НЕ воспроизводится (роль проверяется)');
+    check('K', 'кладовщику «Заказать» запрещено', j.state !== 'done' && st !== 'ordered' && /менеджер/i.test(j.message || ''), `${j.state}: ${(j.message || '').slice(0, 120)} → ${st}`);
   },
   // M9 нулевая цена закупки → отказ проверки «Нулевая цена»
   async m09_zero_price() {
@@ -498,7 +524,8 @@ const SCENARIOS = {
     await stockToReady(a);
     const j = await jobRaw('manager', [a]);
     const l = await line(a);
-    check('K5', 'без даты/номера: не отгружено, понятный отказ', l.status !== 'shipped' && j.state !== 'done', `${j.state}: ${(j.message || '').replace(/\s+/g, ' ').slice(0, 160)} → ${l.status}, РН ${l.shipmentDoc ? l.shipmentDoc.number : '—'}`);
+    // F-3 на паузе (вопрос бизнесу: обязательны ли дата и номер отгрузки) — наблюдение, не ошибка
+    check('K5', 'наблюдение F-3: отгрузка без даты/номера', true, `${j.state}: ${(j.message || '').replace(/\s+/g, ' ').slice(0, 160)} → ${l.status}, РН ${l.shipmentDoc ? l.shipmentDoc.number : '—'}`);
   },
   // R19 повторное «Провести заказ» по отгруженной строке → второй РН нет
   async m17_double_ship() {
@@ -554,6 +581,21 @@ const SCENARIOS = {
     const l = await line(a);
     await clearMarks();
     check('M', '«Подготовлено»', r.status === 200 && ['prepared', 'ready_to_ship'].includes(l.status) /* PWA мапит Подготовлено→ready_to_ship (см. bugs-v2.22 F-6) */, `${r.status}${problem(r)} → ${l.status}`);
+  },
+  // v2.22 (F-4): количество продажи без остатка, изменённое через PWA, создаёт авто-закупку на недостачу (как форма АРМ);
+  // ручная закупка уменьшает авто-закупку
+  async m27_auto_purchase() {
+    const disk = await find('nomenclature', 'E2E Диск');   // seed E2E-4: без остатка
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск без остатка — авто-закупка']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    await patch('manager', 'M2', a, 'Количество', 2);
+    const order = (await line(a)).customerOrder.id;
+    const auto = (await orderLines('purchases', order)).filter(p => p.nomenclature && p.nomenclature.id === disk.id);
+    check('M2', 'авто-закупка на 2 шт', auto.length === 1 && +auto[0].quantity === 2, auto.map(p => `${p.quantity} ${p.status}`).join(', ') || 'закупок нет');
+    const p = await addPurchase('M4', a, disk, D.alpha, 1200);
+    const all = (await orderLines('purchases', order)).filter(x => x.nomenclature && x.nomenclature.id === disk.id);
+    const sum = all.reduce((s, x) => s + (+x.quantity || 0), 0);
+    check('M4', 'ручная 1 шт + авто 1 шт (потребность 2)', all.length === 2 && sum === 2 && all.some(x => x.id === (p.id || p)), all.map(x => `${x.quantity}`).join('+'));
   },
   // R24 изменение количества закупки до «Заказать» → ЗП на новое количество
   async m26_purchase_qty() {
