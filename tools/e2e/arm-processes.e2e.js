@@ -317,6 +317,19 @@ const SCENARIOS = {
     await transition('mechanic', 'G3', 'sales', 'assembly', [a, b]);
     await patch('mechanic', 'G4', a, 'КоличествоНормаЧас', 1.5);
     await transition('mechanic', 'G9', 'sales', 'closed', [a, b]);
+  },
+  // сплит с неподобранной строкой (ручная проверка 18.10.2026): товар без остатка → АРМ сам создаёт закупку;
+  // «Заказать» по ней уносит неподобранную строку в новый заказ. v2.19–v2.21 проводят его → «Номенклатура не может быть пустым».
+  async split_unpicked() {
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск под закупку', 'Строка без подбора']);
+    const disk = await find('nomenclature', 'E2E Диск');   // seed-nomenclature-odata.mjs, остатка нет
+    await pick('M2', a, disk, D.alpha, 1200);
+    const order = (await line(a)).customerOrder.id;
+    const auto = ((await call('manager', 'GET', `/lines?view=purchases&customerOrderId=${order}`)).data.items || []).filter(l => !l.deleted);
+    if (!auto.length) { await buy('M4', a, disk, D.alpha, 1200); return; }   // через OData авто-закупка не создаётся (форма АРМ — создаёт)
+    for (const [f, v] of [['Поставщик', D.alpha.id], ['Цена', 1200]]) await patch('manager', 'M4', auto[0].id, f, v);
+    await job('manager', 'M4', [auto[0].id], 'ordered');
+    await orderSums('M4', a);
   }
 };
 async function toShipped(id, nom, supplier, cost) {

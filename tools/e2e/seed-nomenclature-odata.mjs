@@ -8,7 +8,8 @@ const B = base.replace(/\/?$/, '/');
 const auth = 'Basic ' + Buffer.from(`${user}:${pwd}`, 'utf8').toString('base64');
 const NOMS = [['E2E Колодки тормозные (НДС общая)', 'Общая', 'E2E-1'],
               ['E2E Фильтр масляный (без НДС)', 'БезНДС', 'E2E-2'],
-              ['E2E Книга по ТО (НДС 10%)', 'Пониженная', 'E2E-3']];
+              ['E2E Книга по ТО (НДС 10%)', 'Пониженная', 'E2E-3'],
+              ['E2E Диск тормозной (под закупку, НДС общая)', 'Общая', 'E2E-4']];   // без остатка: закупку АРМ создаёт сам
 const lit = s => `'${String(s).replace(/'/g, "''")}'`;
 async function od(method, path, body) {
   const r = await fetch(B + path, { method, headers: { Authorization: auth, Accept: 'application/json', 'Content-Type': 'application/json' },
