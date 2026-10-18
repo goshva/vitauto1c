@@ -330,8 +330,157 @@ const SCENARIOS = {
     for (const [f, v] of [['Поставщик', D.alpha.id], ['Цена', 1200]]) await patch('manager', 'M4', auto[0].id, f, v);
     await job('manager', 'M4', [auto[0].id], 'ordered');
     await orderSums('M4', a);
+  },
+
+  // ---------------- ручные сценарии M1–M11 (как в инструкции для ручной проверки, через команды АРМ_OData) ----------------
+  // M1 импорт листа клиента: 3 строки «В работе», заказ записан без номенклатуры и не проведён
+  async m01_import() {
+    const ids = await newOrder('manager', 'N1', ['Импорт 1', 'Импорт 2', 'Импорт 3']);
+    const st = []; for (const id of ids) st.push((await line(id)).status);
+    check('N1', 'строки после импорта в статусе «В работе»', st.every(s => s === 'in_work'), st.join(', '));
+    const doc = await odDoc('ЗаказПокупателя', (await line(ids[0])).customerOrder.id);
+    check('N1', 'заказ покупателя: 3 строки, не проведён', doc.Запасы.length === 3 && !doc.Posted, `строк ${doc.Запасы.length}, проведён ${doc.Posted}`);
+  },
+  // M2 под закупку (сценарий А): Диск без остатка → закупка → «Заказать» → снабжение → приход → отгрузка → закрытие
+  async m02_buy_full() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [s] = await newOrder('manager', 'N1,M1', ['Диск под закупку']);
+    await pick('M2', s, disk, D.alpha, 1200);
+    const p = await buy('M4', s, disk, D.alpha, 1200);
+    await supplyTo(p, s, 'assembled');
+    const pl = await line(p);
+    check('K3', 'приходная накладная', !!(pl.receipt && pl.receipt.posted), pl.receipt ? `${pl.receipt.number}, проведена ${pl.receipt.posted}` : '—');
+    if (pl.receipt) current.docs.push('ПриходнаяНакладная ' + pl.receipt.number);
+    await shipAndClose([s]);
+  },
+  // M3 со склада (сценарий Б): Фильтр без НДС + Книга 10% — резерв → комплектация → собран → отгрузка
+  async m03_stock_vat() {
+    const [a, b] = await newOrder('manager', 'N1,M1', ['Фильтр со склада', 'Книга со склада']);
+    await pick('M2', a, D.noVat, D.alpha, 450);
+    await pick('M2', b, D.reduced, D.alpha, 300);
+    for (const id of [a, b]) await stockToReady(id);
+    await shipAndClose([a, b]);
+  },
+  // M4 сплит с подобранной второй строкой: «Заказать» по закупке уносит Фильтр в новый заказ, он проведён (v2.19)
+  async m04_split_picked() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a, b] = await newOrder('manager', 'N1,M1', ['Диск под закупку', 'Фильтр со склада']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    await pick('M2', b, D.noVat, D.alpha, 450);
+    await buy('M4', a, disk, D.alpha, 1200);
+    const oa = (await line(a)).customerOrder, ob = (await line(b)).customerOrder;
+    check('M4', 'строка Фильтра ушла в новый заказ', oa.id !== ob.id, `${oa.number} / ${ob.number}`);
+    const doc = await odDoc('ЗаказПокупателя', ob.id);
+    check('M4', 'заказ-остаток проведён', doc.Posted === true, `${doc.Number} проведён ${doc.Posted}`);
+    current.orders.push(ob.number);
+  },
+  // M5 сплит с неподобранной строкой — известная ошибка BUG-4: ожидаем отказ «Номенклатура … пустым»
+  async m05_split_unpicked_known() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск под закупку', 'Строка без подбора']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    const p = await addPurchase('M4', a, disk, D.alpha, 1200);
+    const j = await jobRaw('manager', [p]);
+    const known = j.state !== 'done' && /Номенклатура.*пуст/i.test(j.message || '');
+    check('M4', 'BUG-4 подтверждён (после исправления в v2.22 шаг станет FAIL — тогда ждать «done»)', known || j.state === 'done', `${j.state}: ${(j.message || '').slice(0, 160)}`);
+    current.docs.push(known ? 'BUG-4 воспроизведён' : 'BUG-4 НЕ воспроизводится');
+  },
+  // M6 частично со склада: Колодки 11 шт при остатке ~10 → ожидание: 10 со склада + 1 в закупку (BUG-3 искажает остаток)
+  async m06_partial_stock() {
+    const [a] = await newOrder('manager', 'N1,M1', ['Колодки 11 шт']);
+    await pick('M2', a, D.general, D.alpha, 1200);
+    await patch('manager', 'M2', a, 'Количество', 11);
+    const order = (await line(a)).customerOrder.id;
+    const sales = await orderLines('sales', order), purch = await orderLines('purchases', order);
+    const l = await line(a);
+    check('M2', 'наблюдение: деление строки по остатку', true, `строк продаж ${sales.length} (кол. ${sales.map(x => x.quantity ?? x.Количество).join('+')}), закупок ${purch.length}, ОстатокДляСтроки ${l.stockLeft ?? l.ОстатокДляСтроки ?? '?'}`);
+  },
+  // M7 пакет «Заказать»: одна некорректная закупка (без поставщика и цены) в другом заказе валит весь пакет; без неё — проходит
+  async m07_batch_all_or_nothing() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — хорошая закупка']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    const good = await addPurchase('M4', a, disk, D.alpha, 1200);
+    const [b] = await newOrder('manager', 'N1,M1', ['Диск — закупка без поставщика']);
+    await pick('M2', b, disk, D.alpha, 1200);
+    const bad = await addPurchase('M4', b, disk, null, 0);
+    const j1 = await jobRaw('manager', [good, bad]);
+    check('M4', 'пакет с некорректной строкой отклонён целиком', j1.state !== 'done' && /поставщик|Нулевая цена/i.test(j1.message || ''), `${j1.state}: ${(j1.message || '').replace(/\s+/g, ' ').slice(0, 200)}`);
+    check('M4', 'хорошая строка не тронута', (await line(good)).status === 'new', (await line(good)).status);
+    await job('manager', 'M4', [good], 'ordered');
+  },
+  // M8 права: кладовщик не может «Заказать»
+  async m08_role_storekeeper() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — заказывает кладовщик']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    const p = await addPurchase('M4', a, disk, D.alpha, 1200);
+    const j = await jobRaw('storekeeper', [p]);
+    // BUG-6: проверка роли (ОтказЕслиНеМенеджерИлиАдминАРМ) есть только в форме АРМ; команда АРМ_OData «ВРаботе» и
+    // фоновая процедура роль не проверяют — кладовщик через PWA/OData заказывает. После исправления ждать отказ.
+    const st = (await line(p)).status;
+    check('K', j.state === 'done' ? 'BUG-6 подтверждён: кладовщик оформил заказ поставщику' : 'кладовщику «Заказать» запрещено', true, `${j.state}: ${(j.message || '').slice(0, 120)} → ${st}`);
+    current.docs.push(j.state === 'done' ? 'BUG-6 воспроизведён' : 'BUG-6 НЕ воспроизводится (роль проверяется)');
+  },
+  // M9 нулевая цена закупки → отказ проверки «Нулевая цена»
+  async m09_zero_price() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — нулевая цена']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    const p = await addPurchase('M4', a, disk, D.alpha, 0);
+    const j = await jobRaw('manager', [p]);
+    check('M4', 'отказ «Нулевая цена»', j.state !== 'done' && /Нулевая цена/i.test(j.message || ''), `${j.state}: ${(j.message || '').replace(/\s+/g, ' ').slice(0, 160)}`);
+  },
+  // M10 повторный «Заказать» по уже заказанной строке не создаёт второй заказ поставщику
+  async m10_reorder_twice() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — повторный заказ']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    const p = await buy('M4', a, disk, D.alpha, 1200);
+    const first = (await line(p)).supplierOrder;
+    const j = await jobRaw('manager', [p]);
+    const second = (await line(p)).supplierOrder;
+    check('M4', 'заказ поставщику тот же', first && second && first.id === second.id, `${first && first.number} → ${second && second.number} (повтор: ${j.state} ${(j.message || '').slice(0, 80)})`);
+  },
+  // M11 два заказа покупателей одним «Заказать» → оба заказаны, суммы в обоих заказах покупателя
+  async m11_two_orders() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — заказ 1']);
+    const [b] = await newOrder('manager', 'N1,M1', ['Диск — заказ 2']);
+    for (const id of [a, b]) await pick('M2', id, disk, D.alpha, 1200);
+    const pa = await addPurchase('M4', a, disk, D.alpha, 1200), pb = await addPurchase('M4', b, disk, D.alpha, 1200);
+    await job('manager', 'M4', [pa, pb], 'ordered');
+    for (const id of [a, b]) await orderSums('M4', id);
+    const za = (await line(pa)).supplierOrder, zb = (await line(pb)).supplierOrder;
+    check('M4', 'заказы поставщику', !!(za && zb), `${za && za.number} / ${zb && zb.number}`);
   }
 };
+async function odDoc(type, id) {
+  const r = await fetch(encodeURI(`${BASE}/Document_${type}(guid'${id}')?$format=json`), { headers: { Authorization: basicToken(LOGINS.manager, '1') } });
+  return r.ok ? r.json() : { Запасы: [], error: r.status };
+}
+async function orderLines(view, order) {
+  return ((await call('manager', 'GET', `/lines?view=${view}&customerOrderId=${order}&limit=100`)).data.items || []).filter(l => !l.deleted);
+}
+// строка закупки под продажу; supplier = null и cost = 0 — для негативных сценариев
+async function addPurchase(node, saleId, nom, supplier, cost) {
+  const r = await call('manager', 'POST', '/lines', { view: 'purchases', sourceLineId: (await line(saleId)).id, nomenclatureIds: [nom.id] });
+  check(node, 'manager: строка закупки', r.status === 201, String(r.status) + problem(r));
+  const id = r.data[0].id;
+  await patch('manager', node, id, 'Количество', 1);
+  if (supplier) await patch('manager', node, id, 'Поставщик', supplier.id);
+  if (cost) { await patch('manager', node, id, 'СебестоимостьЕдиницы', cost); await patch('manager', node, id, 'Цена', cost); }
+  return id;
+}
+// «В работе»/«Заказать» без проверки результата: { state, message }
+async function jobRaw(role, ids) {
+  for (const id of ids) await mark(role, id);
+  const r = await call(role, 'POST', '/sales/jobs', { allowSplit: true });
+  let j = r.status < 400 ? r.data : { state: 'failed', message: r.status + problem(r) };
+  for (let i = 0; i < 90 && j && j.state === 'running'; i++) { await new Promise(res => setTimeout(res, 1000)); j = (await call(role, 'GET', '/jobs/' + j.id)).data; }
+  await clearMarks();
+  return j || { state: 'failed', message: 'нет ответа' };
+}
 async function toShipped(id, nom, supplier, cost) {
   await pick('M2', id, nom, supplier, cost);
   await stockToReady(id);
