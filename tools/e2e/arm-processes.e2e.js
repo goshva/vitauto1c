@@ -453,6 +453,122 @@ const SCENARIOS = {
     for (const id of [a, b]) await orderSums('M4', id);
     const za = (await line(pa)).supplierOrder, zb = (await line(pb)).supplierOrder;
     check('M4', 'заказы поставщику', !!(za && zb), `${za && za.number} / ${zb && zb.number}`);
+  },
+
+  // ---------------- эталон R12–R25 (tasks/manual-reference.md): утверждается эталон, расхождение = находка ----------------
+  // R21 ручная правка Р2 Цена продажи → в РН новая цена
+  async m12_manual_price() {
+    const [a] = await newOrder('manager', 'N1,M1', ['Фильтр — ручная цена']);
+    await pick('M2', a, D.noVat, D.alpha, 450);
+    await patch('manager', 'M2', a, 'Цена', 600);
+    check('M2', 'Р2 Цена продажи = 600 после правки', (await line(a)).salePrice === 600, String((await line(a)).salePrice));
+    await stockToReady(a);
+    await shipAndClose([a]);
+    const rn = (await line(a)).shipmentDoc;
+    const doc = rn ? await odDoc('РасходнаяНакладная', rn.id) : { Запасы: [] };
+    const row = (doc.Запасы || []).find(z => z.Количество > 0) || {};
+    check('M15', 'РН: цена 600, сумма 600', row.Цена === 600 && row.Сумма === 600, `${rn && rn.number}: цена ${row.Цена}, сумма ${row.Сумма}`);
+  },
+  // R22 «Вычеркнуть товар» → строка удалена из АРМ; в заказе покупателя строки нет
+  async m13_strike() {
+    const [a, b] = await newOrder('manager', 'N1,M1', ['Вычеркнуть', 'Оставить']);
+    const order = (await line(a)).customerOrder.id;
+    const r = await call('manager', 'DELETE', '/lines/' + a);
+    check('M1', 'DELETE /lines → 204', r.status === 204 || r.status === 200, String(r.status) + problem(r));
+    const left = await orderLines('sales', order);
+    check('M1', 'в АРМ осталась одна строка', left.length === 1, `строк ${left.length}`);
+    const doc = await odDoc('ЗаказПокупателя', order);
+    check('M1', 'в документе заказа тоже одна строка', (doc.Запасы || []).length === 1, `строк в документе ${(doc.Запасы || []).length}`);
+  },
+  // R23 смена номенклатуры после создания закупки → закупка старой номенклатуры не висит
+  async m15_change_nom() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск → Фильтр']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    await addPurchase('M4', a, disk, D.alpha, 1200);
+    await patch('manager', 'M2', a, 'Номенклатура', D.noVat.id);
+    const order = (await line(a)).customerOrder.id;
+    const purch = (await orderLines('purchases', order)).filter(p => p.nomenclature && p.nomenclature.id === disk.id);
+    check('M2', 'закупка Диска после смены номенклатуры удалена', purch.length === 0, `висит закупок Диска: ${purch.length} (${purch.map(p => p.status).join(', ')})`);
+  },
+  // R18 «Провести заказ» без даты и номера отгрузки → понятный отказ
+  async m16_ship_no_info() {
+    const [a] = await newOrder('manager', 'N1,M1', ['Фильтр — без даты отгрузки']);
+    await pick('M2', a, D.noVat, D.alpha, 450);
+    await stockToReady(a);
+    const j = await jobRaw('manager', [a]);
+    const l = await line(a);
+    check('K5', 'без даты/номера: не отгружено, понятный отказ', l.status !== 'shipped' && j.state !== 'done', `${j.state}: ${(j.message || '').replace(/\s+/g, ' ').slice(0, 160)} → ${l.status}, РН ${l.shipmentDoc ? l.shipmentDoc.number : '—'}`);
+  },
+  // R19 повторное «Провести заказ» по отгруженной строке → второй РН нет
+  async m17_double_ship() {
+    const [a] = await newOrder('manager', 'N1,M1', ['Фильтр — двойная отгрузка']);
+    await pick('M2', a, D.noVat, D.alpha, 450);
+    await stockToReady(a);
+    await shipments('M12', [a], 'ОТГ-' + current.no);
+    await job('manager', 'K5', [a], 'shipped');
+    const first = (await line(a)).shipmentDoc;
+    const j = await jobRaw('manager', [a]);
+    const second = (await line(a)).shipmentDoc;
+    check('K5', 'РН та же', first && second && first.id === second.id, `${first && first.number} → ${second && second.number} (${j.state} ${(j.message || '').slice(0, 80)})`);
+  },
+  // R20 отгрузка части строк заказа → РН только по отмеченной
+  async m18_partial_ship() {
+    const [a, b] = await newOrder('manager', 'N1,M1', ['Фильтр — отгружаем', 'Книга — ждёт']);
+    await pick('M2', a, D.noVat, D.alpha, 450);
+    await pick('M2', b, D.reduced, D.alpha, 300);
+    for (const id of [a, b]) await stockToReady(id);
+    await shipments('M12', [a, b], 'ОТГ-' + current.no);
+    const j = await jobRaw('manager', [a]);
+    const la = await line(a), lb = await line(b);
+    check('K5', 'отгружена только отмеченная', la.status === 'shipped' && lb.status !== 'shipped', `${j.state} ${(j.message || '').replace(/\s+/g, ' ').slice(0, 100)} → ${la.status} / ${lb.status}`);
+    const doc = la.shipmentDoc ? await odDoc('РасходнаяНакладная', la.shipmentDoc.id) : { Запасы: [] };
+    check('K5', 'в РН одна строка', (doc.Запасы || []).length === 1, `${la.shipmentDoc && la.shipmentDoc.number}: строк ${(doc.Запасы || []).length}`);
+  },
+  // R13 чужие отметки: менеджер отметил A, администратор жмёт «Заказать» по своей B → A не тронута
+  async m19_foreign_marks() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — отметил менеджер']);
+    const [b] = await newOrder('manager', 'N1,M1', ['Диск — заказывает админ']);
+    for (const id of [a, b]) await pick('M2', id, disk, D.alpha, 1200);
+    const pa = await addPurchase('M4', a, disk, D.alpha, 1200), pb = await addPurchase('M4', b, disk, D.alpha, 1200);
+    await mark('manager', pa);
+    const j = await jobRaw('admin', [pb]);
+    const la = await line(pa), lb = await line(pb);
+    check('M4', 'админ заказал свою', lb.status === 'ordered', `${j.state} → ${lb.status}`);
+    check('M4', 'чужая отметка не тронута', la.status === 'new', `${la.status}, отмечена ${la.marked} (${la.markedBy})`);
+    await clearMarks();
+  },
+  // R14 «Заказать» без отметок → «нет отмеченных строк»
+  async m20_nothing_marked() {
+    await clearMarks();
+    const r = await call('manager', 'POST', '/sales/jobs', { allowSplit: true });
+    check('M4', '409 nothing_marked', r.status === 409 && r.data.code === 'nothing_marked', `${r.status}${problem(r)}`);
+  },
+  // R25 «Подготовлено» по продаже со склада → статус «Подготовлено»
+  async m23_prepared() {
+    const [a] = await newOrder('manager', 'N1,M1', ['Фильтр — подготовлено']);
+    await pick('M2', a, D.noVat, D.alpha, 450);
+    await mark('manager', a);
+    const r = await call('manager', 'POST', '/sales/prepared');
+    const l = await line(a);
+    await clearMarks();
+    check('M', '«Подготовлено»', r.status === 200 && ['prepared', 'ready_to_ship'].includes(l.status) /* PWA мапит Подготовлено→ready_to_ship (см. bugs-v2.22 F-6) */, `${r.status}${problem(r)} → ${l.status}`);
+  },
+  // R24 изменение количества закупки до «Заказать» → ЗП на новое количество
+  async m26_purchase_qty() {
+    const disk = await find('nomenclature', 'E2E Диск');
+    const [a] = await newOrder('manager', 'N1,M1', ['Диск — 3 шт']);
+    await pick('M2', a, disk, D.alpha, 1200);
+    await patch('manager', 'M2', a, 'Количество', 3);
+    const p = await addPurchase('M4', a, disk, D.alpha, 1200);
+    await patch('manager', 'M4', p, 'Количество', 3);
+    await job('manager', 'M4', [p], 'ordered');
+    const zp = (await line(p)).supplierOrder;
+    const doc = zp ? await odDoc('ЗаказПоставщику', zp.id) : { Запасы: [] };
+    const q = (doc.Запасы || []).reduce((s, z) => s + z.Количество, 0);
+    check('M4', 'ЗП на 3 шт, 3600', q === 3 && doc.СуммаДокумента === 3600, `${zp && zp.number}: кол ${q}, сумма ${doc.СуммаДокумента}`);
+    await orderSums('M4', a);
   }
 };
 async function odDoc(type, id) {
