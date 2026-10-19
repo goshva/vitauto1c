@@ -149,11 +149,11 @@ describe('OData: пишущие операции PWA', () => {
     await expect(m.call('POST', `/sales/customer-orders/${order}/post`)).rejects.toMatchObject({ status: 409, code: 'nothing_marked' });
   });
 
-  it('команды АРМ_OData: «В работе» без отметок — 409, задание по Ид, заказ поставщику — 501 (в АРМ заглушка)', async ({ skip }) => {
+  it('команды АРМ_OData: «В работе» без отметок — 409, задание по Ид; «Заказать» — та же команда ВРаботе, отдельной операции нет', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
     await expect(m.call('POST', '/sales/jobs', { body: { allowSplit: false } })).rejects.toMatchObject({ status: 409, code: 'nothing_marked' });
     await expect(m.call('GET', '/jobs/cmd-00000000000000000000000000000000')).rejects.toMatchObject({ status: 404 });
-    await expect(m.call('POST', '/sales/supplier-orders', { body: {} })).rejects.toMatchObject({ status: 501 });
+    await expect(m.call('POST', '/sales/supplier-orders', { body: {} })).rejects.toMatchObject({ status: 404 });
   });
 });

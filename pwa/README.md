@@ -20,17 +20,21 @@ Vue 3 + Pinia + Vue Router + vite-plugin-pwa. Данные — **стандар�
 ## Запуск
 
 ```
-npm run api        # Apache с публикацией 1С (D:\1c\apache, :8090) + проверка OData (../odata/start-apache.ps1)
+npm run api        # Apache с публикацией 1С (D:\1c\apache, :8090) + проверка OData зеркала /mirror (../odata/start-apache.ps1)
+npm run dev:mirror # http://127.0.0.1:5173 — зеркало рабочей базы (/mirror, .env.mirror): ручное тестирование
 npm run dev        # http://127.0.0.1:5173 — прокси /odata -> ODATA_TARGET (по умолчанию тестовая /odata215)
 npm run build && npm run preview   # сборка с service worker: http://127.0.0.1:4173
 npm test           # 16 интеграционных тестов против живого OData (экраны + пишущие операции, данные возвращаются)
 ```
 
 Копия рабочей базы (дамп `autoservice_main`, PostgreSQL 18, сервер 1С `localhostutoservice_main`, публикация `/odata-main`):
-`npm run dev:main` (`.env.main`); **рабочая база** `localhost\autoservice` — `npm run dev:prod` (`.env.prod`, `/odata-prod`,
+`npm run dev:main` (`.env.main`); **рабочая база** `localhost\autoservice` — `npm run dev:prod` (только с `$env:ARM_ALLOW_PROD="1"` — защита от случайной записи; `.env.prod`, `/odata-prod`,
 вход «Автосервис» без пароля, роль АРМ «Менеджер» — пользователи из дампа; проверка только чтением — `MAIN_READONLY=1`). Копия: вход — пользователь ИБ «Автосервис» без пароля (роль АРМ «Менеджер»). Проверка:
 `npx vitest run -c vitest.e2e.config.js e2e/main-smoke.e2e.js` — вход, матрица, строки, справочники, новый заказ → строки
 «Громкоговоритель» → правка, отметка → удаление заказа.
+
+Вход хранится в `sessionStorage` (до закрытия вкладки): токен Basic содержит пароль. Экраны «Матрица» и «Консоль» — только
+роли admin; подсказка тестовых логинов — только в `npm run dev*`.
 
 Другая база: `ODATA_TARGET=http://<сервер>/<публикация>/odata/standard.odata npm run dev` (для тестов — `ODATA_URL`).
 Публикация: расширение `АРМ_OData` подключено и включено (`../odata/enable-odata.ps1`), в `default.vrd` —

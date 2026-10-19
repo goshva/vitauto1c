@@ -27,7 +27,7 @@ const CLS = { running: 'warn', need_split: 'warn', done: 'ok', failed: 'err' };
 </script>
 
 <template>
-  <AppModal title="В работе" @close="emit('close')">
+  <AppModal title="Заказать (В работе)" @close="emit('close')">
     <p><span :class="['chip', CLS[state.state]]">{{ TITLES[state.state] || state.state }}</span>
       <span class="muted"> задание {{ job.id }}</span></p>
     <pre v-if="state.message">{{ state.message }}</pre>

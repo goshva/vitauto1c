@@ -5,11 +5,12 @@ import { api } from '../api';
 import { useSessionStore } from '../stores/session';
 import { OPERATIONS, fill } from '../lib/operations';
 import { load as loadPref, save as savePref } from '../storage';
+import { localDate } from '../lib/date';
 
 const session = useSessionStore();
 const ctx = reactive({
   lineId: '', customerOrderId: '', customerId: '', contractId: '', nomenclatureId: '', jobId: '',
-  today: new Date().toISOString().slice(0, 10),
+  today: localDate(),
   ...loadPref('console.ctx', {})
 });
 watch(ctx, v => savePref('console.ctx', v), { deep: true });

@@ -9,6 +9,7 @@ import { useLinesStore } from '../stores/lines';
 import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
 import { api, post } from '../api';
+import { localDate } from '../lib/date';
 import { fieldInfo, valueOf, display, STATUS_TITLES, statusTone } from '../lib/columns';
 import { useColumnsStore, STAGES } from '../stores/columns';
 import RefPicker from '../components/RefPicker.vue';
@@ -277,7 +278,6 @@ function jobClosed() {
 
 const closeSheets = () => { actionsOpen.value = false; };
 const prepared = () => { closeSheets(); return run(() => post('/sales/prepared'), result); };
-const supplierOrder = () => { closeSheets(); return run(() => post('/sales/supplier-orders', {}), result); };
 const postOrder = () => run(() => post(`/sales/customer-orders/${currentOrder.value.id}/post`), r => `Заказ проведён. ${result(r)}`);
 async function deleteOrder() {
   if (!confirm(`Удалить заказ ${currentOrder.value.number}? Заказ помечается на удаление, строки АРМ удаляются.`)) return;
@@ -292,7 +292,7 @@ async function strikeLine() {
 // отгрузка
 const shipment = ref(null);
 function openShipment() {
-  shipment.value = { shipmentDate: new Date().toISOString().slice(0, 10), shipmentNumber: '' };
+  shipment.value = { shipmentDate: localDate(), shipmentNumber: '' };
 }
 async function saveShipment() {
   const s = shipment.value;
@@ -304,7 +304,7 @@ async function saveShipment() {
 const newOrder = ref(null);
 const orderPicker = ref(null);
 function openNewOrder() {
-  newOrder.value = { customer: null, contract: null, clientOrderNumber: '', date: new Date().toISOString().slice(0, 10) };
+  newOrder.value = { customer: null, contract: null, clientOrderNumber: '', date: localDate() };
 }
 async function createOrder() {
   const o = newOrder.value;
@@ -362,7 +362,7 @@ async function supplyStatus(status, extra = {}) {
     toast.show(result(r), 'ok');
     await lines.load();
   } catch (e) {
-    if (e.code === 'need_split') partial.value = { status, receiptDate: new Date().toISOString().slice(0, 10), message: e.message };
+    if (e.code === 'need_split') partial.value = { status, receiptDate: localDate(), message: e.message };
     else toast.error(e);
   } finally {
     busy.value = false;
@@ -556,14 +556,13 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         <div class="menu-title">Команды 1С</div>
         <div class="menu">
           <button :disabled="busy" @click="startJob()">
-            <AppIcon name="zap" /> В работе <span class="hint">{{ view === 'purchases' ? 'заказ поставщику' : 'M4 · K5' }}</span>
+            <AppIcon name="zap" /> Заказать <span class="hint">{{ view === 'purchases' ? 'заказ поставщику' : '«В работе» · M4 · K5' }}</span>
           </button>
           <label class="row" style="justify-content: space-between; padding: 4px 12px 8px 50px">
             <span class="muted small">Разрешить сплит заказа</span>
             <span class="switch"><input type="checkbox" v-model="allowSplit" /><span></span></span>
           </label>
           <button v-if="view === 'sales'" :disabled="busy" @click="prepared"><AppIcon name="check" /> Подготовлено</button>
-          <button v-if="view === 'sales'" :disabled="busy" @click="supplierOrder"><AppIcon name="purchases" /> Заказать поставщику</button>
         </div>
       </template>
       <div class="menu">

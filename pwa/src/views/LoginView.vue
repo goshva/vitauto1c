@@ -8,13 +8,14 @@ const session = useSessionStore();
 const router = useRouter();
 const route = useRoute();
 
-const login = ref('arm.manager');
+const login = ref(import.meta.env.DEV ? 'arm.manager' : '');
 const password = ref('');
 const show = ref(false);
 const baseUrl = ref(session.baseUrl);
 const error = ref('');
 const busy = ref(false);
-const TEST_USERS = ['arm.manager', 'arm.storekeeper', 'arm.supply', 'arm.admin', 'arm.mechanic', 'Админ'];
+// тестовые логины — только при разработке (vite dev), в сборке для пользователей их нет
+const TEST_USERS = import.meta.env.DEV ? ['arm.manager', 'arm.storekeeper', 'arm.supply', 'arm.admin', 'arm.mechanic', 'Админ'] : [];
 
 async function submit() {
   error.value = '';

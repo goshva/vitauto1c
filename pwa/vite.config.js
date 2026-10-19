@@ -7,6 +7,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 // другая публикация — ODATA_TARGET=http://<сервер>/<публикация>/odata/standard.odata (или .env.local).
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
+  // --mode prod пишет в РАБОЧУЮ базу: только по явному согласию, чтобы не спутать с dev:main / dev:mirror
+  if (mode === 'prod' && env.ARM_ALLOW_PROD !== '1') {
+    throw new Error('dev:prod подключает PWA к РАБОЧЕЙ базе на запись. Если это осознанно: $env:ARM_ALLOW_PROD="1"; npm run dev:prod');
+  }
   const target = env.ODATA_TARGET || 'http://127.0.0.1:8090/odata215/odata/standard.odata';
   const proxy = {
     '/odata': {

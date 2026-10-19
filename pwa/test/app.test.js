@@ -36,6 +36,7 @@ beforeAll(async () => {
 let pinia;
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   pinia = createPinia();
   setActivePinia(pinia);
   useSessionStore().setBaseUrl(BASE);
@@ -295,9 +296,9 @@ describe('PWA против 1С', () => {
 
   it('консоль: smoke всех операций чтения', async ({ skip }) => {
     if (!reachable) skip();
-    await useSessionStore().login('arm.manager', '1');
+    await useSessionStore().login('arm.admin', '1');   // консоль — только администратору АРМ
     const w = await mountAt('/console');
-    expect(w.findAll('.op')).toHaveLength(30);
+    expect(w.findAll('.op')).toHaveLength(29);
     await w.findAll('button').find(b => b.text() === 'Запустить').trigger('click');
     const text = await until(() => (w.text().match(/успешно (\d+) из (\d+)/) || null));
     await until(() => !w.findAll('.chip').some(c => c.text() === '…'), 60000);
@@ -315,7 +316,7 @@ describe('PWA против 1С', () => {
     const w = await mountAt('/');
     await until(() => router.currentRoute.value.name === 'lines');
     expect(router.currentRoute.value.params.view).toBe('supply');
-    expect(w.findAll('.navbar a').map(a => a.text().trim())).toEqual(['Снабжение', 'Товары', 'Услуги', 'Машины', 'Справочники', 'Матрица', 'Консоль', 'Журнал']);
+    expect(w.findAll('.navbar a').map(a => a.text().trim())).toEqual(['Снабжение', 'Товары', 'Услуги', 'Машины', 'Справочники', 'Журнал']);
     await until(() => w.find('[aria-label=Действия]').exists());
     await w.find('[aria-label=Действия]').trigger('click');
     await until(() => w.findAll('[data-supply]').length === 6);

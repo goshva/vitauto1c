@@ -28,8 +28,8 @@ const nav = computed(() => [
   { to: '/catalog/services', title: 'Услуги', icon: 'wrench' },
   { to: '/catalog/cars', title: 'Машины', icon: 'car' },
   { to: '/directories', title: 'Справочники', icon: 'book' },
-  { to: '/matrix', title: 'Матрица', icon: 'grid' },
-  { to: '/console', title: 'Консоль', icon: 'terminal' },
+  // отладочные экраны — только администратору АРМ
+  ...(session.isAdmin ? [{ to: '/matrix', title: 'Матрица', icon: 'grid' }, { to: '/console', title: 'Консоль', icon: 'terminal' }] : []),
   { to: '/log', title: 'Журнал', icon: 'activity', badge: log.errors }
 ]);
 const more = ref(false);

@@ -6,11 +6,12 @@
 // и возвращает запись с Результат (JSON). См. odata/АрмOData_Команды.bsl.
 import { createClient, EMPTY, guid, lit, TRANSIENT } from './client';
 import { fail } from './errors';
+import { localDate } from '../lib/date';
 import { ARM, LINE_QUERY, OPERATION, toLine, keyPath, fieldValue, enumOf, statusOf, matrixFor, MATRIX_ETAG } from './mapping';
 
 const ROLE_BY_ENUM = { Менеджер: 'manager', Снабжение: 'supply', Кладовщик: 'storekeeper', ГлавныйМеханик: 'chief_mechanic',
   Администратор: 'admin', Поставщик: 'supplier', Клиент: 'client' };
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localDate();
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
   const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 
@@ -32,10 +33,6 @@ const COMMANDS = 'InformationRegister_АрмOData_КомандыPWA';
 const DOC_SETS = { customer_order: 'Document_ЗаказПокупателя', supplier_order: 'Document_ЗаказПоставщику', receipt: 'Document_ПриходнаяНакладная', shipment: 'Document_РасходнаяНакладная' };
 
 const JOBS = new Map();   // итоги «В работе» (need_split/failed в регистр не пишутся)
-
-export const NOT_SUPPORTED = {
-  'POST /sales/supplier-orders': 'команда «Заказать» — в АРМ заглушка (заказ поставщику создаёт «В работе»)'
-};
 
 // Почему ячейку нельзя менять (как useMatrixStore.denyReason) — или null
 export function denyReason(column, line, userName, statuses) {
@@ -631,7 +628,6 @@ export function createBackend({ baseUrl, session, log }) {
     }
     if (seg[0] === 'sales') {
       const op = `${method} /sales/${seg[1]}`;
-      if (NOT_SUPPORTED[op]) fail(501, 'not_supported', NOT_SUPPORTED[op]);
       if (op === 'POST /sales/jobs') return ok(await startJob(body || {}), 202);
       if (op === 'POST /sales/prepared') return ok(await prepared());
       if (op === 'POST /sales/shipments') return ok(await shipments(body || {}));

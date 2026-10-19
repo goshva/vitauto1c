@@ -20,7 +20,6 @@ export const OPERATIONS = [
   { group: 'Продажи', method: 'POST', path: '/sales/customer-orders', body: { customerId: '{customerId}', contractId: '{contractId}', clientOrderNumber: 'C-1', date: '{today}' } },
   { group: 'Продажи', method: 'POST', path: '/sales/customer-orders/{customerOrderId}/post' },
   { group: 'Продажи', method: 'DELETE', path: '/sales/customer-orders/{customerOrderId}', note: 'пометка удаления заказа' },
-  { group: 'Продажи', method: 'POST', path: '/sales/supplier-orders', body: {} },
   { group: 'Продажи', method: 'POST', path: '/sales/shipments', body: { customerOrderId: '{customerOrderId}', shipmentDate: '{today}', shipmentNumber: 'ОТГ-1' } },
   { group: 'Продажи', method: 'POST', path: '/sales/imports', body: { customerId: '{customerId}', rows: [{ clientNumber: 'Л-1', urgency: '', plate: 'А123ВС', territory: 'Склад', article: 'ART-1', name: 'Фильтр', quantity: '1' }] } },
   { group: 'Снабжение', method: 'POST', path: '/supply/status', body: { status: 'paid' } },

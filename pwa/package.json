@@ -7,6 +7,7 @@
   "scripts": {
     "api": "powershell -NoProfile -ExecutionPolicy Bypass -File ../odata/start-apache.ps1",
     "dev": "vite",
+    "dev:mirror": "vite --mode mirror",
     "dev:test": "vite --mode test",
     "dev:main": "vite --mode main",
     "dev:prod": "vite --mode prod",
