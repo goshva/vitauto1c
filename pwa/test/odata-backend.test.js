@@ -40,9 +40,13 @@ describe('OData: пишущие операции PWA', () => {
     if (!reachable) skip();
     const m = await session('arm.manager');
     // обязательные поля заполнены (T08: из «Черновик» менеджер не переводит строку с пустыми обязательными)
-    const rec = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and СтатусСтроки eq 'Черновик' and Удаление eq false and АвторСтроки_Key eq ${guid(EMPTY)}`
-      + ` and НомерЗаказаКлиента ne '' and Номенклатура_Key ne ${guid(EMPTY)} and Количество gt 0 and (Госномер ne '' or Агрегат ne '')`, $top: 1 }))[0];
-    expect(rec, 'нужна заполненная строка продажи «Черновик» (seed)').toBeTruthy();
+    const rec = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and (СтатусСтроки eq 'Черновик' or СтатусСтроки eq 'ВРаботе') and Удаление eq false and АвторСтроки_Key eq ${guid(EMPTY)}`
+      + ` and НомерЗаказаКлиента ne '' and Номенклатура_Key ne ${guid(EMPTY)} and Количество gt 0`, $top: 1 }))[0];
+    expect(rec, 'нужна строка продажи «Черновик»/«В работе» с номенклатурой').toBeTruthy();
+    // прочие отметки менеджера на время теста снимаем (переход действует на все его отметки)
+    const others = await admin.list(ARM, { $filter: `ОтметкаСтроки eq true and АвторСтроки_Key eq ${guid(m.user.userRef)}` });
+    for (const o of others) await admin.patch(keyPath(o), { ОтметкаСтроки: false, АвторСтроки_Key: EMPTY });
+    if (!rec.Госномер && !rec.Агрегат) await admin.patch(keyPath(rec), { Госномер: 'А001АА77' });
     try {
       const marked = await m.call('POST', `/lines/${rec.ИдентификаторЗаписи}/mark`);
       expect(marked.marked).toBe(true);
@@ -53,27 +57,32 @@ describe('OData: пишущие операции PWA', () => {
       const after = await m.call('GET', `/lines/${rec.ИдентификаторЗаписи}`);
       expect(after.status).toBe('reserve');
       expect(after.marked).toBe(false);
-    } finally { await restore(rec, STATE); }
+    } finally {
+      await restore(rec, [...STATE, 'Госномер']);
+      for (const o of others) { const c = await raw(o.ИдентификаторЗаписи); if (c) await admin.patch(keyPath(c), { ОтметкаСтроки: true, АвторСтроки_Key: o.АвторСтроки_Key }); }
+    }
   });
 
-  it('PATCH по матрице: менеджер не может менять «Комментарий» в «Отгружено» (403), а в «Черновик» — может', async ({ skip }) => {
+  it('PATCH по матрице: менеджер не меняет «Кол-во» вне «Новый»/«В работе» (403), цену себестоимости в «В работе» — меняет', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
-    const shipped = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and СтатусСтроки eq 'Отгружено' and Удаление eq false`, $top: 1 }))[0];
+    // «Кол-во» (Н0) менеджер меняет только в «Новый» / «В работе»
+    const shipped = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and (СтатусСтроки eq 'Отгружено' or СтатусСтроки eq 'Возврат' or СтатусСтроки eq 'Заказано') and Удаление eq false`, $top: 1 }))[0];
     await expect(m.call('PATCH', `/lines/${shipped.ИдентификаторЗаписи}`, { body: { field: 'Количество', value: 1 } })).rejects.toMatchObject({ status: 403, code: 'matrix_denied' });
-    const draft = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and СтатусСтроки eq 'Черновик' and Удаление eq false`, $top: 1 }))[0];
+    const draft = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and (СтатусСтроки eq 'Черновик' or СтатусСтроки eq 'ВРаботе') and Удаление eq false and Номенклатура_Key ne ${guid(EMPTY)}`, $top: 1 }))[0];
     try {
-      const l = await m.call('PATCH', `/lines/${draft.ИдентификаторЗаписи}`, { body: { field: 'Количество', value: 3 } });
-      expect(l.quantity).toBe(3);
-      expect((await raw(draft.ИдентификаторЗаписи)).Себестоимость).toBe(Math.round(3 * draft.СебестоимостьЕдиницы * 100) / 100);
-    } finally { await restore(draft, ['Количество', 'Себестоимость']); }
+      // цена себестоимости (без пересчёта остатков, в отличие от количества): Себестоимость = Количество × цена
+      const l = await m.call('PATCH', `/lines/${draft.ИдентификаторЗаписи}`, { body: { field: 'СебестоимостьЕдиницы', value: 777 } });
+      expect(l.costPrice).toBe(777);
+      expect((await raw(draft.ИдентификаторЗаписи)).Себестоимость).toBe(Math.round(draft.Количество * 777 * 100) / 100);
+    } finally { await restore(draft, ['СебестоимостьЕдиницы', 'Себестоимость', 'Цена', 'Коэффициент', 'ТипИзмененияЦены']); }
   });
 
   it('закупка к строке продажи + канбан снабжения «Оплачено»: закупка и связанная продажа', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
     // продажа идёт за закупкой, если у неё нет партии и количество совпадает (ИзменитьСтатусыВРегистреСнабжения)
-    const sale = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and СтатусСтроки eq 'Черновик' and Удаление eq false and Номенклатура_Key ne ${guid(EMPTY)} and Партия_Key eq ${guid(EMPTY)} and Количество gt 0`, $top: 1 }))[0];
+    const sale = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and (СтатусСтроки eq 'Черновик' or СтатусСтроки eq 'ВРаботе') and Удаление eq false and Номенклатура_Key ne ${guid(EMPTY)} and Партия_Key eq ${guid(EMPTY)} and Количество gt 0`, $top: 1 }))[0];
     const created = await m.call('POST', '/lines', { body: { view: 'purchases', sourceLineId: sale.ИдентификаторЗаписи, nomenclatureIds: [sale.Номенклатура_Key] } });
     expect(created).toHaveLength(1);
     const pur = created[0];
@@ -98,8 +107,8 @@ describe('OData: пишущие операции PWA', () => {
   it('новый заказ: создать, подобрать номенклатуру, карточка, удалить', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
-    const [cust] = await m.call('GET', '/directories/counterparties', { query: { q: 'АВД' } });
-    const [nom] = await m.call('GET', '/directories/nomenclature', { query: { q: 'Антифриз' } });
+    const [cust] = await m.call('GET', '/directories/counterparties', { query: { q: 'E2E Покупатель' } });
+    const [nom] = await m.call('GET', '/directories/nomenclature', { query: { q: 'E2E Колодки' } });
     expect(cust && nom).toBeTruthy();
     const doc = await m.call('POST', '/sales/customer-orders', { body: { customerId: cust.id, clientOrderNumber: 'PWA-OData-тест', date: '2026-10-13' } });
     expect(doc.kind).toBe('customer_order');
@@ -121,7 +130,7 @@ describe('OData: пишущие операции PWA', () => {
   it('импорт листа покупателя: заказ со строками клиента, строки АРМ — обработчиком расширения', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
-    const [cust] = await m.call('GET', '/directories/counterparties', { query: { q: 'АВД' } });
+    const [cust] = await m.call('GET', '/directories/counterparties', { query: { q: 'E2E Покупатель' } });
     const doc = await m.call('POST', '/sales/imports', { body: { customerId: cust.id, rows: [
       { clientNumber: 'PWA-импорт', name: 'Фильтр масляный', article: 'F-1', quantity: '2', plate: 'А001АА77' },
       { clientNumber: 'PWA-импорт', name: 'Свеча', article: 'S-2', quantity: '4' }] } });
