@@ -22,10 +22,10 @@ export const useMatrixStore = defineStore('matrix', {
       this.loadedAt = new Date();
       if (res.status !== 304) save('matrix.' + role, data);
     },
-    // Почему ячейку нельзя менять — или null, если можно.
+    // Почему ячейку нельзя менять — или null, если можно. Администратор правит и строки «Заблокировано фоном» (D1e′).
     denyReason(column, line, userName) {
       if (!column.writable) return 'поле только для чтения';
-      if (line.locked || line.status === 'locked_background') return 'строка заблокирована фоном';
+      if ((line.locked || line.status === 'locked_background') && this.role !== 'admin') return 'строка заблокирована фоном';
       const i = this.statuses.indexOf(line.status);
       const ch = i < 0 ? '.' : column.rights[i];
       if (ch === '+') return null;

@@ -5,7 +5,7 @@ const routes = [
   { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { public: true } },
   { path: '/', redirect: () => {
       const s = useSessionStore();
-      return { name: 'lines', params: { view: s.isSupply ? 'supply' : 'sales' } };
+      return { name: 'lines', params: { view: 'sales' } };
     } },
   { path: '/lines/:view(sales|purchases|supply)', name: 'lines', component: () => import('./views/LinesView.vue') },
   { path: '/import', name: 'import', component: () => import('./views/ImportView.vue') },

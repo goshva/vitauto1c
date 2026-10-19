@@ -210,6 +210,8 @@ const sheetActions = computed(() => {
   const a = [];
   if (view.value === 'sales' && l.customerOrder) a.push({ key: 'add', title: 'Строки в заказ', icon: 'plus' });
   a.push({ key: 'purchase', title: 'Закупка к строке', icon: 'purchases' });
+  // команды заказа — менеджер и администратор (как в АРМ: ОтказЕслиНеМенеджерИлиАдминАРМ)
+  if (!session.canOrder) return a;
   if (view.value === 'sales' && l.customerOrder) {
     a.push({ key: 'shipment', title: 'Отгрузка', icon: 'supply' });
     a.push({ key: 'post', title: 'Провести заказ', icon: 'send' });
@@ -337,18 +339,15 @@ async function addLines(items) {
   await run(() => post('/lines', body), r => `Добавлено строк: ${r.length}${a.purchase ? ' (список «Закупки»)' : ''}`);
 }
 
-// переходы процессов (POST /lines/transition) — к отмеченным строкам списка, по ролям, как в Арм_API.ПереходыПроцессов
+// смена статуса отмеченных строк продаж (POST /lines/transition) — три кнопки статусов АРМ (D12=A),
+// менеджер и администратор (D2); допустимость по строке проверяет backend (матрица + whitelist from -> to)
 const TRANSITIONS = [
-  { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'] },
-  { to: 'assembly', title: 'На комплектацию', node: 'M9 · M10 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'] },
-  { to: 'ready_to_ship', title: 'Собрано', node: 'K3', icon: 'check', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'] },
-  { to: 'shipped', title: 'Самовывоз', node: 'N4', icon: 'supply', roles: ['manager', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'acceptance', title: 'Принять по УПД', node: 'K1', icon: 'file', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'return', title: 'Возврат', node: 'N3 · M16 · K6', icon: 'undo', roles: ['manager', 'storekeeper', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'closed', title: 'Закрыть', node: 'M15 · K7 · G9', icon: 'check', roles: ['manager', 'storekeeper', 'admin', 'chief_mechanic'], views: ['sales', 'purchases'] }
+  { to: 'reserve', title: 'Резервирование', node: 'M3', icon: 'lock' },
+  { to: 'awaiting_receipt', title: 'Ожидаем поступление', node: '', icon: 'supply' },
+  { to: 'return', title: 'Возврат', node: '', icon: 'undo' }
 ];
-const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value)));
-const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
+const transitions = computed(() => (session.canOrder && view.value === 'sales' ? TRANSITIONS : []));
+const transition = t => { closeSheets(); return run(() => post('/lines/transition', { to: t.to }), r => `${t.title}: ${result(r)}`); };
 
 // снабжение
 const SUPPLY = [['paid', 'Оплачено', 'M7'], ['in_transit', 'В пути', 'P2'], ['acceptance', 'Приёмка', 'K1'], ['to_stock', 'На склад', 'K2'],
@@ -553,8 +552,8 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             </button>
           </div>
         </template>
-        <div class="menu-title">Команды 1С</div>
-        <div class="menu">
+        <div v-if="session.canOrder" class="menu-title">Команды 1С</div>
+        <div v-if="session.canOrder" class="menu">
           <button :disabled="busy" @click="startJob()">
             <AppIcon name="zap" /> Заказать <span class="hint">{{ view === 'purchases' ? 'заказ поставщику' : '«В работе» · M4 · K5' }}</span>
           </button>

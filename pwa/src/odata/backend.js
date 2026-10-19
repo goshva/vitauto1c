@@ -9,25 +9,37 @@ import { fail } from './errors';
 import { localDate } from '../lib/date';
 import { ARM, LINE_QUERY, OPERATION, toLine, keyPath, fieldValue, enumOf, statusOf, matrixFor, MATRIX_ETAG } from './mapping';
 
-const ROLE_BY_ENUM = { Менеджер: 'manager', Снабжение: 'supply', Кладовщик: 'storekeeper', ГлавныйМеханик: 'chief_mechanic',
+// Роль интерфейса АРМ -> роль матрицы. «Снабжение» в PWA не используется (решение 19.10.2026): вход запрещён.
+const ROLE_BY_ENUM = { Менеджер: 'manager', Кладовщик: 'storekeeper', ГлавныйМеханик: 'chief_mechanic',
   Администратор: 'admin', Поставщик: 'supplier', Клиент: 'client' };
 const today = () => localDate();
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
   const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 
-// Переходы процессов (Арм_API.ПереходыПроцессов): цель, статус АРМ, из каких статусов, каким ролям
-const TRANSITIONS = [
-  ['reserve', 'Резервирование', 'new,in_work', 'manager,admin'],
-  ['assembly', 'Комплектуется', 'reserve,to_stock,acceptance', 'manager,admin'],
-  ['assembly', 'Комплектуется', 'ready_to_ship', 'manager,admin,chief_mechanic'],
-  ['assembly', 'Комплектуется', 'return', 'manager,admin'],
-  ['ready_to_ship', 'Собран', 'assembly', 'storekeeper,manager,admin'],
-  ['shipped', 'Отгружено', 'paid,in_transit', 'manager,admin'],
-  ['acceptance', 'Приходуется', 'shipped', 'storekeeper,admin'],
-  ['return', 'Возврат', 'shipped,ordered,paid,in_transit,to_stock,closed', 'manager,storekeeper,admin'],
-  ['closed', 'Выполнено', 'shipped,ready_to_ship,return', 'manager,storekeeper,admin'],
-  ['closed', 'Выполнено', 'assembly', 'chief_mechanic,admin']
-].map(([to, status, from, roles]) => ({ to, status, from: from.split(','), roles: roles.split(',') }));
+// Смена статуса строк продаж — как в АРМ 2.22 (форма, УстановитьСтатусСтрокАдминистраторомНаСервере):
+// три кнопки (D12=A), меняют менеджер и администратор (D2); менеджер — если матрица разрешает ему поле
+// «Статус заявки» в текущем статусе строки; whitelist from -> to — tasks/line-status-ownership.md.
+const STATUS_BUTTONS = {
+  reserve: { status: 'Резервирование', from: ['Черновик', 'ВРаботе', 'НаСкладе', 'Комплектуется', 'Собран', 'Подготовлено', 'ЧастичноЗаказано', 'Приходуется', 'ОжидаемПоступление'] },
+  awaiting_receipt: { status: 'ОжидаемПоступление', from: ['Черновик', 'ВРаботе', 'Заказано', 'Оплачено', 'ТоварВПути', 'ЧастичноЗаказано'] },
+  return: { status: 'Возврат', from: ['Отгружено', 'Собран', 'Подготовлено', 'Резервирование', 'НаСкладе', 'Выполнено'] }
+};
+// Обязательные поля строки продаж (T08): контроль только в статусах «Черновик» и «В работе»
+const REQUIRED_CONTROL = ['Черновик', 'ВРаботе'];
+const empty = v => v === undefined || v === null || v === '' || v === EMPTY || (typeof v === 'string' && v.startsWith('0001-'));
+function missingRequired(r) {
+  const out = [];
+  if (empty(r.ДатаЗаказа)) out.push('Дата заказа');
+  if (empty(r.НомерЗаказаКлиента)) out.push('№ заказ клиент');
+  if (empty(r.Номенклатура_Key)) out.push('Наименование');
+  if (!(r.Количество > 0)) out.push('Кол-во');
+  if (empty(r.Госномер) && empty(r.Агрегат)) out.push('Госномер или Агрегат');
+  return out;
+}
+// Роли АРМ, которым доступны команды заказа (Заказать, Подготовлено, Провести заказ, Вычеркнуть, удаление, отгрузка)
+const ORDER_ROLES = ['manager', 'admin'];
+// Цепочка снабжения (форма «Снабжение», ОтказРолиСнабжения): менеджер, кладовщик, администратор
+const SUPPLY_ROLES = ['manager', 'storekeeper', 'admin'];
 const SUPPLY_STATUS = { paid: 'Оплачено', in_transit: 'ТоварВПути', acceptance: 'Приходуется', to_stock: 'НаСкладе', assembly: 'Комплектуется', assembled: 'Собран' };
 const COMMANDS = 'InformationRegister_АрмOData_КомандыPWA';
 const DOC_SETS = { customer_order: 'Document_ЗаказПокупателя', supplier_order: 'Document_ЗаказПоставщику', receipt: 'Document_ПриходнаяНакладная', shipment: 'Document_РасходнаяНакладная' };
@@ -35,9 +47,9 @@ const DOC_SETS = { customer_order: 'Document_ЗаказПокупателя', su
 const JOBS = new Map();   // итоги «В работе» (need_split/failed в регистр не пишутся)
 
 // Почему ячейку нельзя менять (как useMatrixStore.denyReason) — или null
-export function denyReason(column, line, userName, statuses) {
+export function denyReason(column, line, userName, statuses, role) {
   if (!column.writable) return 'поле только для чтения';
-  if (line.locked) return 'строка заблокирована фоном';
+  if (line.locked && role !== 'admin') return 'строка заблокирована фоном';
   const i = statuses.indexOf(line.status);
   const ch = i < 0 ? '.' : column.rights[i];
   if (ch === '+') return null;
@@ -49,7 +61,7 @@ export function createBackend({ baseUrl, session, log }) {
   const od = createClient({ baseUrl, token: session.token, log });
   const units = {};
   const me = () => (session.user && session.user.userRef) || null;
-  const role = () => (session.user && session.user.role) || 'manager';
+  const role = () => (session.user && session.user.role) || '';
   const userName = () => (session.user && session.user.userName) || '';
 
   // ---------------------------------------------------------------- команды АРМ (регистр команд АРМ_OData)
@@ -72,6 +84,7 @@ export function createBackend({ baseUrl, session, log }) {
   }
   // «В работе» — задание, как в Арм_API (202 и GET /jobs/{id}); выполняется сразу, итог хранится для опроса
   async function startJob({ allowSplit }) {
+    requireOrderRole();
     requireUser();
     const r = await command('ВРаботе', { allowSplit: !!allowSplit });
     const j = { id: r.id, state: r.state || 'failed', message: r.message || '', processed: r.processed };
@@ -106,10 +119,8 @@ export function createBackend({ baseUrl, session, log }) {
   const line = async id => toLine(await record(id), units);
   const myMarked = view => `ОтметкаСтроки eq true and АвторСтроки_Key eq ${guid(me() || EMPTY)} and ВидОперации eq ${lit(OPERATION[view] || 'Продажа')} and Удаление eq false`;
   const unmark = { ОтметкаСтроки: false, АвторСтроки_Key: EMPTY };
+  const requireOrderRole = () => { if (!ORDER_ROLES.includes(role())) fail(403, 'matrix_denied', 'Действие доступно менеджеру и администратору АРМ.'); };
   const requireUser = () => { if (!me()) fail(409, 'not_author', `Пользователь «${userName()}» не найден в справочнике «Пользователи» — отметки и команды недоступны`); };
-  // статус + В9 «Дата отправки на сборку» при переводе в «Комплектуется», если пустая (v2.14)
-  const statusPatch = (rec, statusEnum) => ({ СтатусСтроки: statusEnum,
-    ...(statusEnum === 'Комплектуется' && (!rec.ДатаОтправкиНаСборку || rec.ДатаОтправкиНаСборку.startsWith('0001')) ? { ДатаОтправкиНаСборку: today() + 'T00:00:00' } : {}) });
 
   // ---------------------------------------------------------------- сессия
   async function login({ login: user, password }) {
@@ -117,12 +128,14 @@ export function createBackend({ baseUrl, session, log }) {
     const users = await od.list('Catalog_Пользователи', { $filter: `Description eq ${lit(user)}`, $select: 'Ref_Key,Description', $top: 1 });
     const ref = users.length ? users[0].Ref_Key : null;
     let r = null;
+    let rows = [];
     if (ref) {
-      const rows = await od.list('InformationRegister_Арм_ПраваПользователей', { $filter: `Пользователь_Key eq ${guid(ref)}`, $select: 'РольИнтерфейса' });
+      rows = await od.list('InformationRegister_Арм_ПраваПользователей', { $filter: `Пользователь_Key eq ${guid(ref)}`, $select: 'РольИнтерфейса' });
       r = rows.length ? ROLE_BY_ENUM[rows[0].РольИнтерфейса] : null;
     }
+    if (!r && rows.length && rows[0].РольИнтерфейса === 'Снабжение') fail(403, 'matrix_denied', `Роль «Снабжение» в PWA не используется — войдите в АРМ 1С`);
     if (!r) fail(403, 'matrix_denied', `У пользователя «${user}» нет роли АРМ (регистр Арм_ПраваПользователей)`);
-    return { userName: users[0].Description, login: user, role: r, screen: r === 'supply' ? 'supply' : 'sales', userRef: ref };
+    return { userName: users[0].Description, login: user, role: r, screen: 'sales', userRef: ref };
   }
 
   // ---------------------------------------------------------------- строки
@@ -155,10 +168,17 @@ export function createBackend({ baseUrl, session, log }) {
     const m = matrixFor(role());
     const col = m.columns.find(c => c.field === field);
     if (!col) fail(400, 'field_readonly', `Поле «${field}» нельзя изменить`, field);
-    const why = denyReason(col, ln, userName(), m.statuses);
+    const why = denyReason(col, ln, userName(), m.statuses, role());
     if (why) fail(403, why.startsWith('матрица') ? 'matrix_denied' : why.includes('автор') ? 'not_author' : 'field_readonly', why, field);
     let body;
     try { body = fieldValue(field, value); } catch (e) { fail(400, 'bad_request', e.message, field); }
+    // T08: в «Черновик»/«В работе» нельзя очистить обязательное поле строки продаж
+    if (rec.ВидОперации === 'Продажа' && REQUIRED_CONTROL.includes(rec.СтатусСтроки) && empty(Object.values(body)[0])) {
+      if (field === 'ДатаЗаказа' || field === 'НомерЗаказаКлиента') fail(409, 'required', `Поле «${col.title}» обязательно в статусе «${rec.СтатусСтроки}» — очищать нельзя`, field);
+      if ((field === 'Госномер' && empty(rec.Агрегат)) || (field === 'Агрегат' && empty(rec.Госномер))) {
+        fail(409, 'required', 'Должно быть заполнено одно из полей: Госномер или Агрегат — очищать последнее заполненное нельзя', field);
+      }
+    }
     if (field === 'Договор' && body.Договор_Key !== EMPTY) {
       const c = await od.get(`Catalog_ДоговорыКонтрагентов(${guid(body.Договор_Key)})`, { $select: 'Owner' });
       if (c.Owner !== rec.Покупатель_Key) fail(409, 'contract_owner', `Договор не принадлежит заказчику «${ln.customer ? ln.customer.name : ''}»`, field);
@@ -243,6 +263,7 @@ export function createBackend({ baseUrl, session, log }) {
   }
 
   async function strikeLine(id) {
+    requireOrderRole();
     const rec = await record(id);
     const ln = toLine(rec, units);
     if (!['new', 'in_work'].includes(ln.status)) fail(409, 'row_locked', 'Вычеркнуть можно только строку в статусе «Черновик» или «В работе»');
@@ -280,38 +301,40 @@ export function createBackend({ baseUrl, session, log }) {
     return out;
   }
 
-  async function transition({ view, to }) {
-    if (view !== 'sales' && view !== 'purchases') fail(400, 'bad_request', 'view: sales или purchases', 'view');
+  async function transition({ to }) {
+    if (!ORDER_ROLES.includes(role())) fail(403, 'matrix_denied', 'Смена статуса доступна менеджеру и администратору АРМ.');
+    const t = STATUS_BUTTONS[to];
+    if (!t) fail(400, 'bad_request', 'to: ' + Object.keys(STATUS_BUTTONS).join(', '), 'to');
     requireUser();
-    const all = TRANSITIONS.filter(t => t.to === to);
-    if (!all.length) fail(400, 'bad_request', 'to: ' + [...new Set(TRANSITIONS.map(t => t.to))].join(', '), 'to');
-    const mine = all.filter(t => t.roles.includes(role()));
-    if (!mine.length) fail(403, 'matrix_denied', `Переход «${to}» недоступен роли ${role()}`);
-    const marked = await od.list(ARM, { $filter: myMarked(view) });
-    if (!marked.length) fail(409, 'nothing_marked', 'Нет отмеченных строк');
-    const from = s => mine.find(t => t.from.includes(s));
-    const skipped = [];
-    let done = 0;
+    const marked = await od.list(ARM, { $filter: myMarked('sales') });
+    if (!marked.length) fail(409, 'nothing_marked', 'Нет строк продаж для смены статуса: отметьте строки');
+    const m = matrixFor(role());
+    const col = m.columns.find(c => c.field === 'СтатусСтроки');
+    let done = 0, denied = 0, badFrom = 0;
+    const incomplete = new Set();
+    let incompleteRows = 0;
     for (const r of marked) {
+      if (r.СтатусСтроки === 'ЗаблокированоФоном') continue;
       const s = statusOf(r.СтатусСтроки);
-      const t = from(s);
-      const name = r.НоменклатураКлиента || r.ИдентификаторЗаписи;
-      if (!t) { skipped.push(`${name}: из «${s}» нельзя`); continue; }
-      if (to === 'closed' && s === 'shipped' && !r.ДокументПодписанОригинал) { skipped.push(`${name}: не отмечено «Документ подписан оригинал»`); continue; }
-      await od.patch(keyPath(r), { ...statusPatch(r, t.status), ...unmark });
-      done++;
-      if (view === 'purchases') {   // закупка ведёт за собой связанную продажу в том же статусе
-        for (const sale of await od.list(ARM, { $filter: `КлючСвязиСтрок eq ${lit(r.КлючСвязиСтрок)} and ВидОперации eq 'Продажа' and Удаление eq false` })) {
-          if (statusOf(sale.СтатусСтроки) === s) await od.patch(keyPath(sale), statusPatch(sale, t.status));
-        }
+      const i = m.statuses.indexOf(s);
+      if (role() !== 'admin' && (i < 0 || col.rights[i] !== '+')) { denied++; continue; }
+      if (r.СтатусСтроки === t.status || !t.from.includes(r.СтатусСтроки)) { badFrom++; continue; }
+      if (role() === 'manager' && REQUIRED_CONTROL.includes(r.СтатусСтроки)) {
+        const miss = missingRequired(r);
+        if (miss.length) { incompleteRows++; miss.forEach(x => incomplete.add(x)); continue; }
       }
+      await od.patch(keyPath(r), { СтатусСтроки: t.status, ...unmark });
+      done++;
     }
-    if (!done) fail(409, 'transition_denied', `Переход «${to}» не применён: ${skipped.join('; ')}. Допустимо из: ${[...new Set(mine.flatMap(t => t.from))].join(', ')}`);
-    return { processed: done, total: marked.length, message: skipped.length ? 'Пропущены: ' + skipped.join('; ') : undefined };
+    if (!done && denied) fail(403, 'matrix_denied', `Роль не вправе менять статус выбранных строк в их текущем статусе (матрица прав АРМ): ${denied} шт.`);
+    if (!done && badFrom) fail(409, 'transition_denied', `Переход в статус «${t.status}» недопустим из текущего статуса строк (закрытые/тот же статус): ${badFrom} шт.`);
+    const message = incompleteRows ? `Статус не изменён у строк с незаполненными обязательными полями (${incompleteRows} шт.): ${[...incomplete].join('; ')}` : undefined;
+    if (!done && incompleteRows) fail(409, 'required', message);
+    return { processed: done, total: marked.length, message };
   }
 
   async function supplyStatus({ status, partialReceipt, receiptDate }) {
-    if (role() !== 'supply' && role() !== 'admin') fail(403, 'matrix_denied', 'Статусы канбана меняет роль supply');
+    if (!SUPPLY_ROLES.includes(role())) fail(403, 'matrix_denied', 'Действие на форме снабжения доступно ролям Менеджер, Кладовщик и Администратор');
     const target = SUPPLY_STATUS[status];
     if (!target) fail(400, 'bad_request', 'status: ' + Object.keys(SUPPLY_STATUS).join(', '), 'status');
     requireUser();
@@ -322,6 +345,7 @@ export function createBackend({ baseUrl, session, log }) {
   }
 
   async function prepared() {
+    requireOrderRole();
     requireUser();
     const marked = await od.list(ARM, { $filter: `${myMarked('sales')} and СтатусСтроки eq 'ВРаботе'` });
     if (!marked.length) fail(409, 'nothing_marked', 'Нет отмеченных строк продажи в статусе «В работе»');
@@ -333,6 +357,7 @@ export function createBackend({ baseUrl, session, log }) {
   }
 
   async function shipments({ customerOrderId, shipmentDate, shipmentNumber }) {
+    requireOrderRole();
     if (!shipmentDate || !shipmentNumber) fail(400, 'bad_request', 'Нужны shipmentDate и shipmentNumber');
     const recs = await od.list(ARM, { $filter: `ДокументЗаказПокупателя_Key eq ${guid(customerOrderId)} and ВидОперации eq 'Продажа' and Удаление eq false` });
     let n = 0;
@@ -361,12 +386,14 @@ export function createBackend({ baseUrl, session, log }) {
 
   // Проведение (M15) — команда ПровестиЗаказ: отмеченные строки «Подготовлено» -> «Запасы», проведение, строки -> «Завершено»
   async function postOrder(id) {
+    requireOrderRole();
     requireUser();
     const { processed, total } = await command('ПровестиЗаказ', { id });
     return { processed, total };
   }
 
   async function deleteOrder(id) {
+    requireOrderRole();
     const supplierOrders = await od.list('Document_ЗаказПоставщику', { $filter: `ЗаказПокупателя_Key eq ${guid(id)} and DeletionMark eq false`, $top: 1, $select: 'Ref_Key' })
       .catch(() => []);
     if (supplierOrders.length) fail(409, 'unfinished_purchase', 'По заказу есть заказ поставщику — удалить нельзя');

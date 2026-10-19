@@ -19,10 +19,11 @@ export const useSessionStore = defineStore('session', {
   getters: {
     loggedIn: s => !!s.token,
     role: s => (s.user && s.user.role) || null,
-    isSupply: s => !!s.user && s.user.role === 'supply',
     isAdmin: s => !!s.user && s.user.role === 'admin',
-    // какие списки доступны роли: supply — только канбан снабжения
-    views: s => (s.user && s.user.role === 'supply' ? ['supply'] : s.user && s.user.role === 'admin' ? ['sales', 'purchases', 'supply'] : ['sales', 'purchases'])
+    // списки роли: «Снабжение» (форма снабжения АРМ) — менеджеру, кладовщику и администратору (ОтказРолиСнабжения)
+    views: s => (s.user && ['manager', 'storekeeper', 'admin'].includes(s.user.role) ? ['sales', 'purchases', 'supply'] : ['sales', 'purchases']),
+    // команды заказа и смена статуса строк — менеджер и администратор (D2)
+    canOrder: s => !!s.user && ['manager', 'admin'].includes(s.user.role)
   },
   actions: {
     setBaseUrl(url) {

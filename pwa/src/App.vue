@@ -17,13 +17,13 @@ const route = useRoute();
 ui.init();
 
 const VIEW_TITLES = { sales: 'Продажи', purchases: 'Закупки', supply: 'Снабжение' };
-const ROLE_TITLES = { manager: 'Менеджер', storekeeper: 'Кладовщик', chief_mechanic: 'Гл. механик', admin: 'Администратор', supplier: 'Поставщик', client: 'Клиент', supply: 'Снабжение' };
+const ROLE_TITLES = { manager: 'Менеджер', storekeeper: 'Кладовщик', chief_mechanic: 'Гл. механик', admin: 'Администратор', supplier: 'Поставщик', client: 'Клиент' };
 const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', matrix: 'Матрица прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ' };
 
 // Навигация: основные пункты — в нижней панели телефона, остальные — в «Ещё»; на ПК всё в боковой панели
 const nav = computed(() => [
   ...session.views.map(v => ({ to: { name: 'lines', params: { view: v } }, title: VIEW_TITLES[v], icon: v, main: true })),
-  ...(session.isSupply ? [] : [{ to: '/import', title: 'Загрузка', icon: 'upload', main: true }]),
+  { to: '/import', title: 'Загрузка', icon: 'upload', main: true },   // в АРМ загрузка заявки не ограничена ролью
   { to: '/catalog/goods', title: 'Товары', icon: 'tag' },
   { to: '/catalog/services', title: 'Услуги', icon: 'wrench' },
   { to: '/catalog/cars', title: 'Машины', icon: 'car' },

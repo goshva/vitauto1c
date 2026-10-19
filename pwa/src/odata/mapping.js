@@ -97,6 +97,7 @@ export function fieldValue(field, value) {
 }
 
 export function matrixFor(role) {
-  return { role, statuses: MATRIX.statuses, columns: MATRIX.roles[role] || MATRIX.roles.manager };
+  // роль без записи в матрице — без прав (D1b, fail-closed)
+  return { role, statuses: MATRIX.statuses, columns: MATRIX.roles[role] || [] };
 }
 export const MATRIX_ETAG = '"' + MATRIX.source.length + '-' + MATRIX.roles.manager.length + '-' + MATRIX.statuses.length + '"';

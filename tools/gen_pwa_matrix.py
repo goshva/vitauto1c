@@ -28,9 +28,9 @@ OUT = os.path.join(ROOT, 'pwa', 'src', 'odata', 'matrix.json')
 NOT_WRITABLE = {'ОтметкаСтроки', 'Порядок', 'СтатусСтроки', 'Себестоимость', 'Сумма', 'ОстатокДляСтроки',
                 'КоличествоВРезерве', 'КоличествоВПути', 'НоменклатураАртикул', 'НоменклатураАС_КодАвтоАльянс',
                 'НоменклатураЕдиницаИзмерения'}
-# роли PWA -> роль матрицы (supply = storekeeper, как Снабжение в ROLE_ENUM_MAP)
+# роли PWA -> роль матрицы. «Снабжение» в PWA не используется (решение 19.10.2026)
 PWA_ROLES = {'manager': 'manager', 'storekeeper': 'storekeeper', 'chief_mechanic': 'chief_mechanic', 'admin': 'admin',
-             'supplier': 'supplier', 'client': 'client', 'supply': 'storekeeper'}
+             'supplier': 'supplier', 'client': 'client'}
 
 
 def read(p):

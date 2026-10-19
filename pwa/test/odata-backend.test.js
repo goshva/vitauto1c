@@ -39,14 +39,16 @@ describe('OData: пишущие операции PWA', () => {
   it('переход «Зарезервировать»: отметка -> переход -> статус reserve, отметка снята', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
-    const rec = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and СтатусСтроки eq 'Черновик' and Удаление eq false and АвторСтроки_Key eq ${guid(EMPTY)}`, $top: 1 }))[0];
-    expect(rec, 'нужна строка продажи «Черновик» (seed)').toBeTruthy();
+    // обязательные поля заполнены (T08: из «Черновик» менеджер не переводит строку с пустыми обязательными)
+    const rec = (await admin.list(ARM, { $filter: `ВидОперации eq 'Продажа' and СтатусСтроки eq 'Черновик' and Удаление eq false and АвторСтроки_Key eq ${guid(EMPTY)}`
+      + ` and НомерЗаказаКлиента ne '' and Номенклатура_Key ne ${guid(EMPTY)} and Количество gt 0 and (Госномер ne '' or Агрегат ne '')`, $top: 1 }))[0];
+    expect(rec, 'нужна заполненная строка продажи «Черновик» (seed)').toBeTruthy();
     try {
       const marked = await m.call('POST', `/lines/${rec.ИдентификаторЗаписи}/mark`);
       expect(marked.marked).toBe(true);
       expect(marked.markedBy).toBe('arm.manager');
       expect((await m.call('GET', '/selection', { query: { view: 'sales' } })).count).toBeGreaterThan(0);
-      const r = await m.call('POST', '/lines/transition', { body: { view: 'sales', to: 'reserve' } });
+      const r = await m.call('POST', '/lines/transition', { body: { to: 'reserve' } });
       expect(r.processed).toBeGreaterThan(0);
       const after = await m.call('GET', `/lines/${rec.ИдентификаторЗаписи}`);
       expect(after.status).toBe('reserve');
@@ -80,7 +82,7 @@ describe('OData: пишущие операции PWA', () => {
     try {
       // цепочка снабжения АРМ жёсткая (ИзменитьСтатусыВРегистреСнабжения): «Оплачено» — только из «Заказано»
       await admin.patch(keyPath(await raw(pur.id)), { СтатусСтроки: 'Заказано', Количество: sale.Количество });
-      const s = await session('arm.supply');
+      const s = await session('arm.storekeeper');   // «Снабжение» в PWA убрано; цепочку ведут менеджер/кладовщик/админ
       await s.call('POST', `/lines/${pur.id}/mark`);
       const r = await s.call('POST', '/supply/status', { body: { status: 'paid' } });
       expect(r.processed).toBe(1);

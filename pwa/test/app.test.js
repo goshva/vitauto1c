@@ -1,6 +1,6 @@
 // Интеграционные тесты PWA против стандартного интерфейса OData 1С (расширение АРМ_OData): реальные компоненты,
 // Pinia, роутер, без моков. Нужны Apache с публикацией (npm run api), данные seed и тестовые пользователи
-// arm.manager / arm.storekeeper / arm.supply с паролем 1 (odata\pwa-test-users.ps1).
+// arm.manager / arm.storekeeper / arm.admin с паролем 1 (odata\pwa-test-users.ps1).
 //   ODATA_URL=http://127.0.0.1:8090/odata215/odata/standard.odata npm test
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
@@ -137,10 +137,10 @@ describe('PWA против 1С', () => {
     await w.findAll('tbody tr:not(.group)').find(tr => tr.classes('current')).find('td.sticky-1 input').trigger('click');
     await until(() => lines.totals.count === before);
 
-    // нельзя: снабжение для менеджера → роутер возвращает на продажи
+    // форма снабжения менеджеру доступна (ОтказРолиСнабжения: менеджер, кладовщик, администратор)
     await router.push('/lines/supply');
     await flushPromises();
-    expect(router.currentRoute.value.params.view).toBe('sales');
+    expect(router.currentRoute.value.params.view).toBe('supply');
     w.unmount();
   });
 
@@ -263,7 +263,7 @@ describe('PWA против 1С', () => {
     w.unmount();
   });
 
-  it('переходы процессов: кнопки по роли, без отметок — 409 nothing_marked', async ({ skip }) => {
+  it('смена статуса: три кнопки АРМ только у менеджера/администратора, без отметок — 409 nothing_marked', async ({ skip }) => {
     if (!reachable) skip();
     const { useToastStore } = await import('../src/stores/toast');
     // лист «Действия» (кнопка в шапке): переходы — кнопки [data-transition], подпись — название и узлы схемы
@@ -274,20 +274,24 @@ describe('PWA против 1С', () => {
       await until(() => w.findAll('[data-transition]').length > 0);
     };
 
+    // кладовщик: ни смены статуса, ни команд заказа (D2, ОтказЕслиНеМенеджерИлиАдминАРМ)
     await useSessionStore().login('arm.storekeeper', '1');
     let w = await mountAt('/lines/sales');
-    await openActions(w);
-    expect(names(w)).toEqual(['Собрано', 'Принять по УПД', 'Возврат', 'Закрыть']);
+    await until(() => w.find('[aria-label=Действия]').exists());
+    await w.find('[aria-label=Действия]').trigger('click');
+    await flushPromises();
+    expect(w.findAll('[data-transition]')).toHaveLength(0);
+    expect(w.text()).not.toMatch(/Команды 1С/);
     w.unmount();
 
     await useSessionStore().login('arm.manager', '1');
     w = await mountAt('/lines/sales');
     await openActions(w);
-    expect(names(w)).toEqual(['Зарезервировать', 'На комплектацию', 'Собрано', 'Самовывоз', 'Возврат', 'Закрыть']);
-    // свои отметки снять, затем «Зарезервировать» без отмеченных строк
+    expect(names(w)).toEqual(['Резервирование', 'Ожидаем поступление', 'Возврат']);
+    // свои отметки снять, затем «Резервирование» без отмеченных строк
     const lines = useLinesStore();
     for (const l of [...lines.items]) if (l.marked && l.markedBy === useSessionStore().user.userName) await lines.toggleMark(l);
-    await w.findAll('[data-transition]').find(b => b.text().startsWith('Зарезервировать')).trigger('click');
+    await w.findAll('[data-transition]').find(b => b.text().startsWith('Резервирование')).trigger('click');
     await until(() => useToastStore().items.some(t => /nothing_marked/.test(t.text)));
     // переход выполняется в PWA запросами OData: без отметок — ни одного PATCH
     expect(useLogStore().entries.some(e => e.method === 'PATCH')).toBe(false);
@@ -310,13 +314,18 @@ describe('PWA против 1С', () => {
     w.unmount();
   });
 
-  it('снабжение: только канбан, вкладки роли', async ({ skip }) => {
+  it('роль «Снабжение» в PWA не используется — вход запрещён', async ({ skip }) => {
     if (!reachable) skip();
-    await useSessionStore().login('arm.supply', '1');
-    const w = await mountAt('/');
+    await expect(useSessionStore().login('arm.supply', '1')).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('кладовщик: продажи, закупки и форма снабжения; без команд заказа', async ({ skip }) => {
+    if (!reachable) skip();
+    await useSessionStore().login('arm.storekeeper', '1');
+    const w = await mountAt('/lines/supply');
     await until(() => router.currentRoute.value.name === 'lines');
     expect(router.currentRoute.value.params.view).toBe('supply');
-    expect(w.findAll('.navbar a').map(a => a.text().trim())).toEqual(['Снабжение', 'Товары', 'Услуги', 'Машины', 'Справочники', 'Журнал']);
+    expect(w.findAll('.navbar a').map(a => a.text().trim())).toEqual(['Продажи', 'Закупки', 'Снабжение', 'Загрузка', 'Товары', 'Услуги', 'Машины', 'Справочники', 'Журнал']);
     await until(() => w.find('[aria-label=Действия]').exists());
     await w.find('[aria-label=Действия]').trigger('click');
     await until(() => w.findAll('[data-supply]').length === 6);
