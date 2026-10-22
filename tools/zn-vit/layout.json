@@ -1,0 +1,735 @@
+{
+ "columns": 8,
+ "page": 820,
+ "columnWidths": {
+  "1": "2x",
+  "2": "15x",
+  "3": "8x",
+  "4": "4x",
+  "5": "5x",
+  "6": "4x",
+  "7": "5x",
+  "8": "6x"
+ },
+ "fonts": {
+  "default": {
+   "face": "Arial",
+   "size": 9
+  },
+  "жирный": {
+   "face": "Arial",
+   "size": 9,
+   "bold": true
+  },
+  "жирный10": {
+   "face": "Arial",
+   "size": 10,
+   "bold": true
+  },
+  "заголовок": {
+   "face": "Arial",
+   "size": 14,
+   "bold": true
+  },
+  "мелкий": {
+   "face": "Arial",
+   "size": 8
+  }
+ },
+ "styles": {
+  "текст": {
+   "textPlacement": "Wrap",
+   "verticalAlignment": "Top"
+  },
+  "жирный": {
+   "font": "жирный",
+   "textPlacement": "Wrap",
+   "verticalAlignment": "Top"
+  },
+  "жирный10": {
+   "font": "жирный10",
+   "textPlacement": "Wrap",
+   "verticalAlignment": "Top"
+  },
+  "заголовок": {
+   "font": "заголовок",
+   "textPlacement": "Wrap"
+  },
+  "мелкий": {
+   "font": "мелкий",
+   "textPlacement": "Wrap"
+  },
+  "мелкийПр": {
+   "font": "мелкий",
+   "horizontalAlignment": "Right"
+  },
+  "рамкаВерх": {
+   "font": "жирный",
+   "textPlacement": "Wrap",
+   "leftBorder": "Solid",
+   "topBorder": "Solid",
+   "rightBorder": "Solid"
+  },
+  "рамкаСред": {
+   "font": "жирный",
+   "textPlacement": "Wrap",
+   "leftBorder": "Solid",
+   "rightBorder": "Solid"
+  },
+  "рамкаНиз": {
+   "font": "жирный",
+   "textPlacement": "Wrap",
+   "leftBorder": "Solid",
+   "rightBorder": "Solid",
+   "bottomBorder": "Solid"
+  },
+  "рамкаВся": {
+   "font": "жирный",
+   "textPlacement": "Wrap",
+   "border": "Solid"
+  },
+  "линия": {
+   "bottomBorder": {
+    "style": "Solid",
+    "width": 2
+   }
+  },
+  "полеЗаг": {
+   "font": "мелкий",
+   "leftBorder": "Solid",
+   "topBorder": "Solid",
+   "rightBorder": "Solid",
+   "verticalAlignment": "Top"
+  },
+  "полеЗнач": {
+   "leftBorder": "Solid",
+   "rightBorder": "Solid",
+   "bottomBorder": "Solid",
+   "textPlacement": "Wrap",
+   "verticalAlignment": "Top"
+  },
+  "шапкаТабл": {
+   "font": "жирный",
+   "border": "Solid",
+   "horizontalAlignment": "Center",
+   "verticalAlignment": "Center",
+   "textPlacement": "Wrap"
+  },
+  "клетка": {
+   "border": "Solid",
+   "textPlacement": "Wrap",
+   "verticalAlignment": "Top"
+  },
+  "клеткаЦ": {
+   "border": "Solid",
+   "horizontalAlignment": "Center",
+   "verticalAlignment": "Top"
+  },
+  "клеткаЧ": {
+   "border": "Solid",
+   "horizontalAlignment": "Right",
+   "verticalAlignment": "Top"
+  },
+  "итогНадп": {
+   "font": "жирный",
+   "horizontalAlignment": "Right"
+  },
+  "итогКлетка": {
+   "font": "жирный",
+   "border": "Solid",
+   "horizontalAlignment": "Right"
+  },
+  "итогЗнач": {
+   "font": "жирный",
+   "horizontalAlignment": "Right"
+  },
+  "подпись": {
+   "font": "жирный10",
+   "textPlacement": "Cut"
+  }
+ },
+ "printSettings": {
+  "pageOrientation": "Portrait",
+  "topMargin": 10,
+  "leftMargin": 10,
+  "bottomMargin": 10,
+  "rightMargin": 10,
+  "fitToPage": true
+ },
+ "areas": [
+  {
+   "name": "Заголовок",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "жирный",
+       "template": "ПОСТАВЩИК:   [ФирмаПолноеНаименование]"
+      }
+     ]
+    },
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "заголовок",
+       "template": "Заказ-наряд № [НомерДок] от [ДатаДок]"
+      }
+     ]
+    },
+    {}
+   ]
+  },
+  {
+   "name": "Шапка",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "рамкаВерх",
+       "template": "Заказчик: [ЗаказчикПолноеНаименование]"
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "рамкаНиз",
+       "template": "Адрес заказчика : [ЗаказчикАдрес]   телефоны: [ЗаказчикТелефоны]"
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "рамкаВся",
+       "template": "Автомобиль : [АвтомобильМодель]  гос. номер:  [АвтомобильГосНомер]   VIN: [АвтомобильVIN]  год вып. [АвтомобильГод]"
+      }
+     ]
+    },
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 2,
+       "style": "полеЗаг",
+       "text": "Принят:"
+      },
+      {
+       "col": 3,
+       "span": 2,
+       "style": "полеЗаг",
+       "text": "Заявка:"
+      },
+      {
+       "col": 5,
+       "span": 2,
+       "style": "полеЗаг",
+       "text": "Дата окончания:"
+      },
+      {
+       "col": 7,
+       "span": 2,
+       "style": "полеЗаг",
+       "text": "Мастер:"
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 2,
+       "style": "полеЗнач",
+       "param": "Принят"
+      },
+      {
+       "col": 3,
+       "span": 2,
+       "style": "полеЗнач",
+       "param": "Заявка"
+      },
+      {
+       "col": 5,
+       "span": 2,
+       "style": "полеЗнач",
+       "param": "ДатаОкончания"
+      },
+      {
+       "col": 7,
+       "span": 2,
+       "style": "полеЗнач",
+       "param": "Мастер"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ШапкаРабот",
+   "rows": [
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "жирный10",
+       "template": "Выполненные работы по заказ-наряду № [НомерДок] от [ДатаДокКратко] г."
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "style": "шапкаТабл",
+       "text": "№"
+      },
+      {
+       "col": 2,
+       "span": 2,
+       "style": "шапкаТабл",
+       "text": "Наименование работ"
+      },
+      {
+       "col": 4,
+       "style": "шапкаТабл",
+       "text": "Ед. изм."
+      },
+      {
+       "col": 5,
+       "style": "шапкаТабл",
+       "text": "Кол-во"
+      },
+      {
+       "col": 6,
+       "style": "шапкаТабл",
+       "text": "н/ч"
+      },
+      {
+       "col": 7,
+       "style": "шапкаТабл",
+       "text": "Цена"
+      },
+      {
+       "col": 8,
+       "style": "шапкаТабл",
+       "text": "Сумма"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "СтрокаРабот",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 1,
+       "style": "клеткаЦ",
+       "param": "НомСтр"
+      },
+      {
+       "col": 2,
+       "span": 2,
+       "style": "клетка",
+       "param": "Наименование"
+      },
+      {
+       "col": 4,
+       "style": "клеткаЦ",
+       "param": "ЕдиницаИзмерения"
+      },
+      {
+       "col": 5,
+       "style": "клеткаЧ",
+       "param": "Количество"
+      },
+      {
+       "col": 6,
+       "style": "клеткаЦ",
+       "param": "Нормочас"
+      },
+      {
+       "col": 7,
+       "style": "клеткаЧ",
+       "param": "Цена"
+      },
+      {
+       "col": 8,
+       "style": "клеткаЧ",
+       "param": "Сумма"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ВсегоРабот",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 5,
+       "span": 3,
+       "style": "итогНадп",
+       "text": "Всего работ, руб.:"
+      },
+      {
+       "col": 8,
+       "style": "итогКлетка",
+       "param": "Всего"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ПодвалРабот",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 6,
+       "style": "мелкий",
+       "template": "Всего оказано работ на сумму [Сумма] руб."
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 6,
+       "style": "жирный",
+       "param": "СуммаПрописью"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ШапкаТоваров",
+   "rows": [
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "жирный10",
+       "template": "Расходная накладная к заказ-наряду № [НомерДок] от [ДатаДокКратко] г."
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "style": "шапкаТабл",
+       "text": "№"
+      },
+      {
+       "col": 2,
+       "style": "шапкаТабл",
+       "text": "Наименование, характеристика товаров"
+      },
+      {
+       "col": 3,
+       "style": "шапкаТабл",
+       "text": "Артикул"
+      },
+      {
+       "col": 4,
+       "style": "шапкаТабл",
+       "text": "Ед. изм."
+      },
+      {
+       "col": 5,
+       "style": "шапкаТабл",
+       "text": "Кол-во"
+      },
+      {
+       "col": 6,
+       "span": 2,
+       "style": "шапкаТабл",
+       "text": "Цена"
+      },
+      {
+       "col": 8,
+       "style": "шапкаТабл",
+       "text": "Сумма"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "СтрокаТоваров",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 1,
+       "style": "клеткаЦ",
+       "param": "НомСтр"
+      },
+      {
+       "col": 2,
+       "style": "клетка",
+       "param": "Наименование"
+      },
+      {
+       "col": 3,
+       "style": "клетка",
+       "param": "Артикул"
+      },
+      {
+       "col": 4,
+       "style": "клеткаЦ",
+       "param": "ЕдиницаИзмерения"
+      },
+      {
+       "col": 5,
+       "style": "клеткаЧ",
+       "param": "Количество"
+      },
+      {
+       "col": 6,
+       "span": 2,
+       "style": "клеткаЧ",
+       "param": "Цена"
+      },
+      {
+       "col": 8,
+       "style": "клеткаЧ",
+       "param": "Сумма"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ВсегоТоваров",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 5,
+       "span": 3,
+       "style": "итогНадп",
+       "text": "Всего, руб.:"
+      },
+      {
+       "col": 8,
+       "style": "итогКлетка",
+       "param": "Всего"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ПодвалТоваров",
+   "rows": [
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 6,
+       "style": "мелкий",
+       "template": "Всего деталей на сумму [Сумма] руб."
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 6,
+       "style": "жирный",
+       "param": "СуммаПрописью"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Итого",
+   "rows": [
+    {},
+    {
+     "cells": [
+      {
+       "col": 4,
+       "span": 4,
+       "style": "итогНадп",
+       "text": "Итого по заказ-наряду, руб.:"
+      },
+      {
+       "col": 8,
+       "style": "итогЗнач",
+       "param": "Всего"
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 4,
+       "span": 4,
+       "style": "итогНадп",
+       "text": "В том числе НДС, руб.:"
+      },
+      {
+       "col": 8,
+       "style": "итогЗнач",
+       "param": "ВсегоНДС"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Подвал",
+   "rows": [
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "жирный10",
+       "param": "ТекстСтоимости"
+      }
+     ]
+    },
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "жирный10",
+       "text": "Претензий по комплектности не имею."
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 8,
+       "style": "жирный10",
+       "text": "С рекомендациями по использованию результатов работ ознакомлен."
+      }
+     ]
+    },
+    {},
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 6,
+       "style": "подпись",
+       "text": "_____________________________/______________________/"
+      }
+     ]
+    },
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 3,
+       "style": "жирный10",
+       "text": "ИСПОЛНИТЕЛЬ:"
+      },
+      {
+       "col": 5,
+       "span": 4,
+       "style": "жирный10",
+       "text": "ЗАКАЗЧИК:"
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 3,
+       "style": "жирный10",
+       "param": "ИсполнительНаименование"
+      },
+      {
+       "col": 5,
+       "span": 4,
+       "style": "жирный10",
+       "param": "ЗаказчикНаименование"
+      }
+     ]
+    },
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 3,
+       "style": "жирный10",
+       "param": "ДолжностьРуководителя"
+      },
+      {
+       "col": 5,
+       "span": 4,
+       "style": "подпись",
+       "text": "____________________________"
+      }
+     ]
+    },
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 3,
+       "style": "подпись",
+       "template": "/________________/[РуководительФИО]/"
+      },
+      {
+       "col": 5,
+       "span": 4,
+       "style": "подпись",
+       "text": "/____________/____________________/"
+      }
+     ]
+    },
+    {},
+    {},
+    {
+     "cells": [
+      {
+       "col": 1,
+       "span": 3,
+       "style": "жирный10",
+       "param": "ДатаПодписи"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
