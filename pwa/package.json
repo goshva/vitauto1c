@@ -10,6 +10,7 @@
     "dev:test": "vite --mode test",
     "dev:main": "vite --mode main",
     "dev:prod": "vite --mode prod",
+    "dev:vitauto": "vite --mode vitauto",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

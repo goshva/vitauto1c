@@ -57,6 +57,13 @@
 - Пароль PostgreSQL спросит скрытым вводом (или задайте `-PgPassword`); **только ASCII** (латиница, цифры, спецсимволы) — psql и 1С используют разные кодировки.
 - Дополнительные ключи: `-PgPort 5433`, `-PgDataDir`, `-SrvInfoDir`, `-IbName`.
 
+### Копия рабочей базы vitauto на своей машине
+
+С нуля, из дампа PostgreSQL рабочего сервера, с теми же пользователями, паролями, ролями и расширениями:
+[docs/DEPLOY-LOCAL.md](docs/DEPLOY-LOCAL.md) (`install-1c-pgsql.ps1 -SourceDump` → `checkApacheOdata.ps1` → PWA).
+Схемы текущей системы — [docs/architecture.drawio](docs/architecture.drawio) (открыть в draw.io / diagrams.net),
+открытые задачи — [docs/TODO.md](docs/TODO.md).
+
 ### Общее
 
 - Windows 10/11, запуск **от администратора** (скрипт сам повышает права).

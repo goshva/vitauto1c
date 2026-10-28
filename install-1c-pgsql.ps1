@@ -67,6 +67,7 @@ param(
     [switch]      $NoMovePgBases,                   # не переносить базы кластера 1С из старого PostgreSQL в новый
     # --- источник базы ---
     [string]      $SourceDt,                        # бэкап .dt для базы; по умолчанию — самый свежий *.dt в -BaseDir («бэкап 20260805.dt»)
+    [string]      $SourceDump,                      # дамп PostgreSQL (pg_dump -Fc) — база из него вместо .dt (шаг 4, ветка «дамп»)
     [switch]      $NoBackupDt,                      # не брать бэкап из -BaseDir — база из autoservice.zip
     [switch]      $ReloadIb,                        # база уже есть, а бэкап другой/свежее — загрузить его поверх без вопроса
     [string]      $AdminUser = 'Администратор',   # этому пользователю ИБ после загрузки ставится пустой пароль ('' — не менять)
@@ -937,8 +938,11 @@ try {
         Write-Host '  -- PostgreSQL для 1С (установщик)'
         Ok ("установщик уже есть: {0} ({1:N0} МБ, подпись Postgres Professional) — скачивание не нужно" -f $PgSetupFile.FullName, ($PgSetupFile.Length / 1MB))
     }
-    Write-Host '  -- Конфигурация "Автосервис"'
-    $ConfDir = Expand-Source $Sources.Config
+    if ($SourceDump) { Ok 'конфигурация "Автосервис" (autoservice.zip) не нужна — база из дампа -SourceDump' }
+    else {
+        Write-Host '  -- Конфигурация "Автосервис"'
+        $ConfDir = Expand-Source $Sources.Config
+    }
 
     # =================================================================
     if ($PgExisting) {
@@ -1040,9 +1044,10 @@ try {
     $mst = @('adminstallrelogon.mst', '1049.mst') | Where-Object { Test-Path (Join-Path $msiDir $_) }
     $transforms = if ($mst) { "TRANSFORMS=`"$($mst -join ';')`"" } else { '' }
     # ALLUSERS=1 — установка для всех пользователей (Program Files, HKLM, общие ярлыки «Пуск» и рабочего стола);
-    # у MSI 1С по умолчанию ALLUSERS=2 — «для всех» только при запуске от администратора, здесь — всегда
+    # у MSI 1С по умолчанию ALLUSERS=2 — «для всех» только при запуске от администратора, здесь — всегда.
+    # WEBSERVEREXT=1 — модуль Apache (wsap24.dll) и webinst.exe для публикации OData (checkApacheOdata.ps1)
     $args1C = "/qn ALLUSERS=1 $transforms DESIGNERALLCLIENTS=1 THICKCLIENT=1 THINCLIENTFILE=1 THINCLIENT=1 " +
-    "WEBSERVEREXT=0 SERVER=1 SERVERCLIENT=1 CONFREPOSSERVER=0 CONVERTER77=0 LANGUAGES=RU"
+    "WEBSERVEREXT=1 SERVER=1 SERVERCLIENT=1 CONFREPOSSERVER=0 CONVERTER77=0 LANGUAGES=RU"
     Push-Location $msiDir
     try { $code = Invoke-Msi '/i' $msi1C.FullName $args1C '1c_msi.log' } finally { Pop-Location }
     if ($code -notin 0, 3010) { throw "Установка 1С завершилась с кодом $code (см. logs\1c_msi.log)" }
@@ -1548,7 +1553,11 @@ try {
     #  Пустой пароль «Администратора» и пользователь для конфигуратора/запуска. Вход проверяется на самой базе
     #  на сервере: у бэкапа рабочей базы свои пользователи (там «Администратор» с паролем, «Автосервис» без пароля).
     Step "4в. Пользователь «$AdminUser»: пустой пароль"
-    $LaunchUser = 'Админ'
+    # -AdminUser '' (пароли как в источнике) — конфигуратор и запуск под -IbUser (пароль -IbPassword)
+    $LaunchUser = if ($IbUser) { $IbUser } else { 'Админ' }
+    if (-not $AdminUser -and $IbUser) {
+        $ibAuth = "/N `"$IbUser`" /P `"$(if ($IbPassword) { (New-Object Net.NetworkCredential('', $IbPassword)).Password })`""
+    }
     if ($AdminUser) {
         $rs = Reset-IbUserPassword "Srvr=`"$Server1C`";Ref=`"$IbName`";" $AdminUser
         if (-not $rs -or -not $rs.LOGIN -or $rs.LOGIN -like 'ERR*') {
