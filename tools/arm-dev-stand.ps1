@@ -25,6 +25,7 @@ param(
     [string]$IbUser = 'Автосервис',
     [string]$IbPassword = '',
     [string]$Version = '2.23',
+    [string]$Extension = 'АРМЗакупокИПродаж',   # loadcfe: можно загрузить и другое расширение (АРМ_OData)
     [string]$Cfe,
     [string]$Dump,
     [string]$PgPassword = 'postgres',
@@ -68,8 +69,8 @@ switch ($Step) {
     }
     'loadcfe' {
         if (-not $Cfe) { throw 'Укажите -Cfe' }
-        Designer "/LoadCfg `"$((Resolve-Path $Cfe).Path)`" -Extension $Ext" "загрузка $(Split-Path -Leaf $Cfe)"
-        Designer "/UpdateDBCfg -Extension $Ext" 'применение'
+        Designer "/LoadCfg `"$((Resolve-Path $Cfe).Path)`" -Extension $Extension" "загрузка $(Split-Path -Leaf $Cfe)"
+        Designer "/UpdateDBCfg -Extension $Extension" 'применение'
     }
     'dumpxml' {
         $dir = Join-Path $Repo "src-xml\${Ext}_v$Version"

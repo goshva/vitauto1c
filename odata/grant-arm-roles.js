@@ -18,6 +18,7 @@ try {
     var rights = c.InformationRegisters.Арм_ПраваПользователей;
     var full = FULL ? c.Metadata.Roles.Find("ПолныеПрава") : null;
     if (FULL && !full) log("ERROR нет роли ПолныеПрава");
+    var odataRole = c.Metadata.Roles.Find("АрмOData_Пользователь");
     for (var i = 0; i < USERS.length; i++) {
         var name = USERS[i][0], roleName = USERS[i][1], ui = USERS[i][2];
         try {
@@ -29,11 +30,14 @@ try {
             if (added) u.Roles.Add(role);
             var fullAdded = full && !u.Roles.Contains(full);
             if (fullAdded) u.Roles.Add(full);
+            var odataAdded = odataRole && !u.Roles.Contains(odataRole);   // АРМ_OData 1.3+: команды PWA без ПолныеПрава
+            if (odataAdded) u.Roles.Add(odataRole);
             u.StandardAuthentication = true;
             if (PWD !== null) u.Password = PWD;
             u.Write();
             var msg = name + ": " + roleName + (added ? " добавлена" : " уже была")
-                + (full ? ", ПолныеПрава" + (fullAdded ? " добавлена" : " уже была") : "") + (PWD !== null ? ", пароль задан" : "");
+                + (full ? ", ПолныеПрава" + (fullAdded ? " добавлена" : " уже была") : "")
+                + (odataRole ? ", АрмOData_Пользователь" + (odataAdded ? " добавлена" : " уже была") : "") + (PWD !== null ? ", пароль задан" : "");
             // элемент «Пользователи»: действителен (иначе БСП не пустит), связь с пользователем ИБ — как в pwa-test-users.js
             var ref = c.Catalogs.Пользователи.FindByDescription(name, true);
             if (ref.IsEmpty()) msg += "; WARN нет элемента «Пользователи»";

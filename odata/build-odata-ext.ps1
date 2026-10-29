@@ -11,6 +11,7 @@
   .\odata\build-odata-ext.ps1 -IbDir D:\1c\test_v215
   .\odata\build-odata-ext.ps1 -IbDir D:\1c\test_v215 -IbUser Админ -Version 1.1
   .\odata\build-odata-ext.ps1 -IbServer 'localhost\autoservice_main' -IbUser Администратор   # серверная база
+  .\odata\build-odata-ext.ps1 -IbServer 'localhost\vitauto_dev' -IbUser Автосервис -Version 1.3   # 1.3: + роль АрмOData_Пользователь
 #>
 param(
     [string]$IbDir,
@@ -26,6 +27,7 @@ $IbArg = if ($IbServer) { "/S `"$IbServer`"" } else { "/F `"$IbDir`"" }
 $IbName = if ($IbServer) { $IbServer } else { $IbDir }
 $Here = $PSScriptRoot; $Root = Split-Path -Parent $Here
 $ExtName = 'АРМ_OData'; $Module = 'АрмOData_Интерфейс'; $CmdModule = 'АрмOData_Команды'; $CmdReg = 'АрмOData_КомандыPWA'
+$Role = 'АрмOData_Пользователь'
 if (-not $V8) {
     $V8 = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, 'D:\Program Files') | Where-Object { $_ } |
           ForEach-Object { Join-Path $_ '1cv8\8.3.27.2342\bin\1cv8.exe' } | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -37,6 +39,7 @@ $ns = 'xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/mana
 $ids = @{
     Config = 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a01'; Module = 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a02'; Lang = 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a03'
     CmdModule = 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a04'; CmdReg = 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a05'
+    Role = 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a06'
     Contained = @(
         @('9cd510cd-abfc-11d4-9434-004095e12fc7', 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a11'), @('9fcd25a0-4822-11d4-9414-008048da11f9', 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a12'),
         @('e3687481-0a87-462c-a166-9f34594f9bba', 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a13'), @('9de14907-ec23-4a07-96f0-85521cb6b53b', 'b6f1c3a2-5d7e-4f10-9a2b-0c4d6e8f1a14'),
@@ -47,7 +50,7 @@ $ids = @{
 $baseLangId = 'af1b61ff-d1b9-4053-ad85-8259b6626adc'
 
 $x = Join-Path $env:TEMP ("odata-ext-{0:yyyyMMddHHmmss}" -f (Get-Date))
-New-Item -ItemType Directory -Force "$x\Languages", "$x\CommonModules\$Module\Ext", "$x\CommonModules\$CmdModule\Ext", "$x\InformationRegisters\$CmdReg\Ext" | Out-Null
+New-Item -ItemType Directory -Force "$x\Languages", "$x\CommonModules\$Module\Ext", "$x\CommonModules\$CmdModule\Ext", "$x\InformationRegisters\$CmdReg\Ext", "$x\Roles\$Role\Ext" | Out-Null
 $utf8 = New-Object Text.UTF8Encoding $true
 function W([string]$path, [string]$text) { [IO.File]::WriteAllText($path, ($text -replace "`r?`n", "`r`n"), $utf8) }
 
@@ -91,6 +94,7 @@ $contained
 		</Properties>
 		<ChildObjects>
 			<Language>Русский</Language>
+			<Role>$Role</Role>
 			<CommonModule>$Module</CommonModule>
 			<CommonModule>$CmdModule</CommonModule>
 			<InformationRegister>$CmdReg</InformationRegister>
@@ -243,6 +247,38 @@ $($fields -join "`n")
 "@
 W "$x\InformationRegisters\$CmdReg\Ext\RecordSetModule.bsl" ([IO.File]::ReadAllText((Join-Path $Here "$CmdReg.RecordSet.bsl"), [Text.Encoding]::UTF8))
 
+# ---- v1.3: роль АрмOData_Пользователь — запись команд PWA (POST регистра команд) без ПолныеПрава.
+# Назначается пользователям PWA вместе с ролью АРМ (odata\grant-arm-roles.ps1).
+W "$x\Roles\$Role.xml" @"
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject $ns>
+	<Role uuid="$($ids.Role)">
+		<Properties>
+			<Name>$Role</Name>
+			<Synonym>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>АРМ OData: команды PWA</v8:content>
+				</v8:item>
+			</Synonym>
+			<Comment/>
+		</Properties>
+	</Role>
+</MetaDataObject>
+"@
+$rights = (@('Read', 'Update', 'View', 'Edit') | ForEach-Object { "`t`t<right>`n`t`t`t<name>$_</name>`n`t`t`t<value>true</value>`n`t`t</right>" }) -join "`n"
+W "$x\Roles\$Role\Ext\Rights.xml" @"
+<?xml version="1.0" encoding="UTF-8"?>
+<Rights xmlns="http://v8.1c.ru/8.2/roles" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Rights" version="2.20">
+	<setForNewObjects>false</setForNewObjects>
+	<setForAttributesByDefault>true</setForAttributesByDefault>
+	<independentRightsOfChildObjects>false</independentRightsOfChildObjects>
+	<object>
+		<name>InformationRegister.$CmdReg</name>
+$rights
+	</object>
+</Rights>
+"@
 $log = Join-Path $x 'designer.log'
 function Run1C([string]$ArgsLine, [string]$What) {
     $res = Join-Path $x 'result.txt'; Remove-Item $res, $log -ErrorAction SilentlyContinue
