@@ -7,6 +7,7 @@ import { useToastStore } from './stores/toast';
 import { useUiStore } from './stores/ui';
 import AppIcon from './components/AppIcon.vue';
 import AppModal from './components/AppModal.vue';
+import NotificationsBell from './components/NotificationsBell.vue';
 
 const session = useSessionStore();
 const log = useLogStore();
@@ -81,6 +82,8 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
       <header v-if="session.loggedIn" class="appbar">
         <div class="title">{{ title }}</div>
         <div id="appbar-actions" class="row" style="flex-wrap: nowrap; gap: 2px"></div>
+        <NotificationsBell />
+
       </header>
       <main :class="['main', { 'no-nav': !session.loggedIn }]">
         <RouterView />

@@ -29,6 +29,8 @@ const TRANSITIONS = [
 ].map(([to, status, from, roles]) => ({ to, status, from: from.split(','), roles: roles.split(',') }));
 const SUPPLY_STATUS = { paid: 'Оплачено', in_transit: 'ТоварВПути', acceptance: 'Приходуется', to_stock: 'НаСкладе', assembly: 'Комплектуется', assembled: 'Собран' };
 const COMMANDS = 'InformationRegister_АрмOData_КомандыPWA';
+const NOTICES = 'InformationRegister_Арм_Уведомления';
+const ENUM_BY_ROLE = Object.fromEntries(Object.entries(ROLE_BY_ENUM).map(([e, r]) => [r, e]));
 const DOC_SETS = { customer_order: 'Document_ЗаказПокупателя', supplier_order: 'Document_ЗаказПоставщику', receipt: 'Document_ПриходнаяНакладная', shipment: 'Document_РасходнаяНакладная' };
 
 const JOBS = new Map();   // итоги «В работе» (need_split/failed в регистр не пишутся)
@@ -608,6 +610,31 @@ export function createBackend({ baseUrl, session, log }) {
     return catalogItem(kind, id);
   }
 
+  // ---------------------------------------------------------------- уведомления (АРМ v2.23, блок 2)
+  // Регистр Арм_Уведомления: адресат — роль АРМ, создаёт 1С при смене статуса строки (M8 приход, M11 готовность,
+  // K9/M17 самовывоз). «Снабжение» и «Кладовщик» видят уведомления друг друга (D1d), администратор — все.
+  // Прочитано — общее для роли: кто отметил, тот и взял в работу.
+  async function notifications() {
+    requireUser();
+    const r = role();
+    const roles = r === 'supply' || r === 'storekeeper' ? ['Снабжение', 'Кладовщик'] : [ENUM_BY_ROLE[r]];
+    const f = ['Прочитано eq false'];
+    if (r !== 'admin') f.push('(' + roles.map(x => `РольПолучателя eq ${lit(x)}`).join(' or ') + ')');
+    const recs = await od.list(NOTICES, { $filter: f.join(' and '), $orderby: 'Дата desc', $top: 50 });
+    return {
+      items: recs.map(n => ({ id: n.Ид, date: n.Дата, node: n.Узел, kind: n.Вид, text: n.Текст,
+        customerOrderId: n.ДокументЗаказПокупателя_Key && n.ДокументЗаказПокупателя_Key !== EMPTY ? n.ДокументЗаказПокупателя_Key : null }))
+    };
+  }
+  async function readNotifications({ ids }) {
+    requireUser();
+    if (!Array.isArray(ids) || !ids.length) fail(400, 'bad_request', 'ids: идентификаторы уведомлений', 'ids');
+    const d = new Date(), p = x => String(x).padStart(2, '0');
+    const now = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    for (const id of ids) await od.patch(`${NOTICES}(Ид=${lit(id)})`, { Прочитано: true, Прочитал_Key: me() || EMPTY, ДатаПрочтения: now });
+    return { read: ids.length };
+  }
+
   // ---------------------------------------------------------------- маршрутизация
   const ok = (data, status = 200, headers = {}) => ({ status, data, headers: new Headers(headers) });
   return async function handle(method, path, { query = {}, body } = {}) {
@@ -643,6 +670,8 @@ export function createBackend({ baseUrl, session, log }) {
       }
     }
     if (method === 'POST' && path === '/supply/status') return ok(await supplyStatus(body || {}));
+    if (method === 'GET' && path === '/notifications') return ok(await notifications());
+    if (method === 'POST' && path === '/notifications/read') return ok(await readNotifications(body || {}));
     if (method === 'GET' && seg[0] === 'jobs' && seg.length === 2) return ok(await job(decodeURIComponent(seg[1])));
     if (method === 'GET' && seg[0] === 'documents' && seg.length === 3) return ok(await documentCard(seg[1], seg[2]));
     if (method === 'GET' && seg[0] === 'directories' && seg.length === 2) return ok(await directory(seg[1], query));

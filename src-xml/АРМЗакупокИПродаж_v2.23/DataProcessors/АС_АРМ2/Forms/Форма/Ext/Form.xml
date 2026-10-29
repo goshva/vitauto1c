@@ -505,6 +505,18 @@
 										</Title>
 										<ExtendedTooltip name="ДанныеАРМОтображениеОбновитьРасширеннаяПодсказка" id="333"/>
 									</Button>
+									<Button name="ДанныеАРМОтображениеУведомления" id="393">
+										<Type>CommandBarButton</Type>
+										<Representation>PictureAndText</Representation>
+										<CommandName>Form.Command.Уведомления</CommandName>
+										<Title>
+											<v8:item>
+												<v8:lang>ru</v8:lang>
+												<v8:content>Уведомления</v8:content>
+											</v8:item>
+										</Title>
+										<ExtendedTooltip name="ДанныеАРМОтображениеУведомленияРасширеннаяПодсказка" id="394"/>
+									</Button>
 								</ChildItems>
 							</AutoCommandBar>
 							<ExtendedTooltip name="ДанныеАРМОтображениеРасширеннаяПодсказка" id="80"/>
@@ -2656,6 +2668,25 @@
 				</v8:item>
 			</ToolTip>
 			<Action>ПоказатьДокументРасходнаяНакладная</Action>
+		</Command>
+		<Command name="Уведомления" id="21">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Уведомления</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Непрочитанные уведомления вашей роли АРМ: приход на склад, готовность к отгрузке, самовывоз</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Picture>
+				<xr:Ref>StdPicture.Information</xr:Ref>
+				<xr:LoadTransparent>true</xr:LoadTransparent>
+			</Picture>
+			<Action>Уведомления</Action>
 		</Command>
 	</Commands>
 </Form>

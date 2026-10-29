@@ -104,6 +104,7 @@
 			<CommonModule>Арм_ДанныеЗакупокИПродажФон</CommonModule>
 			<CommonModule>Арм_МатрицаПрав</CommonModule>
 			<CommonModule>Арм_Журнал</CommonModule>
+			<CommonModule>Арм_УведомленияСервер</CommonModule>
 			<Catalog>Контрагенты</Catalog>
 			<Catalog>Номенклатура</Catalog>
 			<Catalog>ДоговорыКонтрагентов</Catalog>
@@ -134,6 +135,7 @@
 			<DataProcessor>СЛК</DataProcessor>
 			<InformationRegister>Арм_ДанныеЗакупокИПродаж</InformationRegister>
 			<InformationRegister>Арм_ПраваПользователей</InformationRegister>
+			<InformationRegister>Арм_Уведомления</InformationRegister>
 		</ChildObjects>
 	</Configuration>
 </MetaDataObject>

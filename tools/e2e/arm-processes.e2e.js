@@ -611,6 +611,40 @@ const SCENARIOS = {
     const q = (doc.Запасы || []).reduce((s, z) => s + z.Количество, 0);
     check('M4', 'ЗП на 3 шт, 3600', q === 3 && doc.СуммаДокумента === 3600, `${zp && zp.number}: кол ${q}, сумма ${doc.СуммаДокумента}`);
     await orderSums('M4', a);
+  },
+  // АРМ v2.23 (блок 2): уведомления 1С по смене статуса — приход на склад (M8), готовность к отгрузке (M11),
+  // самовывоз у поставщика (K9 ∥ M17); адресат — роль; «Прочитано» убирает из списка
+  async n01_notifications() {
+    const notes = async (role, node, orderNo) => ((await call(role, 'GET', '/notifications')).data.items || [])
+      .filter(n => n.node === node && n.text.includes(orderNo));
+    const [s] = await newOrder('manager', 'N1,M1', ['Колодки — уведомления']);
+    const orderNo = (await line(s)).customerOrder.number;
+    await pick('M2', s, D.general, D.alpha, 1200);
+    const p = await buy('M4', s, D.general, D.alpha, 1200);
+    await supplyTo(p, s, 'to_stock');
+    const m8 = await notes('manager', 'M8', orderNo);
+    check('M8', 'менеджеру — «Приход на склад» по заказу', m8.length === 1, m8.map(n => n.text).join(' | ') || 'нет');
+    check('M8', 'кладовщику приход менеджера не виден', !(await notes('storekeeper', 'M8', orderNo)).length);
+    await supply('M9', p, 'assembly', 'assembly');
+    await supply('K3', p, 'assembled', 'ready_to_ship');
+    const m11 = await notes('manager', 'M11', orderNo);
+    check('M11', 'менеджеру — «Готово к отгрузке»', m11.length === 1, m11.map(n => n.text).join(' | ') || 'нет');
+    check('M11', 'позиция в тексте один раз (пересборка строк по партиям — не новое событие)',
+      m11.length === 1 && m11[0].text.split('E2E Колодки').length === 2, m11.length ? m11[0].text : '');
+    const r = await call('manager', 'POST', '/notifications/read', { ids: [...m8, ...m11].map(n => n.id) });
+    check('M8,M11', 'отмечены прочитанными — ушли из списка', r.status === 200 && !(await notes('manager', 'M8', orderNo)).length
+      && !(await notes('manager', 'M11', orderNo)).length, `${r.status}${problem(r)}`);
+
+    const [s2] = await newOrder('manager', 'N1,M1', ['Колодки — самовывоз']);
+    const orderNo2 = (await line(s2)).customerOrder.number;
+    await pick('M2', s2, D.general, D.alpha, 1200);
+    const p2 = await buy('M4', s2, D.general, D.alpha, 1200);
+    await supplyTo(p2, s2, 'paid');
+    await transition('manager', 'N4', 'purchases', 'shipped', [p2]);
+    const k9 = await notes('storekeeper', 'K9', orderNo2), m17 = await notes('manager', 'M17', orderNo2);
+    check('K9', 'кладовщику — «Самовывоз»', k9.length === 1, k9.map(n => n.text).join(' | ') || 'нет');
+    check('M17', 'менеджеру — «Самовывоз»', m17.length === 1, m17.map(n => n.text).join(' | ') || 'нет');
+    check('K9', 'снабжение видит уведомления кладовщика (D1d)', (await notes('supply', 'K9', orderNo2)).length === 1);
   }
 };
 async function odDoc(type, id) {
