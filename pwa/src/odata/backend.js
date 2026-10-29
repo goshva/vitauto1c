@@ -337,6 +337,25 @@ export function createBackend({ baseUrl, session, log }) {
     return { processed: ready.length, total: marked.length };
   }
 
+  // M10 (АРМ v2.23, блок 8): отклонить собранное с причиной — отмеченные продажи «Собран»/«Подготовлено» -> «Комплектуется»,
+  // причина первой в «Комментарий 2» (формат Арм_ОбщегоНазначенияАРМ.ТекстОтклоненияКомплектации); кладовщику 1С пишет
+  // уведомление «Комплектация отклонена»
+  async function rejectAssembly({ reason }) {
+    requireUser();
+    if (!['manager', 'admin', 'chief_mechanic'].includes(role())) fail(403, 'matrix_denied', 'Отклонить комплектацию может менеджер, механик или администратор');
+    const why = String(reason || '').trim();
+    if (!why) fail(400, 'bad_request', 'reason: причина отклонения', 'reason');
+    const marked = await od.list(ARM, { $filter: `${myMarked('sales')} and (СтатусСтроки eq 'Собран' or СтатусСтроки eq 'Подготовлено')` });
+    if (!marked.length) fail(409, 'nothing_marked', 'Нет отмеченных строк продажи в статусе «Собран» или «Подготовлено»');
+    const d = new Date(), p = x => String(x).padStart(2, '0');
+    const head = `Отклонено ${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}: ${why}`;
+    for (const r of marked) {
+      const text = (r.КомментарийКСтроке2 ? `${head} | ${r.КомментарийКСтроке2}` : head).slice(0, 150);
+      await od.patch(keyPath(r), { СтатусСтроки: 'Комплектуется', КомментарийКСтроке2: text, ...unmark });
+    }
+    return { processed: marked.length, total: marked.length };
+  }
+
   async function shipments({ customerOrderId, shipmentDate, shipmentNumber }) {
     if (!shipmentDate || !shipmentNumber) fail(400, 'bad_request', 'Нужны shipmentDate и shipmentNumber');
     const recs = await od.list(ARM, { $filter: `ДокументЗаказПокупателя_Key eq ${guid(customerOrderId)} and ВидОперации eq 'Продажа' and Удаление eq false` });
@@ -647,6 +666,7 @@ export function createBackend({ baseUrl, session, log }) {
       if (method === 'GET' && seg.length === 1) return ok(await listLines(query));
       if (method === 'POST' && seg.length === 1) return ok(await addLines(body || {}), 201);
       if (method === 'POST' && seg[1] === 'transition') return ok(await transition(body || {}));
+      if (method === 'POST' && seg[1] === 'reject-assembly') return ok(await rejectAssembly(body || {}));
       if (method === 'GET' && seg.length === 2) return ok(await line(decodeURIComponent(seg[1])));
       if (method === 'PATCH' && seg.length === 2) return ok(await patchLine(decodeURIComponent(seg[1]), body || {}));
       if (method === 'DELETE' && seg.length === 2) return ok(await strikeLine(decodeURIComponent(seg[1])), 204);

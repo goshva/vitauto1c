@@ -645,6 +645,37 @@ const SCENARIOS = {
     check('K9', 'кладовщику — «Самовывоз»', k9.length === 1, k9.map(n => n.text).join(' | ') || 'нет');
     check('M17', 'менеджеру — «Самовывоз»', m17.length === 1, m17.map(n => n.text).join(' | ') || 'нет');
     check('K9', 'снабжение видит уведомления кладовщика (D1d)', (await notes('supply', 'K9', orderNo2)).length === 1);
+  },
+  // АРМ v2.23 (блок 8): задание на комплектацию (M9 — кладовщику) и контроль комплектации с отклонением (M10 — причина
+  // в «Комментарий 2» и в уведомлении кладовщику) → повторная сборка → отгрузка
+  async b01_assembly_control() {
+    const notes = async (role, node, orderNo) => ((await call(role, 'GET', '/notifications')).data.items || [])
+      .filter(n => n.node === node && n.text.includes(orderNo));
+    const [s] = await newOrder('manager', 'N1,M1', ['Фильтр — контроль комплектации']);
+    const orderNo = (await line(s)).customerOrder.number;
+    await pick('M2', s, D.noVat, D.alpha, 450);
+    await transition('manager', 'M3', 'sales', 'reserve', [s]);
+    await transition('manager', 'M9', 'sales', 'assembly', [s]);
+    const m9 = await notes('storekeeper', 'M9', orderNo);
+    check('M9', 'кладовщику — «Задание на комплектацию»', m9.length === 1, m9.map(n => n.text).join(' | ') || 'нет');
+    const sent = (await line(s)).assemblySentDate;
+    check('M9', 'дата отправки на сборку (В9) заполнена', !!sent, sent || '—');
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
+    await mark('storekeeper', s);   // чужая отметка не мешает: менеджер ставит свою (mark снимает чужую)
+    await mark('manager', s);
+    const empty = await call('manager', 'POST', '/lines/reject-assembly', { reason: ' ' });
+    check('M10', 'без причины — отказ', empty.status === 400, `${empty.status}${problem(empty)}`);
+    const rj = await call('manager', 'POST', '/lines/reject-assembly', { reason: 'недостача 1 шт' });
+    await expectStatus('M10', 'manager: отклонить комплектацию → assembly', [s], 'assembly', rj);
+    const l = await line(s);
+    check('M10', 'причина в «Комментарий 2»', /^Отклонено .*недостача 1 шт/.test(l.comment2 || ''), l.comment2 || '—');
+    const m10 = await notes('storekeeper', 'M10', orderNo);
+    check('M10', 'кладовщику — «Комплектация отклонена» с причиной', m10.length === 1 && m10[0].text.includes('недостача 1 шт'),
+      m10.map(n => n.text).join(' | ') || 'нет');
+    const st = await call('storekeeper', 'POST', '/lines/reject-assembly', { reason: 'не моё' });
+    check('M10', 'кладовщику отклонение недоступно', st.status === 403, `${st.status}${problem(st)}`);
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
+    await shipAndClose([s]);
   }
 };
 async function odDoc(type, id) {

@@ -340,7 +340,7 @@ async function addLines(items) {
 // переходы процессов (POST /lines/transition) — к отмеченным строкам списка, по ролям, как в Арм_API.ПереходыПроцессов
 const TRANSITIONS = [
   { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'] },
-  { to: 'assembly', title: 'На комплектацию', node: 'M9 · M10 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'] },
+  { to: 'assembly', title: 'На комплектацию', node: 'M9 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'] },
   { to: 'ready_to_ship', title: 'Собрано', node: 'K3', icon: 'check', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'] },
   { to: 'shipped', title: 'Самовывоз', node: 'N4', icon: 'supply', roles: ['manager', 'admin'], views: ['sales', 'purchases'] },
   { to: 'acceptance', title: 'Принять по УПД', node: 'K1', icon: 'file', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'] },
@@ -349,6 +349,15 @@ const TRANSITIONS = [
 ];
 const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value)));
 const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
+// M10 (АРМ v2.23): отклонить собранное с причиной — строки снова «Комплектуется», кладовщику уведомление с причиной
+const canReject = computed(() => view.value === 'sales' && ['manager', 'admin', 'chief_mechanic'].includes(session.role));
+function rejectAssembly() {
+  const reason = prompt('Причина отклонения комплектации (недостача, брак, не та позиция):', '');
+  if (reason === null) return;
+  if (!reason.trim()) { toast.show('Укажите причину — её увидит кладовщик', 'error'); return; }
+  closeSheets();
+  return run(() => post('/lines/reject-assembly', { reason }), r => `Комплектация отклонена: ${result(r)}`);
+}
 
 // снабжение
 const SUPPLY = [['paid', 'Оплачено', 'M7'], ['in_transit', 'В пути', 'P2'], ['acceptance', 'Приёмка', 'K1'], ['to_stock', 'На склад', 'K2'],
@@ -550,6 +559,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
           <div class="menu">
             <button v-for="t in transitions" :key="t.to" :disabled="busy" data-transition @click="transition(t)">
               <AppIcon :name="t.icon" /> {{ t.title }} <span class="hint">{{ t.node }}</span>
+            </button>
+            <button v-if="canReject" :disabled="busy" @click="rejectAssembly">
+              <AppIcon name="undo" /> Отклонить комплектацию <span class="hint">M10</span>
             </button>
           </div>
         </template>
