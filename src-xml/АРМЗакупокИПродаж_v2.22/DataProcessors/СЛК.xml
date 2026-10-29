@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<DataProcessor uuid="dd420039-06eb-4c49-9907-2ddf40552f27">
+		<InternalInfo>
+			<xr:GeneratedType name="DataProcessorObject.СЛК" category="Object">
+				<xr:TypeId>3e7a28c7-79d3-44ef-9e0e-e4e01a758068</xr:TypeId>
+				<xr:ValueId>80b2739d-d503-40fa-83a6-243d51f4c570</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="DataProcessorManager.СЛК" category="Manager">
+				<xr:TypeId>66a8345b-4f53-40f1-acbb-71e4d1756cad</xr:TypeId>
+				<xr:ValueId>c1c18076-12dd-4195-98aa-d54f9fae3e03</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>СЛК</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>ea4b225c-9135-4212-a13a-ef4332551e0d</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects>
+			<Form>ПараметрыСвязи</Form>
+		</ChildObjects>
+	</DataProcessor>
+</MetaDataObject>

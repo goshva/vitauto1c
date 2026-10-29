@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:cmi="http://v8.1c.ru/8.2/managed-application/cmi" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xpr="http://v8.1c.ru/8.3/xcf/predef" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<Enum uuid="724db203-78a6-4e04-89a1-d42345b9880e">
+		<InternalInfo>
+			<xr:GeneratedType name="EnumRef.ДоступныеПечатныеФормыВыставлениеСчетов" category="Ref">
+				<xr:TypeId>551fd6d3-91e9-43ec-90b4-5ab84169a2fb</xr:TypeId>
+				<xr:ValueId>34eabd14-359d-4a3a-b5a5-c0dfde46a469</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="EnumManager.ДоступныеПечатныеФормыВыставлениеСчетов" category="Manager">
+				<xr:TypeId>69e79cba-376d-46b0-b47e-e2e78b88637d</xr:TypeId>
+				<xr:ValueId>8cc3713f-633d-4d15-972a-5bd29a7014b7</xr:ValueId>
+			</xr:GeneratedType>
+			<xr:GeneratedType name="EnumList.ДоступныеПечатныеФормыВыставлениеСчетов" category="List">
+				<xr:TypeId>0135b27b-89d0-401e-81a7-27003cf44632</xr:TypeId>
+				<xr:ValueId>5254781c-ca86-4c5a-a44b-b192d36f9110</xr:ValueId>
+			</xr:GeneratedType>
+		</InternalInfo>
+		<Properties>
+			<ObjectBelonging>Adopted</ObjectBelonging>
+			<Name>ДоступныеПечатныеФормыВыставлениеСчетов</Name>
+			<Comment/>
+			<ExtendedConfigurationObject>191e0531-4251-47ac-833b-df1202bb63e5</ExtendedConfigurationObject>
+		</Properties>
+		<ChildObjects>
+			<EnumValue uuid="740753a8-1bdb-4f2c-983d-ab391125d479">
+				<InternalInfo/>
+				<Properties>
+					<ObjectBelonging>Adopted</ObjectBelonging>
+					<Name>Акт</Name>
+					<Comment/>
+					<ExtendedConfigurationObject>9ea1226c-ff98-41cb-95f3-ebc43ed2f6ec</ExtendedConfigurationObject>
+				</Properties>
+			</EnumValue>
+			<EnumValue uuid="d3b4a48b-d67a-4cd6-97c4-d1aea7e14829">
+				<InternalInfo/>
+				<Properties>
+					<ObjectBelonging>Adopted</ObjectBelonging>
+					<Name>Накладная</Name>
+					<Comment/>
+					<ExtendedConfigurationObject>f8f1a5f7-4bd1-4303-ba77-37d3b4fddc4f</ExtendedConfigurationObject>
+				</Properties>
+			</EnumValue>
+		</ChildObjects>
+	</Enum>
+</MetaDataObject>

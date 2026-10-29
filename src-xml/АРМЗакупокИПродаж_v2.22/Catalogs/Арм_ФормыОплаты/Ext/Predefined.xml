@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<PredefinedData xmlns="http://v8.1c.ru/8.3/xcf/predef" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CatalogPredefinedItems" version="2.20">
+	<Item id="ac09ac36-70fa-4720-97f0-cdb39ee79cff">
+		<Name>БезНДС</Name>
+		<Code>000000001</Code>
+		<Description>Без НДС</Description>
+		<IsFolder>false</IsFolder>
+	</Item>
+	<Item id="ad654c56-1bef-4d7c-a7f4-bfe04706e311">
+		<Name>Наличные</Name>
+		<Code>000000002</Code>
+		<Description>Наличные</Description>
+		<IsFolder>false</IsFolder>
+	</Item>
+	<Item id="63bd6f93-4516-4843-a5c9-47bbe36d704c">
+		<Name>ФормаОплаты10Процентов</Name>
+		<Code>000000004</Code>
+		<Description>Форма оплаты 10%</Description>
+		<IsFolder>false</IsFolder>
+	</Item>
+	<Item id="5d149d49-4337-460b-b623-c92062e6300e">
+		<Name>ФормаОплаты22Процента</Name>
+		<Code>000000005</Code>
+		<Description>Форма оплаты 22%</Description>
+		<IsFolder>false</IsFolder>
+	</Item>
+	<Item id="5a1a815a-699d-44a9-bd7d-9bdb468d8045">
+		<Name>ФормаОплтата5Процентов</Name>
+		<Code>000000003</Code>
+		<Description>Форма оплтата 5%</Description>
+		<IsFolder>false</IsFolder>
+	</Item>
+</PredefinedData>

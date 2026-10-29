@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Form xmlns="http://v8.1c.ru/8.3/xcf/logform" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:dcscor="http://v8.1c.ru/8.1/data-composition-system/core" xmlns:dcssch="http://v8.1c.ru/8.1/data-composition-system/schema" xmlns:dcsset="http://v8.1c.ru/8.1/data-composition-system/settings" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<Title>
+		<v8:item>
+			<v8:lang>ru</v8:lang>
+			<v8:content>Параметры связи</v8:content>
+		</v8:item>
+	</Title>
+	<Customizable>false</Customizable>
+	<CommandBarLocation>None</CommandBarLocation>
+	<AutoCommandBar name="ФормаКоманднаяПанель" id="-1"/>
+	<ChildItems>
+		<UsualGroup name="Группа4" id="18">
+			<HorizontalStretch>true</HorizontalStretch>
+			<Group>Vertical</Group>
+			<Behavior>Usual</Behavior>
+			<ThroughAlign>Use</ThroughAlign>
+			<ExtendedTooltip name="Группа4РасширеннаяПодсказка" id="19"/>
+			<ChildItems>
+				<RadioButtonField name="РасположениеСервера" id="20">
+					<TitleLocation>Left</TitleLocation>
+					<RadioButtonType>Auto</RadioButtonType>
+					<ColumnsCount>1</ColumnsCount>
+					<ContextMenu name="РасположениеСервераКонтекстноеМеню" id="21"/>
+					<ExtendedTooltip name="РасположениеСервераРасширеннаяПодсказка" id="22"/>
+				</RadioButtonField>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="Группа3" id="13">
+			<Group>Vertical</Group>
+			<Behavior>Usual</Behavior>
+			<ThroughAlign>Use</ThroughAlign>
+			<ExtendedTooltip name="Группа3РасширеннаяПодсказка" id="14"/>
+			<ChildItems>
+				<UsualGroup name="Группа1" id="1">
+					<HorizontalStretch>true</HorizontalStretch>
+					<Group>Vertical</Group>
+					<Behavior>Usual</Behavior>
+					<ShowTitle>false</ShowTitle>
+					<ThroughAlign>Use</ThroughAlign>
+					<ExtendedTooltip name="Группа1РасширеннаяПодсказка" id="2"/>
+					<ChildItems>
+						<InputField name="АдресСервера" id="3">
+							<Title>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Адрес или имя компьютера</v8:content>
+								</v8:item>
+							</Title>
+							<AutoMaxWidth>false</AutoMaxWidth>
+							<HorizontalStretch>true</HorizontalStretch>
+							<ContextMenu name="АдресСервераКонтекстноеМеню" id="4"/>
+							<ExtendedTooltip name="АдресСервераРасширеннаяПодсказка" id="5"/>
+						</InputField>
+						<InputField name="ПортСервера" id="6">
+							<Title>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Порт</v8:content>
+								</v8:item>
+							</Title>
+							<AutoMaxWidth>false</AutoMaxWidth>
+							<ContextMenu name="ПортСервераКонтекстноеМеню" id="7"/>
+							<ExtendedTooltip name="ПортСервераРасширеннаяПодсказка" id="8"/>
+						</InputField>
+					</ChildItems>
+				</UsualGroup>
+				<UsualGroup name="Группа2" id="9">
+					<HorizontalStretch>true</HorizontalStretch>
+					<Behavior>Usual</Behavior>
+					<ExtendedTooltip name="Группа2РасширеннаяПодсказка" id="10"/>
+					<ChildItems>
+						<LabelDecoration name="Декорация1" id="15">
+							<AutoMaxWidth>false</AutoMaxWidth>
+							<HorizontalStretch>true</HorizontalStretch>
+							<ContextMenu name="Декорация1КонтекстноеМеню" id="16"/>
+							<ExtendedTooltip name="Декорация1РасширеннаяПодсказка" id="17"/>
+						</LabelDecoration>
+						<Button name="Установить" id="11">
+							<Type>UsualButton</Type>
+							<DefaultButton>true</DefaultButton>
+							<Height>2</Height>
+							<CommandName>0</CommandName>
+							<ExtendedTooltip name="УстановитьРасширеннаяПодсказка" id="12"/>
+						</Button>
+					</ChildItems>
+				</UsualGroup>
+			</ChildItems>
+		</UsualGroup>
+	</ChildItems>
+	<Attributes/>
+	<BaseForm version="2.20">
+		<Title>
+			<v8:item>
+				<v8:lang>ru</v8:lang>
+				<v8:content>Параметры связи</v8:content>
+			</v8:item>
+		</Title>
+		<Customizable>false</Customizable>
+		<CommandBarLocation>None</CommandBarLocation>
+		<AutoCommandBar name="ФормаКоманднаяПанель" id="-1"/>
+		<ChildItems>
+			<UsualGroup name="Группа4" id="18">
+				<HorizontalStretch>true</HorizontalStretch>
+				<Group>Vertical</Group>
+				<Behavior>Usual</Behavior>
+				<ThroughAlign>Use</ThroughAlign>
+				<ExtendedTooltip name="Группа4РасширеннаяПодсказка" id="19"/>
+				<ChildItems>
+					<RadioButtonField name="РасположениеСервера" id="20">
+						<TitleLocation>Left</TitleLocation>
+						<RadioButtonType>Auto</RadioButtonType>
+						<ColumnsCount>1</ColumnsCount>
+						<ContextMenu name="РасположениеСервераКонтекстноеМеню" id="21"/>
+						<ExtendedTooltip name="РасположениеСервераРасширеннаяПодсказка" id="22"/>
+					</RadioButtonField>
+				</ChildItems>
+			</UsualGroup>
+			<UsualGroup name="Группа3" id="13">
+				<Group>Vertical</Group>
+				<Behavior>Usual</Behavior>
+				<ThroughAlign>Use</ThroughAlign>
+				<ExtendedTooltip name="Группа3РасширеннаяПодсказка" id="14"/>
+				<ChildItems>
+					<UsualGroup name="Группа1" id="1">
+						<HorizontalStretch>true</HorizontalStretch>
+						<Group>Vertical</Group>
+						<Behavior>Usual</Behavior>
+						<ShowTitle>false</ShowTitle>
+						<ThroughAlign>Use</ThroughAlign>
+						<ExtendedTooltip name="Группа1РасширеннаяПодсказка" id="2"/>
+						<ChildItems>
+							<InputField name="АдресСервера" id="3">
+								<Title>
+									<v8:item>
+										<v8:lang>ru</v8:lang>
+										<v8:content>Адрес или имя компьютера</v8:content>
+									</v8:item>
+								</Title>
+								<AutoMaxWidth>false</AutoMaxWidth>
+								<HorizontalStretch>true</HorizontalStretch>
+								<ContextMenu name="АдресСервераКонтекстноеМеню" id="4"/>
+								<ExtendedTooltip name="АдресСервераРасширеннаяПодсказка" id="5"/>
+							</InputField>
+							<InputField name="ПортСервера" id="6">
+								<Title>
+									<v8:item>
+										<v8:lang>ru</v8:lang>
+										<v8:content>Порт</v8:content>
+									</v8:item>
+								</Title>
+								<AutoMaxWidth>false</AutoMaxWidth>
+								<ContextMenu name="ПортСервераКонтекстноеМеню" id="7"/>
+								<ExtendedTooltip name="ПортСервераРасширеннаяПодсказка" id="8"/>
+							</InputField>
+						</ChildItems>
+					</UsualGroup>
+					<UsualGroup name="Группа2" id="9">
+						<HorizontalStretch>true</HorizontalStretch>
+						<Behavior>Usual</Behavior>
+						<ExtendedTooltip name="Группа2РасширеннаяПодсказка" id="10"/>
+						<ChildItems>
+							<LabelDecoration name="Декорация1" id="15">
+								<AutoMaxWidth>false</AutoMaxWidth>
+								<HorizontalStretch>true</HorizontalStretch>
+								<ContextMenu name="Декорация1КонтекстноеМеню" id="16"/>
+								<ExtendedTooltip name="Декорация1РасширеннаяПодсказка" id="17"/>
+							</LabelDecoration>
+							<Button name="Установить" id="11">
+								<Type>UsualButton</Type>
+								<DefaultButton>true</DefaultButton>
+								<Height>2</Height>
+								<CommandName>0</CommandName>
+								<ExtendedTooltip name="УстановитьРасширеннаяПодсказка" id="12"/>
+							</Button>
+						</ChildItems>
+					</UsualGroup>
+				</ChildItems>
+			</UsualGroup>
+		</ChildItems>
+		<Attributes/>
+	</BaseForm>
+</Form>

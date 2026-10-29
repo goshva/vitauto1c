@@ -1,0 +1,884 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Form xmlns="http://v8.1c.ru/8.3/xcf/logform" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:dcscor="http://v8.1c.ru/8.1/data-composition-system/core" xmlns:dcssch="http://v8.1c.ru/8.1/data-composition-system/schema" xmlns:dcsset="http://v8.1c.ru/8.1/data-composition-system/settings" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.20">
+	<Scale>80</Scale>
+	<AutoCommandBar name="ФормаКоманднаяПанель" id="-1"/>
+	<Events>
+		<Event name="OnCreateAtServer">ПриСозданииНаСервере</Event>
+	</Events>
+	<ChildItems>
+		<UsualGroup name="ГруппаШапка" id="110">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Группа шапка</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Группа шапка</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Group>AlwaysHorizontal</Group>
+			<Representation>None</Representation>
+			<ShowTitle>false</ShowTitle>
+			<ExtendedTooltip name="ГруппаШапкаРасширеннаяПодсказка" id="111"/>
+			<ChildItems>
+				<InputField name="Период" id="112">
+					<DataPath>Период</DataPath>
+					<ExtendedEditMultipleValues>true</ExtendedEditMultipleValues>
+					<ContextMenu name="ПериодКонтекстноеМеню" id="113"/>
+					<ExtendedTooltip name="ПериодРасширеннаяПодсказка" id="114"/>
+					<Events>
+						<Event name="OnChange">ПериодПриИзменении</Event>
+					</Events>
+				</InputField>
+				<Button name="ОчиститьПериод" id="115">
+					<Type>UsualButton</Type>
+					<Representation>Picture</Representation>
+					<CommandName>Form.Command.ОчиститьПериод</CommandName>
+					<Picture>
+						<xr:Ref>StdPicture.InputFieldClear</xr:Ref>
+						<xr:LoadTransparent>true</xr:LoadTransparent>
+					</Picture>
+					<ExtendedTooltip name="ОчиститьПериодРасширеннаяПодсказка" id="116"/>
+				</Button>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="ГруппаСтатусы" id="122">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Статусы</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Группа статусы</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Group>AlwaysHorizontal</Group>
+			<Representation>None</Representation>
+			<ShowTitle>false</ShowTitle>
+			<ExtendedTooltip name="ГруппаСтатусыРасширеннаяПодсказка" id="123"/>
+			<ChildItems>
+				<Button name="Оплачено" id="124">
+					<Type>UsualButton</Type>
+					<CommandName>Form.Command.Оплачено</CommandName>
+					<ExtendedTooltip name="ОплаченоРасширеннаяПодсказка" id="125"/>
+				</Button>
+				<PictureDecoration name="Декорация1" id="136">
+					<Picture>
+						<xr:Ref>StdPicture.AppearanceRightArrowGray</xr:Ref>
+						<xr:LoadTransparent>true</xr:LoadTransparent>
+					</Picture>
+					<ContextMenu name="Декорация1КонтекстноеМеню" id="137"/>
+					<ExtendedTooltip name="Декорация1РасширеннаяПодсказка" id="138"/>
+				</PictureDecoration>
+				<Button name="ТоварВПути" id="126">
+					<Type>UsualButton</Type>
+					<CommandName>Form.Command.ТоварВПути</CommandName>
+					<ExtendedTooltip name="ТоварВПутиРасширеннаяПодсказка" id="127"/>
+				</Button>
+				<PictureDecoration name="Декорация2" id="139">
+					<Picture>
+						<xr:Ref>StdPicture.AppearanceRightArrowGray</xr:Ref>
+						<xr:LoadTransparent>true</xr:LoadTransparent>
+					</Picture>
+					<ContextMenu name="Декорация2КонтекстноеМеню" id="140"/>
+					<ExtendedTooltip name="Декорация2РасширеннаяПодсказка" id="141"/>
+				</PictureDecoration>
+				<Button name="Приходуется" id="128">
+					<Type>UsualButton</Type>
+					<CommandName>Form.Command.Приходуется</CommandName>
+					<ExtendedTooltip name="ПриходуетсяРасширеннаяПодсказка" id="129"/>
+				</Button>
+				<PictureDecoration name="Декорация3" id="142">
+					<Picture>
+						<xr:Ref>StdPicture.AppearanceRightArrowGray</xr:Ref>
+						<xr:LoadTransparent>true</xr:LoadTransparent>
+					</Picture>
+					<ContextMenu name="Декорация3КонтекстноеМеню" id="143"/>
+					<ExtendedTooltip name="Декорация3РасширеннаяПодсказка" id="144"/>
+				</PictureDecoration>
+				<Button name="НаСкладе" id="130">
+					<Type>UsualButton</Type>
+					<CommandName>Form.Command.НаСкладе</CommandName>
+					<ExtendedTooltip name="НаСкладеРасширеннаяПодсказка" id="131"/>
+				</Button>
+				<PictureDecoration name="Декорация4" id="145">
+					<Picture>
+						<xr:Ref>StdPicture.AppearanceRightArrowGray</xr:Ref>
+						<xr:LoadTransparent>true</xr:LoadTransparent>
+					</Picture>
+					<ContextMenu name="Декорация4КонтекстноеМеню" id="146"/>
+					<ExtendedTooltip name="Декорация4РасширеннаяПодсказка" id="147"/>
+				</PictureDecoration>
+				<Button name="Комплектуется" id="132">
+					<Type>UsualButton</Type>
+					<CommandName>Form.Command.Комплектуется</CommandName>
+					<ExtendedTooltip name="КомплектуетсяРасширеннаяПодсказка" id="133"/>
+				</Button>
+				<PictureDecoration name="Декорация5" id="148">
+					<Picture>
+						<xr:Ref>StdPicture.AppearanceRightArrowGray</xr:Ref>
+						<xr:LoadTransparent>true</xr:LoadTransparent>
+					</Picture>
+					<ContextMenu name="Декорация5КонтекстноеМеню" id="149"/>
+					<ExtendedTooltip name="Декорация5РасширеннаяПодсказка" id="150"/>
+				</PictureDecoration>
+				<Button name="Собран" id="134">
+					<Type>UsualButton</Type>
+					<CommandName>Form.Command.Собран</CommandName>
+					<ExtendedTooltip name="СобранРасширеннаяПодсказка" id="135"/>
+				</Button>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="ГруппаФлаги" id="154">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Группа флаги</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Группа флаги</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Representation>None</Representation>
+			<ShowTitle>false</ShowTitle>
+			<ExtendedTooltip name="ГруппаФлагиРасширеннаяПодсказка" id="155"/>
+			<ChildItems>
+				<CheckBoxField name="СгруппироватьПоЗаказуПокупателя" id="119">
+					<DataPath>СгруппироватьПоЗаказуПокупателя</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Группировать по заказу покупателя</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Right</TitleLocation>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="СгруппироватьПоЗаказуПокупателяКонтекстноеМеню" id="120"/>
+					<ExtendedTooltip name="СгруппироватьПоЗаказуПокупателяРасширеннаяПодсказка" id="121"/>
+					<Events>
+						<Event name="OnChange">СгруппироватьПоЗаказуПокупателяПриИзменении</Event>
+					</Events>
+				</CheckBoxField>
+				<CheckBoxField name="ГруппироватьСтрокиПоСтатусам" id="151">
+					<DataPath>ГруппироватьСтрокиПоСтатусам</DataPath>
+					<TitleLocation>Right</TitleLocation>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="ГруппироватьСтрокиПоСтатусамКонтекстноеМеню" id="152"/>
+					<ExtendedTooltip name="ГруппироватьСтрокиПоСтатусамРасширеннаяПодсказка" id="153"/>
+					<Events>
+						<Event name="OnChange">ГруппироватьСтрокиПоСтатусамПриИзменении</Event>
+					</Events>
+				</CheckBoxField>
+			</ChildItems>
+		</UsualGroup>
+		<Table name="ДанныеАРМОтображениеСнабжение" id="1">
+			<UseAlternationRowColor>true</UseAlternationRowColor>
+			<EnableStartDrag>true</EnableStartDrag>
+			<DataPath>ДанныеАРМОтображениеСнабжение</DataPath>
+			<RowPictureDataPath>ДанныеАРМОтображениеСнабжение.DefaultPicture</RowPictureDataPath>
+			<CommandSet>
+				<ExcludedCommand>Change</ExcludedCommand>
+				<ExcludedCommand>Copy</ExcludedCommand>
+				<ExcludedCommand>Create</ExcludedCommand>
+				<ExcludedCommand>Delete</ExcludedCommand>
+			</CommandSet>
+			<AutoRefresh>false</AutoRefresh>
+			<AutoRefreshPeriod>60</AutoRefreshPeriod>
+			<Period>
+				<v8:variant xsi:type="v8:StandardPeriodVariant">Custom</v8:variant>
+				<v8:startDate>0001-01-01T00:00:00</v8:startDate>
+				<v8:endDate>0001-01-01T00:00:00</v8:endDate>
+			</Period>
+			<ChoiceFoldersAndItems>Items</ChoiceFoldersAndItems>
+			<RestoreCurrentRow>false</RestoreCurrentRow>
+			<TopLevelParent xsi:nil="true"/>
+			<ShowRoot>true</ShowRoot>
+			<AllowRootChoice>false</AllowRootChoice>
+			<UpdateOnDataChange>Auto</UpdateOnDataChange>
+			<AllowGettingCurrentRowURL>true</AllowGettingCurrentRowURL>
+			<ContextMenu name="ДанныеАРМОтображениеСнабжениеКонтекстноеМеню" id="2"/>
+			<AutoCommandBar name="ДанныеАРМОтображениеСнабжениеКоманднаяПанель" id="3">
+				<ChildItems>
+					<Button name="ДанныеАРМОтображениеСнабжениеВыделитьВсеСтрокиЗаказа" id="117">
+						<Type>CommandBarButton</Type>
+						<Representation>PictureAndText</Representation>
+						<CommandName>Form.Command.ВыделитьВсеСтрокиЗаказа</CommandName>
+						<Picture>
+							<xr:Ref>StdPicture.CheckAll</xr:Ref>
+							<xr:LoadTransparent>true</xr:LoadTransparent>
+						</Picture>
+						<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеВыделитьВсеСтрокиЗаказаРасширеннаяПодсказка" id="118"/>
+					</Button>
+				</ChildItems>
+			</AutoCommandBar>
+			<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеРасширеннаяПодсказка" id="4"/>
+			<SearchStringAddition name="ДанныеАРМОтображениеСнабжениеСтрокаПоиска" id="5">
+				<AdditionSource>
+					<Item>ДанныеАРМОтображениеСнабжение</Item>
+					<Type>SearchStringRepresentation</Type>
+				</AdditionSource>
+				<ContextMenu name="ДанныеАРМОтображениеСнабжениеСтрокаПоискаКонтекстноеМеню" id="6"/>
+				<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеСтрокаПоискаРасширеннаяПодсказка" id="7"/>
+			</SearchStringAddition>
+			<ViewStatusAddition name="ДанныеАРМОтображениеСнабжениеСостояниеПросмотра" id="8">
+				<AdditionSource>
+					<Item>ДанныеАРМОтображениеСнабжение</Item>
+					<Type>ViewStatusRepresentation</Type>
+				</AdditionSource>
+				<ContextMenu name="ДанныеАРМОтображениеСнабжениеСостояниеПросмотраКонтекстноеМеню" id="9"/>
+				<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеСостояниеПросмотраРасширеннаяПодсказка" id="10"/>
+			</ViewStatusAddition>
+			<SearchControlAddition name="ДанныеАРМОтображениеСнабжениеУправлениеПоиском" id="11">
+				<AdditionSource>
+					<Item>ДанныеАРМОтображениеСнабжение</Item>
+					<Type>SearchControl</Type>
+				</AdditionSource>
+				<ContextMenu name="ДанныеАРМОтображениеСнабжениеУправлениеПоискомКонтекстноеМеню" id="12"/>
+				<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеУправлениеПоискомРасширеннаяПодсказка" id="13"/>
+			</SearchControlAddition>
+			<Events>
+				<Event name="Selection">ДанныеАРМОтображениеСнабжениеВыбор</Event>
+				<Event name="OnActivateCell">ДанныеАРМОтображениеСнабжениеПриАктивизацииЯчейки</Event>
+			</Events>
+			<ChildItems>
+				<CheckBoxField name="ДанныеАРМОтображениеСнабжениеОтметкаСтроки" id="68">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ОтметкаСтроки</DataPath>
+					<TitleLocation>None</TitleLocation>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеОтметкаСтрокиКонтекстноеМеню" id="69"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеОтметкаСтрокиРасширеннаяПодсказка" id="70"/>
+				</CheckBoxField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеНоменклатураКлиента" id="56">
+					<DataPath>ДанныеАРМОтображениеСнабжение.НоменклатураКлиента</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеНоменклатураКлиентаКонтекстноеМеню" id="57"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеНоменклатураКлиентаРасширеннаяПодсказка" id="58"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеНоменклатура" id="53">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Номенклатура</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеНоменклатураКонтекстноеМеню" id="54"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеНоменклатураРасширеннаяПодсказка" id="55"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеКоличествоКлиента" id="47">
+					<DataPath>ДанныеАРМОтображениеСнабжение.КоличествоКлиента</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеКоличествоКлиентаКонтекстноеМеню" id="48"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеКоличествоКлиентаРасширеннаяПодсказка" id="49"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеКоличество" id="44">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Количество</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеКоличествоКонтекстноеМеню" id="45"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеКоличествоРасширеннаяПодсказка" id="46"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеЦена" id="104">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Цена</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеЦенаКонтекстноеМеню" id="105"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеЦенаРасширеннаяПодсказка" id="106"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеГРЗКлиента" id="20">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ГРЗКлиента</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеГРЗКлиентаКонтекстноеМеню" id="21"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеГРЗКлиентаРасширеннаяПодсказка" id="22"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеДатаОтгрузки" id="23">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ДатаОтгрузки</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеДатаОтгрузкиКонтекстноеМеню" id="24"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеДатаОтгрузкиРасширеннаяПодсказка" id="25"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеНомерОтгрузки" id="59">
+					<DataPath>ДанныеАРМОтображениеСнабжение.НомерОтгрузки</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеНомерОтгрузкиКонтекстноеМеню" id="60"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеНомерОтгрузкиРасширеннаяПодсказка" id="61"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеДоговор" id="26">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Договор</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеДоговорКонтекстноеМеню" id="27"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеДоговорРасширеннаяПодсказка" id="28"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеПокупатель" id="74">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Покупатель</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеПокупательКонтекстноеМеню" id="75"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеПокупательРасширеннаяПодсказка" id="76"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеПоставщик" id="80">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Поставщик</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеПоставщикКонтекстноеМеню" id="81"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеПоставщикРасширеннаяПодсказка" id="82"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеСтатусСтроки" id="98">
+					<DataPath>ДанныеАРМОтображениеСнабжение.СтатусСтроки</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеСтатусСтрокиКонтекстноеМеню" id="99"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеСтатусСтрокиРасширеннаяПодсказка" id="100"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеКомментарийКСтроке" id="50">
+					<DataPath>ДанныеАРМОтображениеСнабжение.КомментарийКСтроке</DataPath>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеКомментарийКСтрокеКонтекстноеМеню" id="51"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеКомментарийКСтрокеРасширеннаяПодсказка" id="52"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеОстатокДляСтроки" id="62">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ОстатокДляСтроки</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеОстатокДляСтрокиКонтекстноеМеню" id="63"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеОстатокДляСтрокиРасширеннаяПодсказка" id="64"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеОстатокТовара" id="65">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ОстатокТовара</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеОстатокТовараКонтекстноеМеню" id="66"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеОстатокТовараРасширеннаяПодсказка" id="67"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеДокументЗаказПоставщика" id="32">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ДокументЗаказПоставщика</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеДокументЗаказПоставщикаКонтекстноеМеню" id="33"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеДокументЗаказПоставщикаРасширеннаяПодсказка" id="34"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеПорядок" id="77">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Порядок</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеПорядокКонтекстноеМеню" id="78"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеПорядокРасширеннаяПодсказка" id="79"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеИдентификаторЗаписи" id="38">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ИдентификаторЗаписи</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеИдентификаторЗаписиКонтекстноеМеню" id="39"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеИдентификаторЗаписиРасширеннаяПодсказка" id="40"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеКлючСвязиСтрок" id="41">
+					<DataPath>ДанныеАРМОтображениеСнабжение.КлючСвязиСтрок</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеКлючСвязиСтрокКонтекстноеМеню" id="42"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеКлючСвязиСтрокРасширеннаяПодсказка" id="43"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеДокументПриходнаяНакладная" id="35">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ДокументПриходнаяНакладная</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеДокументПриходнаяНакладнаяКонтекстноеМеню" id="36"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеДокументПриходнаяНакладнаяРасширеннаяПодсказка" id="37"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеВидОперации" id="17">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ВидОперации</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеВидОперацииКонтекстноеМеню" id="18"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеВидОперацииРасширеннаяПодсказка" id="19"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеРасходнаяНакладная" id="83">
+					<DataPath>ДанныеАРМОтображениеСнабжение.РасходнаяНакладная</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеРасходнаяНакладнаяКонтекстноеМеню" id="84"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеРасходнаяНакладнаяРасширеннаяПодсказка" id="85"/>
+				</LabelField>
+				<CheckBoxField name="ДанныеАРМОтображениеСнабжениеРучнаяПравка" id="86">
+					<DataPath>ДанныеАРМОтображениеСнабжение.РучнаяПравка</DataPath>
+					<Visible>false</Visible>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеРучнаяПравкаКонтекстноеМеню" id="87"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеРучнаяПравкаРасширеннаяПодсказка" id="88"/>
+				</CheckBoxField>
+				<CheckBoxField name="ДанныеАРМОтображениеСнабжениеРучнаяПравкаПартии" id="89">
+					<DataPath>ДанныеАРМОтображениеСнабжение.РучнаяПравкаПартии</DataPath>
+					<Visible>false</Visible>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеРучнаяПравкаПартииКонтекстноеМеню" id="90"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеРучнаяПравкаПартииРасширеннаяПодсказка" id="91"/>
+				</CheckBoxField>
+				<CheckBoxField name="ДанныеАРМОтображениеСнабжениеРучноеРазделениеСУчетомПартий" id="92">
+					<DataPath>ДанныеАРМОтображениеСнабжение.РучноеРазделениеСУчетомПартий</DataPath>
+					<Visible>false</Visible>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеРучноеРазделениеСУчетомПартийКонтекстноеМеню" id="93"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеРучноеРазделениеСУчетомПартийРасширеннаяПодсказка" id="94"/>
+				</CheckBoxField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеСебестоимость" id="95">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Себестоимость</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеСебестоимостьКонтекстноеМеню" id="96"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеСебестоимостьРасширеннаяПодсказка" id="97"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеАвторСтроки" id="14">
+					<DataPath>ДанныеАРМОтображениеСнабжение.АвторСтроки</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеАвторСтрокиКонтекстноеМеню" id="15"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеАвторСтрокиРасширеннаяПодсказка" id="16"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеПартия" id="71">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Партия</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеПартияКонтекстноеМеню" id="72"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеПартияРасширеннаяПодсказка" id="73"/>
+				</LabelField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеДокументЗаказПокупателя" id="29">
+					<DataPath>ДанныеАРМОтображениеСнабжение.ДокументЗаказПокупателя</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеДокументЗаказПокупателяКонтекстноеМеню" id="30"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеДокументЗаказПокупателяРасширеннаяПодсказка" id="31"/>
+				</LabelField>
+				<CheckBoxField name="ДанныеАРМОтображениеСнабжениеУдаление" id="101">
+					<DataPath>ДанныеАРМОтображениеСнабжение.Удаление</DataPath>
+					<Visible>false</Visible>
+					<CheckBoxType>Auto</CheckBoxType>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеУдалениеКонтекстноеМеню" id="102"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеУдалениеРасширеннаяПодсказка" id="103"/>
+				</CheckBoxField>
+				<LabelField name="ДанныеАРМОтображениеСнабжениеСтандартнаяКартинка" id="107">
+					<DataPath>ДанныеАРМОтображениеСнабжение.DefaultPicture</DataPath>
+					<Visible>false</Visible>
+					<ContextMenu name="ДанныеАРМОтображениеСнабжениеСтандартнаяКартинкаКонтекстноеМеню" id="108"/>
+					<ExtendedTooltip name="ДанныеАРМОтображениеСнабжениеСтандартнаяКартинкаРасширеннаяПодсказка" id="109"/>
+				</LabelField>
+			</ChildItems>
+		</Table>
+	</ChildItems>
+	<Attributes>
+		<Attribute name="Объект" id="1">
+			<Type>
+				<v8:Type>cfg:DataProcessorObject.АС_АРМ2</v8:Type>
+			</Type>
+			<MainAttribute>true</MainAttribute>
+		</Attribute>
+		<Attribute name="ДанныеАРМОтображениеСнабжение" id="2">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Данные АРМОтображение снабжение</v8:content>
+				</v8:item>
+			</Title>
+			<Type>
+				<v8:Type>cfg:DynamicList</v8:Type>
+			</Type>
+			<UseAlways>
+				<Field>ДанныеАРМОтображениеСнабжение.АвторСтроки</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ВидОперации</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ГРЗКлиента</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ДатаОтгрузки</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Договор</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ДокументЗаказПокупателя</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ДокументЗаказПоставщика</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ДокументПриходнаяНакладная</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ИдентификаторЗаписи</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.КлючСвязиСтрок</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Количество</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.КоличествоКлиента</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.КомментарийКСтроке</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Номенклатура</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.НоменклатураКлиента</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.НомерОтгрузки</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ОстатокДляСтроки</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ОстатокТовара</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.ОтметкаСтроки</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Партия</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Покупатель</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Порядок</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Поставщик</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.РасходнаяНакладная</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.РучнаяПравка</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.РучнаяПравкаПартии</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.РучноеРазделениеСУчетомПартий</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Себестоимость</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.СтатусСтроки</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Удаление</Field>
+				<Field>ДанныеАРМОтображениеСнабжение.Цена</Field>
+			</UseAlways>
+			<Settings xsi:type="DynamicList">
+				<ManualQuery>true</ManualQuery>
+				<DynamicDataRead>true</DynamicDataRead>
+				<QueryText>ВЫБРАТЬ
+	Арм_ДанныеЗакупокИПродаж.ДокументЗаказПокупателя КАК ДокументЗаказПокупателя,
+	Арм_ДанныеЗакупокИПродаж.ДокументЗаказПоставщика КАК ДокументЗаказПоставщика,
+	Арм_ДанныеЗакупокИПродаж.ДокументПриходнаяНакладная КАК ДокументПриходнаяНакладная,
+	Арм_ДанныеЗакупокИПродаж.КлючСвязиСтрок КАК КлючСвязиСтрок,
+	Арм_ДанныеЗакупокИПродаж.ВидОперации КАК ВидОперации,
+	Арм_ДанныеЗакупокИПродаж.ИдентификаторЗаписи КАК ИдентификаторЗаписи,
+	Арм_ДанныеЗакупокИПродаж.РучнаяПравка КАК РучнаяПравка,
+	Арм_ДанныеЗакупокИПродаж.ОтметкаСтроки КАК ОтметкаСтроки,
+	Арм_ДанныеЗакупокИПродаж.НоменклатураКлиента КАК НоменклатураКлиента,
+	Арм_ДанныеЗакупокИПродаж.КоличествоКлиента КАК КоличествоКлиента,
+	Арм_ДанныеЗакупокИПродаж.ГРЗКлиента КАК ГРЗКлиента,
+	Арм_ДанныеЗакупокИПродаж.Номенклатура КАК Номенклатура,
+	Арм_ДанныеЗакупокИПродаж.Количество КАК Количество,
+	Арм_ДанныеЗакупокИПродаж.Поставщик КАК Поставщик,
+	Арм_ДанныеЗакупокИПродаж.Партия КАК Партия,
+	Арм_ДанныеЗакупокИПродаж.АвторСтроки КАК АвторСтроки,
+	Арм_ДанныеЗакупокИПродаж.Порядок КАК Порядок,
+	Арм_ДанныеЗакупокИПродаж.ОстатокДляСтроки КАК ОстатокДляСтроки,
+	Арм_ДанныеЗакупокИПродаж.СтатусСтроки КАК СтатусСтроки,
+	Арм_ДанныеЗакупокИПродаж.Удаление КАК Удаление,
+	Арм_ДанныеЗакупокИПродаж.ОстатокТовара КАК ОстатокТовара,
+	Арм_ДанныеЗакупокИПродаж.Цена КАК Цена,
+	Арм_ДанныеЗакупокИПродаж.РучнаяПравкаПартии КАК РучнаяПравкаПартии,
+	Арм_ДанныеЗакупокИПродаж.Себестоимость КАК Себестоимость,
+	Арм_ДанныеЗакупокИПродаж.РучноеРазделениеСУчетомПартий КАК РучноеРазделениеСУчетомПартий,
+	Арм_ДанныеЗакупокИПродаж.Договор КАК Договор,
+	Арм_ДанныеЗакупокИПродаж.Покупатель КАК Покупатель,
+	Арм_ДанныеЗакупокИПродаж.КомментарийКСтроке КАК КомментарийКСтроке,
+	Арм_ДанныеЗакупокИПродаж.ДатаОтгрузки КАК ДатаОтгрузки,
+	Арм_ДанныеЗакупокИПродаж.НомерОтгрузки КАК НомерОтгрузки,
+	Арм_ДанныеЗакупокИПродаж.РасходнаяНакладная КАК РасходнаяНакладная
+ИЗ
+	РегистрСведений.Арм_ДанныеЗакупокИПродаж КАК Арм_ДанныеЗакупокИПродаж
+ГДЕ
+	Арм_ДанныеЗакупокИПродаж.СтатусСтроки В(&amp;СтатусыСтрок)
+	И Арм_ДанныеЗакупокИПродаж.ВидОперации = Значение(Перечисление.АРМ_ВидыОпераций.Закупка) 
+{ГДЕ (Арм_ДанныеЗакупокИПродаж.ДокументЗаказПокупателя.Дата МЕЖДУ &amp;ДатаНачала И &amp;ДатаОкончания)}</QueryText>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ДокументЗаказПокупателя</dcssch:dataPath>
+					<dcssch:field>ДокументЗаказПокупателя</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ИдентификаторЗаписи</dcssch:dataPath>
+					<dcssch:field>ИдентификаторЗаписи</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ОтметкаСтроки</dcssch:dataPath>
+					<dcssch:field>ОтметкаСтроки</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ДокументЗаказПоставщика</dcssch:dataPath>
+					<dcssch:field>ДокументЗаказПоставщика</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ДокументПриходнаяНакладная</dcssch:dataPath>
+					<dcssch:field>ДокументПриходнаяНакладная</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>РасходнаяНакладная</dcssch:dataPath>
+					<dcssch:field>РасходнаяНакладная</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>КлючСвязиСтрок</dcssch:dataPath>
+					<dcssch:field>КлючСвязиСтрок</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ВидОперации</dcssch:dataPath>
+					<dcssch:field>ВидОперации</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>АвторСтроки</dcssch:dataPath>
+					<dcssch:field>АвторСтроки</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>РучнаяПравка</dcssch:dataPath>
+					<dcssch:field>РучнаяПравка</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>НоменклатураКлиента</dcssch:dataPath>
+					<dcssch:field>НоменклатураКлиента</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>КоличествоКлиента</dcssch:dataPath>
+					<dcssch:field>КоличествоКлиента</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ГРЗКлиента</dcssch:dataPath>
+					<dcssch:field>ГРЗКлиента</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Номенклатура</dcssch:dataPath>
+					<dcssch:field>Номенклатура</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>РучноеРазделениеСУчетомПартий</dcssch:dataPath>
+					<dcssch:field>РучноеРазделениеСУчетомПартий</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Себестоимость</dcssch:dataPath>
+					<dcssch:field>Себестоимость</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>РучнаяПравкаПартии</dcssch:dataPath>
+					<dcssch:field>РучнаяПравкаПартии</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Количество</dcssch:dataPath>
+					<dcssch:field>Количество</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ДатаОтгрузки</dcssch:dataPath>
+					<dcssch:field>ДатаОтгрузки</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Поставщик</dcssch:dataPath>
+					<dcssch:field>Поставщик</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Партия</dcssch:dataPath>
+					<dcssch:field>Партия</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Порядок</dcssch:dataPath>
+					<dcssch:field>Порядок</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ОстатокДляСтроки</dcssch:dataPath>
+					<dcssch:field>ОстатокДляСтроки</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>СтатусСтроки</dcssch:dataPath>
+					<dcssch:field>СтатусСтроки</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Удаление</dcssch:dataPath>
+					<dcssch:field>Удаление</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ОстатокТовара</dcssch:dataPath>
+					<dcssch:field>ОстатокТовара</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Цена</dcssch:dataPath>
+					<dcssch:field>Цена</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Договор</dcssch:dataPath>
+					<dcssch:field>Договор</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>Покупатель</dcssch:dataPath>
+					<dcssch:field>Покупатель</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>КомментарийКСтроке</dcssch:dataPath>
+					<dcssch:field>КомментарийКСтроке</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>НомерОтгрузки</dcssch:dataPath>
+					<dcssch:field>НомерОтгрузки</dcssch:field>
+				</Field>
+				<Field xsi:type="dcssch:DataSetFieldField">
+					<dcssch:dataPath>ДатаПоступления</dcssch:dataPath>
+					<dcssch:field>ДатаПоступления</dcssch:field>
+				</Field>
+				<Parameter>
+					<dcssch:name>СтатусыСтрок</dcssch:name>
+					<dcssch:title xsi:type="v8:LocalStringType">
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Статусы строк</v8:content>
+						</v8:item>
+					</dcssch:title>
+					<dcssch:valueType>
+						<v8:Type>cfg:EnumRef.Арм_СтатусыАРМ</v8:Type>
+					</dcssch:valueType>
+					<dcssch:value xsi:nil="true"/>
+					<dcssch:useRestriction>true</dcssch:useRestriction>
+					<dcssch:valueListAllowed>true</dcssch:valueListAllowed>
+				</Parameter>
+				<Parameter>
+					<dcssch:name>ДатаНачала</dcssch:name>
+					<dcssch:title xsi:type="v8:LocalStringType">
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Дата начала</v8:content>
+						</v8:item>
+					</dcssch:title>
+					<dcssch:valueType>
+						<v8:Type>xs:dateTime</v8:Type>
+						<v8:DateQualifiers>
+							<v8:DateFractions>DateTime</v8:DateFractions>
+						</v8:DateQualifiers>
+					</dcssch:valueType>
+					<dcssch:value xsi:type="xs:dateTime">0001-01-01T00:00:00</dcssch:value>
+					<dcssch:useRestriction>false</dcssch:useRestriction>
+				</Parameter>
+				<Parameter>
+					<dcssch:name>ДатаОкончания</dcssch:name>
+					<dcssch:title xsi:type="v8:LocalStringType">
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Дата окончания</v8:content>
+						</v8:item>
+					</dcssch:title>
+					<dcssch:valueType>
+						<v8:Type>xs:dateTime</v8:Type>
+						<v8:DateQualifiers>
+							<v8:DateFractions>DateTime</v8:DateFractions>
+						</v8:DateQualifiers>
+					</dcssch:valueType>
+					<dcssch:value xsi:type="xs:dateTime">0001-01-01T00:00:00</dcssch:value>
+					<dcssch:useRestriction>false</dcssch:useRestriction>
+				</Parameter>
+				<MainTable>InformationRegister.Арм_ДанныеЗакупокИПродаж</MainTable>
+				<ListSettings>
+					<dcsset:filter>
+						<dcsset:viewMode>Normal</dcsset:viewMode>
+						<dcsset:userSettingID>dfcece9d-5077-440b-b6b3-45a5cb4538eb</dcsset:userSettingID>
+					</dcsset:filter>
+					<dcsset:order>
+						<dcsset:viewMode>Normal</dcsset:viewMode>
+						<dcsset:userSettingID>88619765-ccb3-46c6-ac52-38e9c992ebd4</dcsset:userSettingID>
+					</dcsset:order>
+					<dcsset:conditionalAppearance>
+						<dcsset:viewMode>Normal</dcsset:viewMode>
+						<dcsset:userSettingID>b75fecce-942b-4aed-abc9-e6a02e460fb3</dcsset:userSettingID>
+					</dcsset:conditionalAppearance>
+					<dcsset:itemsViewMode>Normal</dcsset:itemsViewMode>
+					<dcsset:itemsUserSettingID>911b6018-f537-43e8-a417-da56b22f9aec</dcsset:itemsUserSettingID>
+				</ListSettings>
+			</Settings>
+		</Attribute>
+		<Attribute name="Период" id="3">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Период</v8:content>
+				</v8:item>
+			</Title>
+			<Type>
+				<v8:Type>v8:StandardPeriod</v8:Type>
+			</Type>
+		</Attribute>
+		<Attribute name="СгруппироватьПоЗаказуПокупателя" id="4">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Сгруппировать по заказу покупателя</v8:content>
+				</v8:item>
+			</Title>
+			<Type>
+				<v8:Type>xs:boolean</v8:Type>
+			</Type>
+		</Attribute>
+		<Attribute name="ГруппироватьСтрокиПоСтатусам" id="5">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Группировать по  статусам</v8:content>
+				</v8:item>
+			</Title>
+			<Type>
+				<v8:Type>xs:boolean</v8:Type>
+			</Type>
+		</Attribute>
+	</Attributes>
+	<Commands>
+		<Command name="ОчиститьПериод" id="1">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Очистить период</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Очистить период</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>ОчиститьПериод</Action>
+		</Command>
+		<Command name="ВыделитьВсеСтрокиЗаказа" id="2">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Выделить все строки заказа</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Выделить все строки заказа</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>ВыделитьВсеСтрокиЗаказа</Action>
+		</Command>
+		<Command name="Оплачено" id="3">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Оплачено</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Оплачено</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>Оплачено</Action>
+		</Command>
+		<Command name="ТоварВПути" id="4">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Товар в пути</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Товар в пути</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>ТоварВПути</Action>
+		</Command>
+		<Command name="Приходуется" id="5">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Приходуется</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Приходуется</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>Приходуется</Action>
+		</Command>
+		<Command name="НаСкладе" id="6">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>На складе</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>На складе</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>НаСкладе</Action>
+		</Command>
+		<Command name="Комплектуется" id="7">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Комплектуется</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Комплектуется</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>Комплектуется</Action>
+		</Command>
+		<Command name="Собран" id="8">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Собран</v8:content>
+				</v8:item>
+			</Title>
+			<ToolTip>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Собран</v8:content>
+				</v8:item>
+			</ToolTip>
+			<Action>Собран</Action>
+		</Command>
+	</Commands>
+</Form>
