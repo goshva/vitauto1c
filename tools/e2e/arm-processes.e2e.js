@@ -676,6 +676,34 @@ const SCENARIOS = {
     check('M10', 'кладовщику отклонение недоступно', st.status === 403, `${st.status}${problem(st)}`);
     await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
     await shipAndClose([s]);
+  },
+  // АРМ v2.23 (блок 3): печатные формы 1С через команду АРМ_OData «Печать» — сборочный лист (K3), отгрузочная
+  // ведомость (M12) с номером отгрузки, корректировка ведомости (M19) после возврата; пустая форма — 409
+  async p01_print() {
+    const print = async (role, kind, order) => call(role, 'POST', '/print', { kind, customerOrderIds: [order] });
+    const [s] = await newOrder('manager', 'N1,M1', ['Книга — печать']);
+    await pick('M2', s, D.reduced, D.alpha, 300);
+    const order = (await line(s)).customerOrder, nom = 'E2E Книга по ТО';
+    await transition('manager', 'M3', 'sales', 'reserve', [s]);
+    await transition('manager', 'M9', 'sales', 'assembly', [s]);
+    const a = await print('storekeeper', 'assembly_sheet', order.id);
+    check('K3', 'сборочный лист (кладовщик)', a.status === 200 && a.data.html.includes('Сборочный лист') && a.data.html.includes(nom)
+      && a.data.html.includes(order.number), `${a.status}${problem(a)}`);
+    const none = await print('manager', 'shipment_correction', order.id);
+    check('M19', 'корректировка без возвратов — 409', none.status === 409, `${none.status}${problem(none)}`);
+    await transition('storekeeper', 'K3', 'sales', 'ready_to_ship', [s]);
+    const number = 'ОП-' + current.no;
+    await shipments('M12', [s], number);
+    await job('manager', 'K5', [s], 'shipped');
+    const v = await print('manager', 'shipment_sheet', order.id);
+    check('M12', 'отгрузочная ведомость: позиция и итоговая сумма', v.status === 200 && v.data.html.includes('Отгрузочная ведомость')
+      && v.data.html.includes(nom) && v.data.html.includes('сумма:'), `${v.status}${problem(v)}`);
+    await transition('manager', 'N3', 'sales', 'return', [s]);
+    const k = await print('manager', 'shipment_correction', order.id);
+    check('M19', 'корректировка ведомости после возврата', k.status === 200 && k.data.html.includes('Корректировка отгрузочной ведомости')
+      && k.data.html.includes(nom), `${k.status}${problem(k)}`);
+    const bad = await call('manager', 'POST', '/print', { kind: 'nope', customerOrderIds: [order.id] });
+    check('M12', 'неизвестная форма — 400', bad.status === 400, String(bad.status));
   }
 };
 async function odDoc(type, id) {

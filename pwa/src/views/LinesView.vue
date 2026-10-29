@@ -349,6 +349,32 @@ const TRANSITIONS = [
 ];
 const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value)));
 const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
+// печать (АРМ v2.23, блок 3): формы 1С по заказам отмеченных строк, без отметок — по заказу открытой строки
+const PRINTS = [
+  { kind: 'shipment_sheet', title: 'Отгрузочная ведомость', node: 'M12' },
+  { kind: 'assembly_sheet', title: 'Сборочный лист', node: 'K3' },
+  { kind: 'shipment_correction', title: 'Корректировка ведомости', node: 'M19' }
+];
+async function printForm(p) {
+  const marked = lines.marked.map(l => l.customerOrder && l.customerOrder.id).filter(Boolean);
+  const ids = marked.length ? marked : currentOrder.value ? [currentOrder.value.id] : [];
+  if (!ids.length) { toast.show('Отметьте строки или откройте строку — печать идёт по их заказам', 'error'); return; }
+  const win = window.open('', '_blank');   // до запроса: иначе браузер блокирует всплывающее окно
+  closeSheets();
+  busy.value = true;
+  try {
+    const { html } = await post('/print', { kind: p.kind, customerOrderIds: ids });
+    if (!win) { toast.show('Браузер заблокировал окно печати — разрешите всплывающие окна', 'error'); return; }
+    win.document.open();
+    win.document.write(html.replace('<TITLE>', `<TITLE>${p.title}`));
+    win.document.close();
+    win.focus();
+    win.print();
+  } catch (e) {
+    if (win) win.close();
+    toast.error(e);
+  } finally { busy.value = false; }
+}
 // M10 (АРМ v2.23): отклонить собранное с причиной — строки снова «Комплектуется», кладовщику уведомление с причиной
 const canReject = computed(() => view.value === 'sales' && ['manager', 'admin', 'chief_mechanic'].includes(session.role));
 function rejectAssembly() {
@@ -562,6 +588,14 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             </button>
             <button v-if="canReject" :disabled="busy" @click="rejectAssembly">
               <AppIcon name="undo" /> Отклонить комплектацию <span class="hint">M10</span>
+            </button>
+          </div>
+        </template>
+        <template v-if="view === 'sales'">
+          <div class="menu-title">Печать</div>
+          <div class="menu">
+            <button v-for="p in PRINTS" :key="p.kind" :disabled="busy" @click="printForm(p)">
+              <AppIcon name="file" /> {{ p.title }} <span class="hint">{{ p.node }}</span>
             </button>
           </div>
         </template>

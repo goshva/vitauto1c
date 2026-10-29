@@ -105,6 +105,7 @@
 			<CommonModule>Арм_МатрицаПрав</CommonModule>
 			<CommonModule>Арм_Журнал</CommonModule>
 			<CommonModule>Арм_УведомленияСервер</CommonModule>
+			<CommonModule>Арм_ПечатьСервер</CommonModule>
 			<Catalog>Контрагенты</Catalog>
 			<Catalog>Номенклатура</Catalog>
 			<Catalog>ДоговорыКонтрагентов</Catalog>

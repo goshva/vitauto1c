@@ -356,6 +356,17 @@ export function createBackend({ baseUrl, session, log }) {
     return { processed: marked.length, total: marked.length };
   }
 
+  // Печать (АРМ v2.23, блок 3): HTML печатной формы 1С по заказам покупателя — отгрузочная ведомость (M12),
+  // сборочный лист (K3), корректировка ведомости (M19); команда АРМ_OData «Печать»
+  const PRINT_KINDS = { shipment_sheet: 'Ведомость', assembly_sheet: 'СборочныйЛист', shipment_correction: 'Корректировка' };
+  async function printForm({ kind, customerOrderIds }) {
+    if (!PRINT_KINDS[kind]) fail(400, 'bad_request', 'kind: ' + Object.keys(PRINT_KINDS).join(', '), 'kind');
+    const ids = [...new Set((customerOrderIds || []).filter(Boolean))];
+    if (!ids.length) fail(400, 'bad_request', 'customerOrderIds: заказы покупателя (отметьте строки или откройте строку)', 'customerOrderIds');
+    const r = await command('Печать', { kind: PRINT_KINDS[kind], customerOrderIds: ids });
+    return { html: r.html };
+  }
+
   async function shipments({ customerOrderId, shipmentDate, shipmentNumber }) {
     if (!shipmentDate || !shipmentNumber) fail(400, 'bad_request', 'Нужны shipmentDate и shipmentNumber');
     const recs = await od.list(ARM, { $filter: `ДокументЗаказПокупателя_Key eq ${guid(customerOrderId)} and ВидОперации eq 'Продажа' and Удаление eq false` });
@@ -690,6 +701,7 @@ export function createBackend({ baseUrl, session, log }) {
       }
     }
     if (method === 'POST' && path === '/supply/status') return ok(await supplyStatus(body || {}));
+    if (method === 'POST' && path === '/print') return ok(await printForm(body || {}));
     if (method === 'GET' && path === '/notifications') return ok(await notifications());
     if (method === 'POST' && path === '/notifications/read') return ok(await readNotifications(body || {}));
     if (method === 'GET' && seg[0] === 'jobs' && seg.length === 2) return ok(await job(decodeURIComponent(seg[1])));
