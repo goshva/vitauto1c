@@ -77,7 +77,7 @@ const TABLES = {
   'Справочник.ДоговорыКонтрагентов': T('ref.contract', 30, { Владелец: 'counterparty_id', Организация: 'organization_id', НомерДоговора: 'contract_no', ДатаДоговора: 'contract_date', ВидДоговора: 'kind', ВидЦен: 'price_type_id', ВалютаРасчетов: 'currency_id', Недействителен: 'inactive', Комментарий: 'comment' }),
   'Справочник.асАвтомобили': T('ref.car', 30, { VIN: 'vin', Модель: 'model_id', НомерДвигателя: 'engine_no', НомерКузова: 'body_no', НомерШасси: 'chassis_no', ГодВыпуска: 'year', Цвет: 'color', Комментарий: 'comment' }),
   'Справочник.ПартииНоменклатуры': T('ref.batch', 40, { ВладелецПартии: 'supplier_id', Статус: 'status', Номер: 'batch_no', ГоденДо: 'expires_at', Недействителен: 'inactive' }),
-  'Документ.ЗаказПокупателя': T('doc.customer_order', 50, { ДатаОтгрузки: 'ship_date' }),
+  'Документ.ЗаказПокупателя': T('doc.customer_order', 50, { ДатаОтгрузки: 'ship_date', НомерЗаказаКлиента: 'client_order_number' }),
   'Документ.ЗаказПокупателя.Запасы': T('doc.customer_order_item', 51, ITEM),
   'Документ.ЗаказПокупателя.Работы': T('doc.customer_order_work', 51, { ...ITEM, ВидРабот: 'work_kind_id', Кратность: 'multiplicity', Коэффициент: 'coefficient' }),
   'Документ.ЗаказПокупателя.Материалы': T('doc.customer_order_material', 51, ITEM),

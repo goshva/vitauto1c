@@ -35,6 +35,7 @@ func main() {
 	checks := fs.String("checks", "ALL", "проверки reconcile через запятую")
 	strict := fs.Bool("strict", false, "schema-status: ошибка, если есть неприменённые миграции")
 	allowProd := fs.Bool("allow-prod", false, "разрешить рабочую базу vitauto (этап 11)")
+	password := fs.String("password", "", "users: пароль учётных записей (стенд, e2e); пусто — смена при первом входе")
 	_ = fs.Parse(os.Args[2:])
 
 	r := *root
@@ -68,6 +69,8 @@ func main() {
 		err = m.Load(ctx)
 	case "derive":
 		err = m.Derive(ctx)
+	case "users":
+		err = m.Users(ctx, *password)
 	case "reconcile":
 		err = m.Reconcile(ctx, strings.Split(*checks, ","))
 	case "all":

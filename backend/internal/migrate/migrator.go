@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	"golang.org/x/crypto/bcrypt"
 
 	"vitauto/backend/internal/onec"
 )
@@ -131,7 +132,14 @@ func (m *Migrator) Gen(ctx context.Context) error {
 	if err := os.WriteFile(filepath.Join(m.Root, "db", "load", "typed.sql"), []byte(load), 0o644); err != nil {
 		return err
 	}
-	m.Log("gen: 0002_typed.sql %d байт, typed.sql %d байт", len(ddl), len(load))
+	fields, err := GenerateArmFields(meta, cols)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(m.Root, "backend", "internal", "arm", "fields_gen.go"), []byte(fields), 0o644); err != nil {
+		return err
+	}
+	m.Log("gen: 0002_typed.sql %d байт, typed.sql %d байт, fields_gen.go %d байт", len(ddl), len(load), len(fields))
 	return nil
 }
 
@@ -193,3 +201,31 @@ func (m *Migrator) run(ctx context.Context, db *pgxpool.Pool, step string) (id s
 }
 
 func lower(s string) string { return strings.ToLower(s) }
+
+// Users — учётные записи входа для пользователей с ролью АРМ: логин — наименование пользователя; пароль задаётся
+// (стенд, e2e) или остаётся пустым с требованием смены (рабочий перенос: одноразовый код администратора).
+func (m *Migrator) Users(ctx context.Context, password string) error {
+	db, err := m.target(ctx)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	var hash *string
+	if password != "" {
+		h, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		s := string(h)
+		hash = &s
+	}
+	tag, err := db.Exec(ctx, `insert into auth.credential (login, user_id, password_hash, must_change)
+		select u.name, u.id, $1, $2 from auth."user" u where exists (select 1 from arm.user_role r where r.user_id = u.id) and not u.deleted
+		on conflict (login) do update set password_hash = coalesce(excluded.password_hash, auth.credential.password_hash), must_change = excluded.must_change, changed_at = now()`,
+		hash, hash == nil)
+	if err != nil {
+		return err
+	}
+	m.Log("users: учётных записей %d (пароль %s)", tag.RowsAffected(), map[bool]string{true: "задан", false: "не задан — смена при входе"}[hash != nil])
+	return nil
+}

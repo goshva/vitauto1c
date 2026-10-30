@@ -10,7 +10,7 @@ tasks:
   gen:
     desc: Код из контрактов api/*.yaml — копии для go:embed, типы Go (oapi-codegen), типы PWA (openapi-typescript)
     cmds:
-      - node -e "const fs=require('fs');for(const f of ['openapi.yaml','asyncapi.yaml'])fs.copyFileSync('api/'+f,'backend/internal/api/'+f)"
+      - node -e "const fs=require('fs');for(const f of ['openapi.yaml','asyncapi.yaml'])fs.copyFileSync('api/'+f,'backend/internal/api/'+f);fs.copyFileSync('pwa/src/odata/matrix.json','backend/internal/arm/matrix.json')"
       - cd backend && oapi-codegen -config internal/api/oapi-codegen.yaml ../api/openapi.yaml
       - "{{.OPENAPI_TS}} api/openapi.yaml -o pwa/src/http/schema.d.ts"
 

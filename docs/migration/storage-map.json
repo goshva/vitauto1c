@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-30T11:07:18.322Z",
+ "generated": "2026-10-30T12:51:57.985Z",
  "source": "storage-vitauto_dev.jsonl",
  "uuidSample": {
   "object": "Справочник.Номенклатура",
@@ -8016,7 +8016,7 @@
      "storage": [
       "_fld56903"
      ],
-     "column": null,
+     "column": "client_order_number",
      "composite": false
     }
    ]

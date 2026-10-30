@@ -636,7 +636,7 @@ from onec.raw r cross join lateral (select r.row as j) x
 where r.storage = '_reference427';
 
 -- Документ.ЗаказПокупателя (_document813x1)
-insert into doc.customer_order (id, onec_version, deleted, date, number, posted, author_id, currency_id, operation, ship_date, contract_id, base_doc_type, base_doc_id, base_doc_value, comment, counterparty_id, organization_id, responsible_id, order_state_type, order_state_id, order_state_value, reserve_warehouse_id, amount_includes_vat, total, extra)
+insert into doc.customer_order (id, onec_version, deleted, date, number, posted, author_id, currency_id, operation, ship_date, contract_id, base_doc_type, base_doc_id, base_doc_value, comment, counterparty_id, organization_id, responsible_id, order_state_type, order_state_id, order_state_value, reserve_warehouse_id, amount_includes_vat, total, client_order_number, extra)
 select
     onec.uuid(j->>'_idrref'),
     j->>'_version',
@@ -662,6 +662,7 @@ select
     onec.uuid(j->>'_fld20552rref'),
     (j->>'_fld20553')::boolean,
     (j->>'_fld20554')::numeric(15,2),
+    j->>'_fld56903',
     jsonb_strip_nulls(jsonb_build_object(
       'АдресДоставки', j->'_fld20453',
       'АдресДоставкиЗначение', j->'_fld20454',
@@ -805,8 +806,7 @@ select
       'НомерЗакрывающегоДокументаВыставлениеСчетов', j->'_fld55083',
       'ДатаЗакрывающегоДокументаВыставлениеСчетов', j->'_fld55084',
       'НетСтрокВДокументе', j->'_fld55085',
-      'Лид', to_jsonb(onec.uuid(j->>'_fld56366rref')),
-      'НомерЗаказаКлиента', j->'_fld56903'))
+      'Лид', to_jsonb(onec.uuid(j->>'_fld56366rref'))))
 from onec.raw r cross join lateral (select r.row as j) x
 where r.storage = '_document813x1';
 

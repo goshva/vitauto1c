@@ -23,9 +23,12 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// NewMux собирает маршруты сервиса.
-func NewMux(db Pinger) *http.ServeMux {
+// NewMux собирает маршруты сервиса; app == nil — только служебные (без базы).
+func NewMux(db Pinger, app *App) *http.ServeMux {
 	mux := http.NewServeMux()
+	if app != nil {
+		app.Register(mux)
+	}
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		h := Health{Status: HealthStatusOk, Version: version.Version}
 		if db != nil {

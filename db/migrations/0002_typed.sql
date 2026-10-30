@@ -509,6 +509,7 @@ create table doc.customer_order (
   reserve_warehouse_id uuid,
   amount_includes_vat boolean,
   total numeric(15,2),
+  client_order_number text,
   version bigint not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -540,6 +541,7 @@ comment on column doc.customer_order.order_state_value is '1С: Документ
 comment on column doc.customer_order.reserve_warehouse_id is '1С: Документ.ЗаказПокупателя.СтруктурнаяЕдиницаРезерв (_document813x1._fld20552rref)';
 comment on column doc.customer_order.amount_includes_vat is '1С: Документ.ЗаказПокупателя.СуммаВключаетНДС (_document813x1._fld20553)';
 comment on column doc.customer_order.total is '1С: Документ.ЗаказПокупателя.СуммаДокумента (_document813x1._fld20554)';
+comment on column doc.customer_order.client_order_number is '1С: Документ.ЗаказПокупателя.НомерЗаказаКлиента (_document813x1._fld56903)';
 comment on column doc.customer_order.version is 'версия строки: оптимистическая блокировка, события WS (план, раздел 11)';
 comment on column doc.customer_order.created_at is 'создание записи в vitauto_app';
 comment on column doc.customer_order.updated_at is 'последнее изменение записи в vitauto_app';
