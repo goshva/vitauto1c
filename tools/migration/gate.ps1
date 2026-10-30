@@ -51,11 +51,13 @@ function Assert-RepoPath([string]$rel, [string]$what) {
 }
 function Invoke-Tool([string]$Dir, [string]$Exe, [string[]]$ToolArgs) {
   Push-Location (Join-Path $root $Dir)
+  # stderr инструментов (npm warn, вывод task) в PowerShell 5.1 при Stop становится исключением — здесь только код возврата
+  $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
   try {
     $out = & $Exe @ToolArgs 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { return Fail ("$Exe $($ToolArgs -join ' '): код $LASTEXITCODE. " + ($out.Trim() -split "`n" | Select-Object -Last 3) -join ' ') }
     return Pass "$Exe $($ToolArgs -join ' '): OK"
-  } finally { Pop-Location }
+  } finally { $ErrorActionPreference = $prev; Pop-Location }
 }
 
 # ключевые объекты 1С, которые обязаны быть в карте (раздел 7.2)
@@ -155,7 +157,7 @@ switch ($Stage) {
   }
   1 {
     Invoke-Check 'G1.1' 'go build и go vet' { Assert-RepoPath 'backend\go.mod' 'Go-модуль'; $b = Invoke-Tool 'backend' 'go' @('build', './...'); if ($b.Status -ne 'PASS') { return $b }; Invoke-Tool 'backend' 'go' @('vet', './...') }
-    Invoke-Check 'G1.2' 'spectral lint api/*.yaml = 0 ошибок' { Assert-RepoPath 'api\openapi.yaml' 'спецификации OpenAPI'; Invoke-Tool '.' 'npx' @('--yes', '@stoplight/spectral-cli', 'lint', 'api/openapi.yaml', 'api/asyncapi.yaml', '--fail-severity', 'error') }
+    Invoke-Check 'G1.2' 'spectral lint api/*.yaml = 0 ошибок' { Assert-RepoPath 'api\openapi.yaml' 'спецификации OpenAPI'; Invoke-Tool '.' 'npx' @('--yes', '@stoplight/spectral-cli@6.15.0', 'lint', 'api/openapi.yaml', 'api/asyncapi.yaml', '--fail-severity', 'error') }
     Invoke-Check 'G1.3' 'Паритет маршрутов backend.js <-> OpenAPI' { Assert-RepoPath 'backend\internal\api\parity_test.go' 'теста паритета'; Invoke-Tool 'backend' 'go' @('test', './internal/api/', '-run', 'TestRouteParity') }
     Invoke-Check 'G1.4' '/api/v1/health = 200' { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:18100/api/v1/health'; if ($r.StatusCode -eq 200) { Pass $r.Content } else { Fail "код $($r.StatusCode)" } }
     Invoke-Check 'G1.5' 'task gen не даёт изменений' { Assert-RepoPath 'Taskfile.yml' 'Taskfile'; $g = Invoke-Tool '.' 'task' @('gen'); if ($g.Status -ne 'PASS') { return $g }; $d = git -C $root status --porcelain -- api backend/internal/api pwa/src/http; if ($d) { Fail "после task gen изменены: $d" } else { Pass 'сгенерированный код актуален' } }
