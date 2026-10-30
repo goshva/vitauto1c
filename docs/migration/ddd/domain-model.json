@@ -1,0 +1,4418 @@
+{
+ "schema": 1,
+ "sources": {
+  "index.html": "41b439f5c862f2f5",
+  "process.html": "c7cd994d770f9ce7",
+  "pwa/src/odata/matrix.json": "e18ac03b903a3359",
+  "pwa/src/odata/backend.js": "c44c209968f727f4",
+  "pwa/src/views/LinesView.vue": "7d22624f9cd09969",
+  "column-codes.js": "ec061114387c8406",
+  "pwa/src/odata/mapping.js": "cf5d7413afc19131"
+ },
+ "roles": [
+  {
+   "id": "manager",
+   "title": "Менеджер",
+   "onecEnum": "Менеджер",
+   "inProcess": true,
+   "lanes": [
+    "M1",
+    "M2",
+    "M2a",
+    "M3",
+    "M4",
+    "M7",
+    "M8",
+    "M9",
+    "M10",
+    "M11",
+    "M12",
+    "M13",
+    "M15",
+    "M16",
+    "M17",
+    "M18",
+    "M19"
+   ]
+  },
+  {
+   "id": "storekeeper",
+   "title": "Кладовщик / Сборщик",
+   "onecEnum": "Кладовщик",
+   "inProcess": true,
+   "lanes": [
+    "K1",
+    "K2",
+    "K3",
+    "K5",
+    "K6",
+    "K7",
+    "K8",
+    "K9"
+   ]
+  },
+  {
+   "id": "chief_mechanic",
+   "title": "Главный механик",
+   "onecEnum": "ГлавныйМеханик",
+   "inProcess": true,
+   "lanes": [
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "G7",
+    "G8",
+    "G9"
+   ]
+  },
+  {
+   "id": "admin",
+   "title": "Администратор",
+   "onecEnum": "Администратор",
+   "inProcess": true,
+   "lanes": [
+    "A1",
+    "A2",
+    "A3",
+    "A5",
+    "A0"
+   ]
+  },
+  {
+   "id": "supplier",
+   "title": "Поставщик",
+   "onecEnum": "Поставщик",
+   "inProcess": true,
+   "lanes": [
+    "P1",
+    "P2",
+    "P3"
+   ]
+  },
+  {
+   "id": "client",
+   "title": "Клиент",
+   "onecEnum": "Клиент",
+   "inProcess": true,
+   "lanes": [
+    "N1",
+    "N2a",
+    "N3",
+    "N4"
+   ]
+  },
+  {
+   "id": "supply",
+   "title": "Снабжение",
+   "onecEnum": "Снабжение",
+   "inProcess": false,
+   "lanes": []
+  }
+ ],
+ "statuses": [
+  {
+   "id": "new",
+   "title": "Новый",
+   "onecEnums": [
+    "Черновик"
+   ],
+   "early": true
+  },
+  {
+   "id": "in_work",
+   "title": "В работе",
+   "onecEnums": [
+    "ВРаботе"
+   ],
+   "early": true
+  },
+  {
+   "id": "partially_ordered",
+   "title": "Частично заказано",
+   "onecEnums": [
+    "ЧастичноЗаказано"
+   ],
+   "early": true
+  },
+  {
+   "id": "ordered",
+   "title": "Заказано у поставщика",
+   "onecEnums": [
+    "Заказано"
+   ],
+   "early": true
+  },
+  {
+   "id": "paid",
+   "title": "Оплачено",
+   "onecEnums": [
+    "Оплачено"
+   ],
+   "early": true
+  },
+  {
+   "id": "in_transit",
+   "title": "В пути",
+   "onecEnums": [
+    "ТоварВПути"
+   ],
+   "early": true
+  },
+  {
+   "id": "awaiting_receipt",
+   "title": "Ожидаем поступление",
+   "onecEnums": [
+    "ОжидаемПоступление"
+   ],
+   "early": true
+  },
+  {
+   "id": "acceptance",
+   "title": "Приемка",
+   "onecEnums": [
+    "Приходуется"
+   ],
+   "early": false
+  },
+  {
+   "id": "to_stock",
+   "title": "На склад",
+   "onecEnums": [
+    "НаСкладе"
+   ],
+   "early": false
+  },
+  {
+   "id": "reserve",
+   "title": "Резервирование",
+   "onecEnums": [
+    "Резервирование"
+   ],
+   "early": false
+  },
+  {
+   "id": "assembly",
+   "title": "Комплектация",
+   "onecEnums": [
+    "Комплектуется"
+   ],
+   "early": false
+  },
+  {
+   "id": "ready_to_ship",
+   "title": "Готово к отгрузке",
+   "onecEnums": [
+    "Подготовлено",
+    "Собран"
+   ],
+   "early": false
+  },
+  {
+   "id": "shipped",
+   "title": "Отгружено",
+   "onecEnums": [
+    "Отгружено"
+   ],
+   "early": false
+  },
+  {
+   "id": "return",
+   "title": "Возврат",
+   "onecEnums": [
+    "Возврат"
+   ],
+   "early": false
+  },
+  {
+   "id": "closed",
+   "title": "Закрыт",
+   "onecEnums": [
+    "Выполнено",
+    "Завершено"
+   ],
+   "early": false
+  }
+ ],
+ "statusOrder": [
+  "new",
+  "in_work",
+  "partially_ordered",
+  "ordered",
+  "paid",
+  "in_transit",
+  "awaiting_receipt",
+  "acceptance",
+  "to_stock",
+  "reserve",
+  "assembly",
+  "ready_to_ship",
+  "shipped",
+  "return",
+  "closed"
+ ],
+ "columnGroups": [
+  {
+   "code": "A",
+   "letter": "А",
+   "title": "Служебные",
+   "parent": null,
+   "columns": [
+    "cell_select",
+    "row_number",
+    "doc_signed_original"
+   ]
+  },
+  {
+   "code": "B",
+   "letter": "В",
+   "title": "Заказ и отгрузка",
+   "parent": null,
+   "columns": [
+    "shipment_date",
+    "shipment_number",
+    "order_date",
+    "order_internal_number",
+    "order_client_number",
+    "customer",
+    "contract",
+    "service_type",
+    "assembly_sent_date"
+   ]
+  },
+  {
+   "code": "C",
+   "letter": "Е–К",
+   "title": "Факт (заявка клиента)",
+   "parent": null,
+   "columns": []
+  },
+  {
+   "code": "C1",
+   "letter": "Е",
+   "title": "Автомобиль / агрегат",
+   "parent": "C",
+   "columns": [
+    "brand_fact",
+    "model_fact",
+    "aggregate_fact",
+    "gosnomer_fact",
+    "grz_fact",
+    "vin_fact",
+    "engine_fact"
+   ]
+  },
+  {
+   "code": "C2",
+   "letter": "К",
+   "title": "Позиция (факт)",
+   "parent": "C",
+   "columns": [
+    "urgency_fact",
+    "vehicle_plate_fact",
+    "territory_fact",
+    "name_fact",
+    "article_fact",
+    "qty_fact",
+    "unit_fact"
+   ]
+  },
+  {
+   "code": "D",
+   "letter": "М",
+   "title": "Номенклатура",
+   "parent": null,
+   "columns": [
+    "name",
+    "article",
+    "code_aa",
+    "unit"
+   ]
+  },
+  {
+   "code": "E",
+   "letter": "Н",
+   "title": "Склад и статус",
+   "parent": null,
+   "columns": [
+    "qty",
+    "stock_qty",
+    "reserve_qty",
+    "ordered_in_transit_qty",
+    "batch_fifo",
+    "line_status",
+    "stock_cell"
+   ]
+  },
+  {
+   "code": "F",
+   "letter": "О–Р",
+   "title": "Цены и оплата",
+   "parent": null,
+   "columns": []
+  },
+  {
+   "code": "F1",
+   "letter": "О",
+   "title": "Себестоимость и оплата",
+   "parent": "F",
+   "columns": [
+    "price",
+    "sum",
+    "payment_form",
+    "rrc",
+    "paid_status",
+    "invoice_number",
+    "invoice_date"
+   ]
+  },
+  {
+   "code": "F2",
+   "letter": "Р",
+   "title": "Продажа",
+   "parent": "F",
+   "columns": [
+    "qty_norm_hours_client",
+    "coefficient",
+    "extra_field_1",
+    "extra_field_2"
+   ]
+  },
+  {
+   "code": "G",
+   "letter": "С",
+   "title": "Поступление от поставщика",
+   "parent": null,
+   "columns": [
+    "supplier",
+    "receipt_date",
+    "upd_date",
+    "upd_number",
+    "supplier_ship_territory",
+    "supplier_order_date",
+    "delivery_term"
+   ]
+  },
+  {
+   "code": "H",
+   "letter": "Т",
+   "title": "Комментарий",
+   "parent": null,
+   "columns": [
+    "comment",
+    "comment_2"
+   ]
+  }
+ ],
+ "columns": [
+  {
+   "id": "cell_select",
+   "title": "поле выбора ячеек",
+   "group": "system",
+   "code": "А1",
+   "field": "ОтметкаСтроки",
+   "api": "marked",
+   "dataType": "checkbox",
+   "writable": false
+  },
+  {
+   "id": "row_number",
+   "title": "№ п/п",
+   "group": "system",
+   "code": "А2",
+   "field": "Порядок",
+   "api": "order",
+   "dataType": "number",
+   "writable": false
+  },
+  {
+   "id": "doc_signed_original",
+   "title": "Документ подписан оригинал",
+   "group": "doc_flag",
+   "code": "А3",
+   "field": "ДокументПодписанОригинал",
+   "api": "signedOriginal",
+   "dataType": "checkbox",
+   "writable": true
+  },
+  {
+   "id": "shipment_date",
+   "title": "Дата отгрузки",
+   "group": "auto",
+   "code": "В1",
+   "field": "ДатаОтгрузки",
+   "api": "shipmentDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "shipment_number",
+   "title": "Номер отгрузки",
+   "group": "auto",
+   "code": "В2",
+   "field": "НомерОтгрузки",
+   "api": "shipmentNumber",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "order_date",
+   "title": "Дата заказа",
+   "group": "auto",
+   "code": "В3",
+   "field": "ДатаЗаказа",
+   "api": "orderDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "order_internal_number",
+   "title": "№ заказ внутренний наш",
+   "group": "auto",
+   "code": "В4",
+   "field": "НомерЗаказа",
+   "api": "internalOrderNumber",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "order_client_number",
+   "title": "№ заказ клиент",
+   "group": "order_header",
+   "code": "В5",
+   "field": "НомерЗаказаКлиента",
+   "api": "clientOrderNumber",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "customer",
+   "title": "Заказчик",
+   "group": "order_header",
+   "code": "В6",
+   "field": "Покупатель",
+   "api": "customer",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "contract",
+   "title": "Договор с заказчиком",
+   "group": "order_header",
+   "code": "В7",
+   "field": "Договор",
+   "api": "contract",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "service_type",
+   "title": "Вид услуги",
+   "group": "order_header",
+   "code": "В8",
+   "field": "ВидУслуги",
+   "api": "serviceType",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "assembly_sent_date",
+   "title": "Дата отправки на сборку",
+   "group": "auto",
+   "code": "В9",
+   "field": "ДатаОтправкиНаСборку",
+   "api": "assemblySentDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "brand_fact",
+   "title": "Марка",
+   "group": "fact",
+   "code": "Е1",
+   "field": "Марка",
+   "api": "brand",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "model_fact",
+   "title": "Модель",
+   "group": "fact",
+   "code": "Е2",
+   "field": "Модель",
+   "api": "model",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "aggregate_fact",
+   "title": "Агрегат",
+   "group": "fact",
+   "code": "Е3",
+   "field": "Агрегат",
+   "api": "aggregate",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "gosnomer_fact",
+   "title": "Госномер",
+   "group": "fact",
+   "code": "Е4",
+   "field": "Госномер",
+   "api": "plate",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "grz_fact",
+   "title": "№ Шасси",
+   "group": "fact",
+   "code": "Е5",
+   "field": "НомерШасси",
+   "api": "chassis",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "vin_fact",
+   "title": "VIN (ХТС)",
+   "group": "fact",
+   "code": "Е6",
+   "field": "VIN",
+   "api": "vin",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "engine_fact",
+   "title": "Двигатель",
+   "group": "fact",
+   "code": "Е7",
+   "field": "Двигатель",
+   "api": "engine",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "urgency_fact",
+   "title": "Срочность (ФАКТ) / комментарий заказчика",
+   "group": "fact",
+   "code": "К1",
+   "field": "СрочностьКлиента",
+   "api": "urgency",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "vehicle_plate_fact",
+   "title": "Машина ГРЗ (ФАКТ)",
+   "group": "fact",
+   "code": "К2",
+   "field": "ГРЗКлиента",
+   "api": "vehiclePlate",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "territory_fact",
+   "title": "Территория (ФАКТ)",
+   "group": "fact",
+   "code": "К3",
+   "field": "ТерриторияКлиента",
+   "api": "territory",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "name_fact",
+   "title": "Наименование (ФАКТ)",
+   "group": "fact_editable",
+   "code": "К4",
+   "field": "НоменклатураКлиента",
+   "api": "factName",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "article_fact",
+   "title": "Артикул (ФАКТ)",
+   "group": "fact_editable",
+   "code": "К5",
+   "field": "АртикулКлиента",
+   "api": "factArticle",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "qty_fact",
+   "title": "Кол-во (ФАКТ)",
+   "group": "fact",
+   "code": "К6",
+   "field": "КоличествоКлиента",
+   "api": "factQty",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "unit_fact",
+   "title": "Ед. изм. (ФАКТ)",
+   "group": "fact",
+   "code": "К7",
+   "field": "ЕдиницаИзмеренияКлиента",
+   "api": "factUnit",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "name",
+   "title": "Наименование",
+   "group": "nomenclature",
+   "code": "М1",
+   "field": "Номенклатура",
+   "api": "nomenclature",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "article",
+   "title": "Артикул",
+   "group": "nomenclature",
+   "code": "М2",
+   "field": "НоменклатураАртикул",
+   "api": "nomenclature.article",
+   "dataType": "select",
+   "writable": false
+  },
+  {
+   "id": "code_aa",
+   "title": "Код А-А / код поставщика",
+   "group": "nomenclature",
+   "code": "М3",
+   "field": "НоменклатураАС_КодАвтоАльянс",
+   "api": "nomenclature.code",
+   "dataType": "select",
+   "writable": false
+  },
+  {
+   "id": "unit",
+   "title": "Ед. изм.",
+   "group": "nomenclature",
+   "code": "М4",
+   "field": "НоменклатураЕдиницаИзмерения",
+   "api": "nomenclature.unit",
+   "dataType": "select",
+   "writable": false
+  },
+  {
+   "id": "qty",
+   "title": "Кол-во",
+   "group": "nomenclature",
+   "code": "Н0",
+   "field": "Количество",
+   "api": "quantity",
+   "dataType": "number",
+   "writable": true
+  },
+  {
+   "id": "stock_qty",
+   "title": "Кол-во в наличии на складе",
+   "group": "stock",
+   "code": "Н1",
+   "field": "ОстатокДляСтроки",
+   "api": "stockQty",
+   "dataType": "number",
+   "writable": false
+  },
+  {
+   "id": "reserve_qty",
+   "title": "Кол-во в резерве",
+   "group": "stock",
+   "code": "Н2",
+   "field": "КоличествоВРезерве",
+   "api": "reserveQty",
+   "dataType": "number",
+   "writable": false
+  },
+  {
+   "id": "ordered_in_transit_qty",
+   "title": "Кол-во заказанного в пути / свободное",
+   "group": "stock",
+   "code": "Н3",
+   "field": "КоличествоВПути",
+   "api": "inTransitQty",
+   "dataType": "number",
+   "writable": false
+  },
+  {
+   "id": "batch_fifo",
+   "title": "№ партии ФИФО / выбор партии",
+   "group": "stock",
+   "code": "Н4",
+   "field": "Партия",
+   "api": "batch",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "line_status",
+   "title": "Статус заявки",
+   "group": "status",
+   "code": "Н5",
+   "field": "СтатусСтроки",
+   "api": "status",
+   "dataType": "select",
+   "writable": false
+  },
+  {
+   "id": "stock_cell",
+   "title": "Ячейка склада (на склад)",
+   "group": "stock",
+   "code": "Н6",
+   "field": "ЯчейкаСклада",
+   "api": "stockCell",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "price",
+   "title": "Цена (себес.)",
+   "group": "pricing",
+   "code": "О1",
+   "field": "СебестоимостьЕдиницы",
+   "api": "costPrice",
+   "dataType": "number",
+   "writable": true
+  },
+  {
+   "id": "sum",
+   "title": "Сумма (себес.)",
+   "group": "pricing",
+   "code": "О2",
+   "field": "Себестоимость",
+   "api": "costSum",
+   "dataType": "number",
+   "writable": false
+  },
+  {
+   "id": "payment_form",
+   "title": "Форма оплаты",
+   "group": "payment",
+   "code": "О3",
+   "field": "ФормаОплаты",
+   "api": "paymentForm",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "rrc",
+   "title": "РРЦ",
+   "group": "margin_locked",
+   "code": "О4",
+   "field": "РРЦ",
+   "api": "rrc",
+   "dataType": "number",
+   "writable": true
+  },
+  {
+   "id": "paid_status",
+   "title": "Оплачено (счёт, оплата, постоплата)",
+   "group": "payment",
+   "code": "О5",
+   "field": "Оплачено",
+   "api": "paid",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "invoice_number",
+   "title": "Счёт №",
+   "group": "payment",
+   "code": "О6",
+   "field": "НомерСчета",
+   "api": "invoiceNumber",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "invoice_date",
+   "title": "Дата счёта",
+   "group": "payment",
+   "code": "О7",
+   "field": "ДатаСчета",
+   "api": "invoiceDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "qty_norm_hours_client",
+   "title": "Кол-во норма час товар для клиента",
+   "group": "nomenclature",
+   "code": "Р0",
+   "field": "КоличествоНормаЧас",
+   "api": "normHours",
+   "dataType": "number",
+   "writable": true
+  },
+  {
+   "id": "coefficient",
+   "title": "Коэфф",
+   "group": "margin_open",
+   "code": "Р1",
+   "field": "Коэффициент",
+   "api": "coefficient",
+   "dataType": "number",
+   "writable": true
+  },
+  {
+   "id": "extra_field_1",
+   "title": "Цена продажи",
+   "group": "pricing",
+   "code": "Р2",
+   "field": "Цена",
+   "api": "salePrice",
+   "dataType": "number",
+   "writable": true
+  },
+  {
+   "id": "extra_field_2",
+   "title": "Сумма продажи",
+   "group": "pricing",
+   "code": "Р3",
+   "field": "Сумма",
+   "api": "saleSum",
+   "dataType": "number",
+   "writable": false
+  },
+  {
+   "id": "supplier",
+   "title": "Поставщик",
+   "group": "receipt",
+   "code": "С1",
+   "field": "Поставщик",
+   "api": "supplier",
+   "dataType": "select",
+   "writable": true
+  },
+  {
+   "id": "receipt_date",
+   "title": "Дата получения",
+   "group": "receipt",
+   "code": "С2",
+   "field": "ДатаПоступления",
+   "api": "receiptDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "upd_date",
+   "title": "Дата УПД",
+   "group": "receipt",
+   "code": "С3",
+   "field": "ДатаУПД",
+   "api": "updDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "upd_number",
+   "title": "№ УПД",
+   "group": "receipt",
+   "code": "С4",
+   "field": "НомерУПД",
+   "api": "updNumber",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "supplier_ship_territory",
+   "title": "Территория отгрузки поставщиком",
+   "group": "receipt",
+   "code": "С5",
+   "field": "ТерриторияОтгрузкиПоставщиком",
+   "api": "supplierShipTerritory",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "supplier_order_date",
+   "title": "Дата заказа поставщику",
+   "group": "auto",
+   "code": "С6",
+   "field": "ДатаЗаказаПоставщику",
+   "api": "supplierOrderDate",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "delivery_term",
+   "title": "Срок поставки",
+   "group": "receipt",
+   "code": "С7",
+   "field": "СрокПоставки",
+   "api": "deliveryTerm",
+   "dataType": "date",
+   "writable": true
+  },
+  {
+   "id": "comment",
+   "title": "Комментарий",
+   "group": "comment",
+   "code": "Т1",
+   "field": "КомментарийКСтроке",
+   "api": "comment",
+   "dataType": "text",
+   "writable": true
+  },
+  {
+   "id": "comment_2",
+   "title": "Комментарий 2",
+   "group": "comment",
+   "code": "Т2",
+   "field": "КомментарийКСтроке2",
+   "api": "comment2",
+   "dataType": "text",
+   "writable": true
+  }
+ ],
+ "fieldRules": [
+  {
+   "type": "options",
+   "column": "service_type",
+   "values": [
+    "Ремонт",
+    "Услуга",
+    "Инструмент",
+    "Запчасть"
+   ],
+   "text": "Вид услуги — выбор из списка: ремонт, услуга, инструмент, запчасть."
+  },
+  {
+   "type": "filter",
+   "column": "contract",
+   "by": "customer",
+   "directory": "counterparties.contracts",
+   "text": "Договор с заказчиком — только договоры выбранного контрагента (Заказчик)."
+  },
+  {
+   "type": "autofill",
+   "source": [
+    "gosnomer_fact"
+   ],
+   "directory": "vehicles",
+   "fills": [
+    "brand_fact",
+    "model_fact",
+    "vin_fact",
+    "engine_fact",
+    "grz_fact"
+   ],
+   "text": "Госномер — выбор из справочника машин; при выборе проставляются Марка, Модель, VIN, Двигатель, № Шасси."
+  },
+  {
+   "type": "oneOfRequired",
+   "columns": [
+    "gosnomer_fact",
+    "aggregate_fact"
+   ],
+   "text": "Обязательно заполнить одно из: Госномер или Агрегат (выпадающий список)."
+  },
+  {
+   "type": "autofill",
+   "source": [
+    "name",
+    "article",
+    "code_aa"
+   ],
+   "directory": "nomenclature",
+   "fills": [
+    "name",
+    "article",
+    "code_aa",
+    "unit"
+   ],
+   "text": "Наименование / Артикул / Код А-А — поиск по любому из них; выбор одного подтягивает остальные три поля (включая Ед. изм.)."
+  },
+  {
+   "type": "oneOfRequired",
+   "columns": [
+    "name",
+    "article",
+    "code_aa"
+   ],
+   "text": "Обязательно заполнить одно из: Наименование, Артикул или Код А-А."
+  },
+  {
+   "type": "formula",
+   "column": "sum",
+   "expr": "price * qty",
+   "text": "Сумма (себес.) = Цена (себес.) × Кол-во."
+  },
+  {
+   "type": "formula",
+   "column": "extra_field_1",
+   "expr": "(rrc > 0 ? rrc : price) * coefficient",
+   "unless": "coefficient = 0",
+   "text": "Цена продажи = РРЦ × Коэфф, если РРЦ заполнена; иначе Цена (себес.) × Коэфф. Пока Коэфф не заполнен, цена продажи вводится вручную."
+  },
+  {
+   "type": "formula",
+   "column": "extra_field_2",
+   "expr": "qty_norm_hours_client > 0 ? qty_norm_hours_client * extra_field_1 : qty_fact * extra_field_1",
+   "text": "Сумма продажи = Кол-во (ФАКТ) × Цена продажи; если заполнено «Кол-во норма час товар для клиента» — Кол-во норма час × Цена продажи."
+  }
+ ],
+ "roleProfiles": {
+  "manager": {
+   "system": {
+    "visible": true,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": true,
+    "editable": "role"
+   },
+   "auto": {
+    "visible": true,
+    "editable": "none"
+   },
+   "order_header": {
+    "visible": true,
+    "editable": "role"
+   },
+   "fact": {
+    "visible": true,
+    "editable": "role"
+   },
+   "fact_editable": {
+    "visible": true,
+    "editable": "role"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "role"
+   },
+   "stock": {
+    "visible": true,
+    "editable": "none"
+   },
+   "status": {
+    "visible": true,
+    "editable": "none"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "role"
+   },
+   "payment": {
+    "visible": true,
+    "editable": "role"
+   },
+   "margin_locked": {
+    "visible": true,
+    "editable": "none"
+   },
+   "margin_open": {
+    "visible": true,
+    "editable": "role"
+   },
+   "extra": {
+    "visible": false,
+    "editable": "none"
+   },
+   "receipt": {
+    "visible": true,
+    "editable": "none"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "role"
+   }
+  },
+  "storekeeper": {
+   "system": {
+    "visible": true,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": true,
+    "editable": "role"
+   },
+   "auto": {
+    "visible": true,
+    "editable": "none"
+   },
+   "order_header": {
+    "visible": true,
+    "editable": "none"
+   },
+   "fact": {
+    "visible": true,
+    "editable": "none"
+   },
+   "fact_editable": {
+    "visible": true,
+    "editable": "role"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "role"
+   },
+   "stock": {
+    "visible": true,
+    "editable": "role"
+   },
+   "status": {
+    "visible": true,
+    "editable": "none"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "none"
+   },
+   "payment": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_locked": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_open": {
+    "visible": false,
+    "editable": "none"
+   },
+   "extra": {
+    "visible": false,
+    "editable": "none"
+   },
+   "receipt": {
+    "visible": true,
+    "editable": "role"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "role"
+   }
+  },
+  "admin": {
+   "system": {
+    "visible": true,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": true,
+    "editable": "role"
+   },
+   "auto": {
+    "visible": true,
+    "editable": "role"
+   },
+   "order_header": {
+    "visible": true,
+    "editable": "role"
+   },
+   "fact": {
+    "visible": true,
+    "editable": "role"
+   },
+   "fact_editable": {
+    "visible": true,
+    "editable": "role"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "role"
+   },
+   "stock": {
+    "visible": true,
+    "editable": "role"
+   },
+   "status": {
+    "visible": true,
+    "editable": "role"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "role"
+   },
+   "payment": {
+    "visible": true,
+    "editable": "role"
+   },
+   "margin_locked": {
+    "visible": true,
+    "editable": "role"
+   },
+   "margin_open": {
+    "visible": true,
+    "editable": "role"
+   },
+   "extra": {
+    "visible": true,
+    "editable": "role"
+   },
+   "receipt": {
+    "visible": true,
+    "editable": "role"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "role"
+   }
+  },
+  "supplier": {
+   "system": {
+    "visible": false,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": false,
+    "editable": "none"
+   },
+   "auto": {
+    "visible": false,
+    "editable": "none"
+   },
+   "order_header": {
+    "visible": false,
+    "editable": "none"
+   },
+   "fact": {
+    "visible": false,
+    "editable": "none"
+   },
+   "fact_editable": {
+    "visible": false,
+    "editable": "none"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "none"
+   },
+   "stock": {
+    "visible": false,
+    "editable": "none"
+   },
+   "status": {
+    "visible": true,
+    "editable": "none"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "none"
+   },
+   "payment": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_locked": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_open": {
+    "visible": false,
+    "editable": "none"
+   },
+   "extra": {
+    "visible": false,
+    "editable": "none"
+   },
+   "receipt": {
+    "visible": false,
+    "editable": "none"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "role"
+   }
+  },
+  "client": {
+   "system": {
+    "visible": false,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": false,
+    "editable": "none"
+   },
+   "auto": {
+    "visible": true,
+    "editable": "none"
+   },
+   "order_header": {
+    "visible": true,
+    "editable": "none"
+   },
+   "fact": {
+    "visible": false,
+    "editable": "none"
+   },
+   "fact_editable": {
+    "visible": false,
+    "editable": "none"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "none"
+   },
+   "stock": {
+    "visible": false,
+    "editable": "none"
+   },
+   "status": {
+    "visible": true,
+    "editable": "none"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "none"
+   },
+   "payment": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_locked": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_open": {
+    "visible": false,
+    "editable": "none"
+   },
+   "extra": {
+    "visible": false,
+    "editable": "none"
+   },
+   "receipt": {
+    "visible": false,
+    "editable": "none"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "none"
+   }
+  },
+  "chief_mechanic": {
+   "system": {
+    "visible": true,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": true,
+    "editable": "role"
+   },
+   "auto": {
+    "visible": true,
+    "editable": "none"
+   },
+   "order_header": {
+    "visible": true,
+    "editable": "role"
+   },
+   "fact": {
+    "visible": true,
+    "editable": "role"
+   },
+   "fact_editable": {
+    "visible": true,
+    "editable": "role"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "role"
+   },
+   "stock": {
+    "visible": true,
+    "editable": "none"
+   },
+   "status": {
+    "visible": true,
+    "editable": "none"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "role"
+   },
+   "payment": {
+    "visible": true,
+    "editable": "role"
+   },
+   "margin_locked": {
+    "visible": true,
+    "editable": "none"
+   },
+   "margin_open": {
+    "visible": true,
+    "editable": "role"
+   },
+   "extra": {
+    "visible": false,
+    "editable": "none"
+   },
+   "receipt": {
+    "visible": true,
+    "editable": "none"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "role"
+   }
+  }
+ },
+ "matrix": {
+  "legend": {
+   "+": "можно менять",
+   "c": "только автор строки",
+   ".": "нельзя"
+  },
+  "rights": {
+   "manager": {
+    "cell_select": "+++++++..+...++",
+    "row_number": "...............",
+    "doc_signed_original": "............++.",
+    "shipment_date": "...........+...",
+    "shipment_number": "...............",
+    "order_date": "++.............",
+    "order_internal_number": "...............",
+    "order_client_number": "++.............",
+    "customer": "++.............",
+    "contract": "++.............",
+    "service_type": "++++++++++++...",
+    "assembly_sent_date": "...............",
+    "brand_fact": "...............",
+    "model_fact": "++.............",
+    "aggregate_fact": "++.............",
+    "gosnomer_fact": "++.............",
+    "grz_fact": "++.............",
+    "vin_fact": "++.............",
+    "engine_fact": "++.............",
+    "urgency_fact": "++.............",
+    "vehicle_plate_fact": "++.............",
+    "territory_fact": "++.............",
+    "name_fact": "++.............",
+    "article_fact": "++.............",
+    "qty_fact": "++.............",
+    "unit_fact": "++.............",
+    "name": "+++++++..+.+...",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "++.............",
+    "qty_norm_hours_client": "+++++++++++++++",
+    "stock_qty": "...............",
+    "reserve_qty": "...............",
+    "ordered_in_transit_qty": "...............",
+    "batch_fifo": "++++++++++++...",
+    "line_status": "+++++++++++++++",
+    "stock_cell": "...............",
+    "price": "++++...++......",
+    "sum": "...............",
+    "payment_form": "++++...........",
+    "rrc": "+++++++++++....",
+    "paid_status": "+++++++++++++++",
+    "invoice_number": "+++++++++++++++",
+    "invoice_date": "+++++++++++++++",
+    "coefficient": "++++++++++++...",
+    "extra_field_1": "++++++++++++...",
+    "extra_field_2": "...............",
+    "supplier": "+++++++++......",
+    "receipt_date": "...............",
+    "upd_date": "...............",
+    "upd_number": "...............",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "...............",
+    "delivery_term": "+++++++++......",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   },
+   "storekeeper": {
+    "cell_select": "++.....++++++++",
+    "row_number": "...............",
+    "doc_signed_original": "............++.",
+    "shipment_date": "...........+...",
+    "shipment_number": "...............",
+    "order_date": "...............",
+    "order_internal_number": "...............",
+    "order_client_number": "++.............",
+    "customer": "++.............",
+    "contract": "++.............",
+    "service_type": "++++++++++++...",
+    "assembly_sent_date": "...............",
+    "brand_fact": "++.............",
+    "model_fact": "++.............",
+    "aggregate_fact": "++.............",
+    "gosnomer_fact": "++.............",
+    "grz_fact": "...............",
+    "vin_fact": "++.............",
+    "engine_fact": "++.............",
+    "urgency_fact": "...............",
+    "vehicle_plate_fact": "...............",
+    "territory_fact": "...............",
+    "name_fact": "...............",
+    "article_fact": "...............",
+    "qty_fact": "...............",
+    "unit_fact": "...............",
+    "name": ".......++++....",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "++.............",
+    "qty_norm_hours_client": "...............",
+    "stock_qty": "...............",
+    "reserve_qty": "...............",
+    "ordered_in_transit_qty": "...............",
+    "batch_fifo": "++++++++++++...",
+    "line_status": "...............",
+    "stock_cell": ".......++......",
+    "price": ".......++......",
+    "sum": "...............",
+    "payment_form": "++++...++......",
+    "rrc": "...............",
+    "paid_status": "+++++++++++++++",
+    "invoice_number": "+++++++++++++++",
+    "invoice_date": "+++++++++++++++",
+    "coefficient": "...............",
+    "extra_field_1": "...............",
+    "extra_field_2": "...............",
+    "supplier": ".......++......",
+    "receipt_date": ".......++......",
+    "upd_date": ".......++......",
+    "upd_number": ".......++......",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "...............",
+    "delivery_term": ".......++......",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   },
+   "chief_mechanic": {
+    "cell_select": "+++++++..+...++",
+    "row_number": "...............",
+    "doc_signed_original": "............++.",
+    "shipment_date": "...........+...",
+    "shipment_number": "...............",
+    "order_date": "++.............",
+    "order_internal_number": "...............",
+    "order_client_number": "++.............",
+    "customer": "++.............",
+    "contract": "++.............",
+    "service_type": "++++++++++++...",
+    "assembly_sent_date": "...............",
+    "brand_fact": "++.............",
+    "model_fact": "++.............",
+    "aggregate_fact": "++.............",
+    "gosnomer_fact": "++.............",
+    "grz_fact": "...............",
+    "vin_fact": "++.............",
+    "engine_fact": "++.............",
+    "urgency_fact": "++.............",
+    "vehicle_plate_fact": "++.............",
+    "territory_fact": "++.............",
+    "name_fact": "++.............",
+    "article_fact": "++.............",
+    "qty_fact": "++.............",
+    "unit_fact": "++.............",
+    "name": "+++++++..+.+...",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "++.............",
+    "qty_norm_hours_client": "+++++++++++++++",
+    "stock_qty": "...............",
+    "reserve_qty": "...............",
+    "ordered_in_transit_qty": "...............",
+    "batch_fifo": "++++++++++++...",
+    "line_status": "...............",
+    "stock_cell": "...............",
+    "price": "++++...........",
+    "sum": "...............",
+    "payment_form": "++++...........",
+    "rrc": "+++++++++++....",
+    "paid_status": "+++++++++++++++",
+    "invoice_number": "+++++++++++++++",
+    "invoice_date": "+++++++++++++++",
+    "coefficient": "++++++++++++...",
+    "extra_field_1": "++++++++++++...",
+    "extra_field_2": "...............",
+    "supplier": "+++++++........",
+    "receipt_date": "...............",
+    "upd_date": "...............",
+    "upd_number": "...............",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "...............",
+    "delivery_term": "+++++++........",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   },
+   "admin": {
+    "cell_select": "+++++++++++++++",
+    "row_number": "+++++++++++++++",
+    "doc_signed_original": "+++++++++++++++",
+    "shipment_date": "+++++++++++++++",
+    "shipment_number": "+++++++++++++++",
+    "order_date": "+++++++++++++++",
+    "order_internal_number": "+++++++++++++++",
+    "order_client_number": "+++++++++++++++",
+    "customer": "+++++++++++++++",
+    "contract": "+++++++++++++++",
+    "service_type": "+++++++++++++++",
+    "assembly_sent_date": "+++++++++++++++",
+    "brand_fact": "+++++++++++++++",
+    "model_fact": "+++++++++++++++",
+    "aggregate_fact": "+++++++++++++++",
+    "gosnomer_fact": "+++++++++++++++",
+    "grz_fact": "+++++++++++++++",
+    "vin_fact": "+++++++++++++++",
+    "engine_fact": "+++++++++++++++",
+    "urgency_fact": "+++++++++++++++",
+    "vehicle_plate_fact": "+++++++++++++++",
+    "territory_fact": "+++++++++++++++",
+    "name_fact": "+++++++++++++++",
+    "article_fact": "+++++++++++++++",
+    "qty_fact": "+++++++++++++++",
+    "unit_fact": "+++++++++++++++",
+    "name": "+++++++++++++++",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "+++++++++++++++",
+    "qty_norm_hours_client": "+++++++++++++++",
+    "stock_qty": "+++++++++++++++",
+    "reserve_qty": "+++++++++++++++",
+    "ordered_in_transit_qty": "+++++++++++++++",
+    "batch_fifo": "+++++++++++++++",
+    "line_status": "+++++++++++++++",
+    "stock_cell": "+++++++++++++++",
+    "price": "+++++++++++++++",
+    "sum": "+++++++++++++++",
+    "payment_form": "+++++++++++++++",
+    "rrc": "+++++++++++++++",
+    "paid_status": "+++++++++++++++",
+    "invoice_number": "+++++++++++++++",
+    "invoice_date": "+++++++++++++++",
+    "coefficient": "+++++++++++++++",
+    "extra_field_1": "+++++++++++++++",
+    "extra_field_2": "...............",
+    "supplier": "+++++++++++++++",
+    "receipt_date": "+++++++++++++++",
+    "upd_date": "+++++++++++++++",
+    "upd_number": "+++++++++++++++",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "+++++++++++++++",
+    "delivery_term": "+++++++++++++++",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   },
+   "supplier": {
+    "cell_select": "++..++.........",
+    "row_number": "...............",
+    "doc_signed_original": "...............",
+    "shipment_date": "...............",
+    "shipment_number": "...............",
+    "order_date": "...............",
+    "order_internal_number": "...............",
+    "order_client_number": "...............",
+    "customer": "...............",
+    "contract": "...............",
+    "service_type": "...............",
+    "assembly_sent_date": "...............",
+    "brand_fact": "...............",
+    "model_fact": "...............",
+    "aggregate_fact": "...............",
+    "gosnomer_fact": "...............",
+    "grz_fact": "...............",
+    "vin_fact": "...............",
+    "engine_fact": "...............",
+    "urgency_fact": "...............",
+    "vehicle_plate_fact": "...............",
+    "territory_fact": "...............",
+    "name_fact": "...............",
+    "article_fact": "...............",
+    "qty_fact": "...............",
+    "unit_fact": "...............",
+    "name": "...............",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "...............",
+    "qty_norm_hours_client": "...............",
+    "stock_qty": "...............",
+    "reserve_qty": "...............",
+    "ordered_in_transit_qty": "...............",
+    "batch_fifo": "...............",
+    "line_status": "...............",
+    "stock_cell": "...............",
+    "price": "...............",
+    "sum": "...............",
+    "payment_form": "...............",
+    "rrc": "...............",
+    "paid_status": "...............",
+    "invoice_number": "...............",
+    "invoice_date": "...............",
+    "coefficient": "...............",
+    "extra_field_1": "...............",
+    "extra_field_2": "...............",
+    "supplier": "...............",
+    "receipt_date": "...............",
+    "upd_date": "...............",
+    "upd_number": "...............",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "...............",
+    "delivery_term": "...............",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   },
+   "client": {
+    "cell_select": "++.............",
+    "row_number": "...............",
+    "doc_signed_original": "...............",
+    "shipment_date": "...............",
+    "shipment_number": "...............",
+    "order_date": "...............",
+    "order_internal_number": "...............",
+    "order_client_number": "...............",
+    "customer": "...............",
+    "contract": "...............",
+    "service_type": "...............",
+    "assembly_sent_date": "...............",
+    "brand_fact": "...............",
+    "model_fact": "...............",
+    "aggregate_fact": "...............",
+    "gosnomer_fact": "...............",
+    "grz_fact": "...............",
+    "vin_fact": "...............",
+    "engine_fact": "...............",
+    "urgency_fact": "...............",
+    "vehicle_plate_fact": "...............",
+    "territory_fact": "...............",
+    "name_fact": "...............",
+    "article_fact": "...............",
+    "qty_fact": "...............",
+    "unit_fact": "...............",
+    "name": "...............",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "...............",
+    "qty_norm_hours_client": "...............",
+    "stock_qty": "...............",
+    "reserve_qty": "...............",
+    "ordered_in_transit_qty": "...............",
+    "batch_fifo": "...............",
+    "line_status": "...............",
+    "stock_cell": "...............",
+    "price": "...............",
+    "sum": "...............",
+    "payment_form": "...............",
+    "rrc": "...............",
+    "paid_status": "...............",
+    "invoice_number": "...............",
+    "invoice_date": "...............",
+    "coefficient": "...............",
+    "extra_field_1": "...............",
+    "extra_field_2": "...............",
+    "supplier": "...............",
+    "receipt_date": "...............",
+    "upd_date": "...............",
+    "upd_number": "...............",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "...............",
+    "delivery_term": "...............",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   },
+   "supply": {
+    "cell_select": "++.....++++++++",
+    "row_number": "...............",
+    "doc_signed_original": "............++.",
+    "shipment_date": "...........+...",
+    "shipment_number": "...............",
+    "order_date": "...............",
+    "order_internal_number": "...............",
+    "order_client_number": "++.............",
+    "customer": "++.............",
+    "contract": "++.............",
+    "service_type": "++++++++++++...",
+    "assembly_sent_date": "...............",
+    "brand_fact": "++.............",
+    "model_fact": "++.............",
+    "aggregate_fact": "++.............",
+    "gosnomer_fact": "++.............",
+    "grz_fact": "...............",
+    "vin_fact": "++.............",
+    "engine_fact": "++.............",
+    "urgency_fact": "...............",
+    "vehicle_plate_fact": "...............",
+    "territory_fact": "...............",
+    "name_fact": "...............",
+    "article_fact": "...............",
+    "qty_fact": "...............",
+    "unit_fact": "...............",
+    "name": ".......++++....",
+    "article": "...............",
+    "code_aa": "...............",
+    "unit": "...............",
+    "qty": "++.............",
+    "qty_norm_hours_client": "...............",
+    "stock_qty": "...............",
+    "reserve_qty": "...............",
+    "ordered_in_transit_qty": "...............",
+    "batch_fifo": "++++++++++++...",
+    "line_status": "...............",
+    "stock_cell": ".......++......",
+    "price": ".......++......",
+    "sum": "...............",
+    "payment_form": "++++...++......",
+    "rrc": "...............",
+    "paid_status": "+++++++++++++++",
+    "invoice_number": "+++++++++++++++",
+    "invoice_date": "+++++++++++++++",
+    "coefficient": "...............",
+    "extra_field_1": "...............",
+    "extra_field_2": "...............",
+    "supplier": ".......++......",
+    "receipt_date": ".......++......",
+    "upd_date": ".......++......",
+    "upd_number": ".......++......",
+    "supplier_ship_territory": "+++++++++++++++",
+    "supplier_order_date": "...............",
+    "delivery_term": ".......++......",
+    "comment": "+++++++++++++++",
+    "comment_2": "+++++++++++++++"
+   }
+  }
+ },
+ "transitions": [
+  {
+   "to": "reserve",
+   "onecStatus": "Резервирование",
+   "from": [
+    "new",
+    "in_work"
+   ],
+   "roles": [
+    "manager",
+    "admin"
+   ]
+  },
+  {
+   "to": "assembly",
+   "onecStatus": "Комплектуется",
+   "from": [
+    "reserve",
+    "to_stock",
+    "acceptance"
+   ],
+   "roles": [
+    "manager",
+    "admin"
+   ]
+  },
+  {
+   "to": "assembly",
+   "onecStatus": "Комплектуется",
+   "from": [
+    "ready_to_ship"
+   ],
+   "roles": [
+    "manager",
+    "admin",
+    "chief_mechanic"
+   ]
+  },
+  {
+   "to": "assembly",
+   "onecStatus": "Комплектуется",
+   "from": [
+    "return"
+   ],
+   "roles": [
+    "manager",
+    "admin"
+   ]
+  },
+  {
+   "to": "ready_to_ship",
+   "onecStatus": "Собран",
+   "from": [
+    "assembly"
+   ],
+   "roles": [
+    "storekeeper",
+    "manager",
+    "admin"
+   ]
+  },
+  {
+   "to": "shipped",
+   "onecStatus": "Отгружено",
+   "from": [
+    "paid",
+    "in_transit"
+   ],
+   "roles": [
+    "manager",
+    "admin"
+   ]
+  },
+  {
+   "to": "acceptance",
+   "onecStatus": "Приходуется",
+   "from": [
+    "shipped"
+   ],
+   "roles": [
+    "storekeeper",
+    "admin"
+   ]
+  },
+  {
+   "to": "return",
+   "onecStatus": "Возврат",
+   "from": [
+    "shipped",
+    "ordered",
+    "paid",
+    "in_transit",
+    "to_stock",
+    "closed"
+   ],
+   "roles": [
+    "manager",
+    "storekeeper",
+    "admin"
+   ]
+  },
+  {
+   "to": "closed",
+   "onecStatus": "Выполнено",
+   "from": [
+    "shipped",
+    "ready_to_ship",
+    "return"
+   ],
+   "roles": [
+    "manager",
+    "storekeeper",
+    "admin"
+   ]
+  },
+  {
+   "to": "closed",
+   "onecStatus": "Выполнено",
+   "from": [
+    "assembly"
+   ],
+   "roles": [
+    "chief_mechanic",
+    "admin"
+   ]
+  }
+ ],
+ "uiTransitions": [
+  {
+   "to": "reserve",
+   "title": "Зарезервировать",
+   "node": "M3",
+   "icon": "lock",
+   "roles": [
+    "manager",
+    "admin"
+   ],
+   "views": [
+    "sales"
+   ]
+  },
+  {
+   "to": "assembly",
+   "title": "На комплектацию",
+   "node": "M9 · G3",
+   "icon": "box",
+   "roles": [
+    "manager",
+    "admin",
+    "chief_mechanic"
+   ],
+   "views": [
+    "sales"
+   ]
+  },
+  {
+   "to": "ready_to_ship",
+   "title": "Собрано",
+   "node": "K3",
+   "icon": "check",
+   "roles": [
+    "storekeeper",
+    "manager",
+    "admin"
+   ],
+   "views": [
+    "sales"
+   ]
+  },
+  {
+   "to": "shipped",
+   "title": "Самовывоз",
+   "node": "N4",
+   "icon": "supply",
+   "roles": [
+    "manager",
+    "admin"
+   ],
+   "views": [
+    "sales",
+    "purchases"
+   ]
+  },
+  {
+   "to": "acceptance",
+   "title": "Принять по УПД",
+   "node": "K1",
+   "icon": "file",
+   "roles": [
+    "storekeeper",
+    "admin"
+   ],
+   "views": [
+    "sales",
+    "purchases"
+   ]
+  },
+  {
+   "to": "return",
+   "title": "Возврат",
+   "node": "N3 · M16 · K6",
+   "icon": "undo",
+   "roles": [
+    "manager",
+    "storekeeper",
+    "admin"
+   ],
+   "views": [
+    "sales",
+    "purchases"
+   ]
+  },
+  {
+   "to": "closed",
+   "title": "Закрыть",
+   "node": "M15 · K7 · G9",
+   "icon": "check",
+   "roles": [
+    "manager",
+    "storekeeper",
+    "admin",
+    "chief_mechanic"
+   ],
+   "views": [
+    "sales",
+    "purchases"
+   ]
+  }
+ ],
+ "supplyStatus": {
+  "paid": "Оплачено",
+  "in_transit": "ТоварВПути",
+  "acceptance": "Приходуется",
+  "to_stock": "НаСкладе",
+  "assembly": "Комплектуется",
+  "assembled": "Собран"
+ },
+ "coverage": {
+  "ok": "есть",
+  "part": "частично",
+  "no": "нет"
+ },
+ "nodes": [
+  {
+   "id": "N1",
+   "role": "client",
+   "title": "Заявка: Excel / фото",
+   "full": "Заявка от клиента: Excel по шаблону или фото — артикул, наименование, кол-во, гос.номер авто. При разном способе вывоза (такси / наша машина) — две отдельные заявки, способ в комментарии. Также вход в ремонт (G1).",
+   "cov": "part",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "article_fact",
+    "name_fact",
+    "qty_fact",
+    "vehicle_plate_fact",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "M1",
+     "label": "заявка в 1С",
+     "dashed": false
+    },
+    {
+     "to": "G1",
+     "label": "машина в ремонт",
+     "dashed": true
+    }
+   ],
+   "tz": "Входные данные заявки (§3.1). OCR 09.2026: разъезд → две заявки.",
+   "code": "Контрагент заказа; отдельного клиентского UI нет.",
+   "conflict": ""
+  },
+  {
+   "id": "N2a",
+   "role": "client",
+   "title": "Получение товара",
+   "full": "Физическая отгрузка / выдача товара клиенту. Контроль документов — у менеджера (M15), не на клиенте.",
+   "cov": "part",
+   "statuses": [
+    "shipped"
+   ],
+   "cols": [
+    "shipment_date",
+    "shipment_number"
+   ],
+   "next": [
+    {
+     "to": "M15",
+     "label": "контроль документов (менеджер)",
+     "dashed": false
+    }
+   ],
+   "tz": "OCR: N2 режется — сначала товар.",
+   "code": "Дата/номер отгрузки и РН; клиентского кабинета нет.",
+   "conflict": ""
+  },
+  {
+   "id": "N3",
+   "role": "client",
+   "title": "Возврат товара",
+   "full": "Возврат товара (при необходимости)",
+   "cov": "part",
+   "statuses": [
+    "return"
+   ],
+   "cols": [
+    "line_status",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "K6",
+     "label": "инициирован возврат",
+     "dashed": false
+    }
+   ],
+   "tz": "Возврат после отгрузки (§5, процессы возврата).",
+   "code": "Статус «Возврат» в Арм_СтатусыАРМ есть (v2.10+): ставится менеджером/админом кнопкой «Статус: возврат» (v2.11, ACL). Инициации клиентом, форм возврата, приёмки и документов возврата нет.",
+   "conflict": ""
+  },
+  {
+   "id": "N4",
+   "role": "client",
+   "title": "Самовывоз у внешнего поставщика",
+   "full": "Клиент забирает товар у внешнего поставщика. Дальше уведомление о самовывозе — менеджер M17 и кладовщик K9 одновременно.",
+   "cov": "no",
+   "statuses": [
+    "shipped"
+   ],
+   "cols": [
+    "comment",
+    "shipment_date"
+   ],
+   "next": [
+    {
+     "to": "M17",
+     "label": "уведомление о самовывозе ∥ K9",
+     "dashed": false
+    }
+   ],
+   "tz": "Клиентский блок + сценарий.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M1",
+   "role": "manager",
+   "title": "Загрузка заявки в 1С",
+   "full": "Загрузка заявки в 1С: Excel-парсер / ручной ввод по фото",
+   "cov": "part",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "order_header",
+    "fact"
+   ],
+   "next": [
+    {
+     "to": "M2",
+     "label": "поиск / решение",
+     "dashed": false
+    }
+   ],
+   "tz": "Excel-парсер или ручной ввод (§3.1).",
+   "code": "ФормаЗагрузкиДанных — табличный ввод, не парсер Excel; номенклатура не матчится.",
+   "conflict": ""
+  },
+  {
+   "id": "M2",
+   "role": "manager",
+   "title": "Поиск + подбор номенклатуры",
+   "full": "Один блок (M2+D1): поиск и аналог по кроссу; подбор номенклатуры — если есть в справочнике, менеджер сопоставил/выбрал; если нет — создание номенклатуры (M2a) → админ A2. Также: неопознанные A1, резерв / закуп / вирт. права.",
+   "cov": "part",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "article",
+    "name",
+    "code_aa",
+    "nomenclature",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "M3",
+     "label": "есть → резерв",
+     "dashed": false
+    },
+    {
+     "to": "M4",
+     "label": "есть, остатка нет → закуп",
+     "dashed": false
+    },
+    {
+     "to": "M2a",
+     "label": "нет → создание номенклатуры",
+     "dashed": false
+    },
+    {
+     "to": "A1",
+     "label": "неопознанные (модерация админ)",
+     "dashed": true
+    },
+    {
+     "to": "M13",
+     "label": "вирт. / нехватка прав",
+     "dashed": false
+    }
+   ],
+   "tz": "Слиты M2+D1 (+ранее M6).",
+   "code": "Подбор номенклатуры в строке АРМ с пересчётом остатка и авто-закупкой (v2.22, F-2/F-4); поиск по наименованию/артикулу — каталог PWA. Автосопоставления и справочника аналогов (кроссов) нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M2a",
+   "role": "manager",
+   "title": "Создание номенклатуры",
+   "full": "Менеджер создаёт карточку номенклатуры (черновик). Дальше админ: создание / подтверждение / изменение позиции (A2).",
+   "cov": "part",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "article",
+    "name",
+    "code_aa",
+    "nomenclature",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "A2",
+     "label": "к админу",
+     "dashed": false
+    }
+   ],
+   "tz": "D: M2→M2a→A2.",
+   "code": "Создание товара — каталог PWA (Товары, OData). Статуса «черновик» и передачи админу нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M3",
+   "role": "manager",
+   "title": "Резервирование на складе",
+   "full": "Резервирование товара под заказ (остаток есть на складе)",
+   "cov": "part",
+   "statuses": [
+    "reserve"
+   ],
+   "cols": [
+    "stock_qty",
+    "reserve_qty",
+    "batch_fifo"
+   ],
+   "next": [
+    {
+     "to": "M9",
+     "label": "задание на комплектацию",
+     "dashed": false
+    },
+    {
+     "to": "M4",
+     "label": "часть без остатка → закуп",
+     "dashed": true
+    },
+    {
+     "to": "K3",
+     "label": "сразу в сборку",
+     "dashed": false
+    }
+   ],
+   "tz": "Резерв при наличии (§3.1).",
+   "code": "Статус «Резервирование» есть (v2.10; кнопка «Статус: резервирование» — менеджер/админ, v2.11 по ACL). Остатки в РС (ОстатокДляСтроки); «Кол-во в резерве» — поле регистра, ручной ввод по ACL (v2.11, T05); реального резерва остатка УНФ нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M4",
+   "role": "manager",
+   "title": "Заказ поставщику",
+   "full": "Оформление «Заказ поставщику». Дальше всегда обработка у поставщика (P1), затем контроль оплаты (M7).",
+   "cov": "ok",
+   "statuses": [
+    "ordered"
+   ],
+   "cols": [
+    "supplier",
+    "price",
+    "qty",
+    "line_status",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "P1",
+     "label": "к поставщику",
+     "dashed": false
+    },
+    {
+     "to": "M13",
+     "label": "вирт. контур → права",
+     "dashed": true
+    }
+   ],
+   "tz": "Сценарий А закупки. Порядок: M4→P1→M7.",
+   "code": "АС_АРМ2: создание ЗаказПоставщику.",
+   "conflict": ""
+  },
+  {
+   "id": "M7",
+   "role": "manager",
+   "title": "Контроль оплаты",
+   "full": "После обработки заказа поставщиком (P1): контроль оплаты → «Оплачено».",
+   "cov": "ok",
+   "statuses": [
+    "paid"
+   ],
+   "cols": [
+    "paid_status",
+    "payment_form",
+    "price"
+   ],
+   "next": [
+    {
+     "to": "P2",
+     "label": "в путь",
+     "dashed": false
+    }
+   ],
+   "tz": "Статус Оплачено. Порядок: после P1.",
+   "code": "Статус Оплачено в Арм_СтатусыАРМ / снабжение.",
+   "conflict": ""
+  },
+  {
+   "id": "M8",
+   "role": "manager",
+   "title": "Уведомление о приходе",
+   "full": "Всегда сразу после размещения (K2). Приехавшее повторно не заказываем.",
+   "cov": "part",
+   "statuses": [
+    "acceptance"
+   ],
+   "cols": [
+    "line_status"
+   ],
+   "next": [
+    {
+     "to": "M9",
+     "label": "создать комплектацию",
+     "dashed": false
+    }
+   ],
+   "tz": "K2→M8 всегда.",
+   "code": "Статусы прихода видны; отдельного notify нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M9",
+   "role": "manager",
+   "title": "Задание на комплектацию",
+   "full": "Менеджер выбирает позиции «на складе» и создаёт задание на комплектацию. В вирт. закупе здесь развилка на сценарий дефекта (B3).",
+   "cov": "part",
+   "statuses": [
+    "assembly"
+   ],
+   "cols": [
+    "line_status",
+    "stock"
+   ],
+   "next": [
+    {
+     "to": "K3",
+     "label": "в сборку",
+     "dashed": false
+    },
+    {
+     "to": "K3",
+     "label": "вирт. → ветка дефекта (B3)",
+     "dashed": true
+    }
+   ],
+   "tz": "Связка склад → комплектация.",
+   "code": "Статусы Комплектуется/Собран; отдельного «задания» нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M10",
+   "role": "manager",
+   "title": "Контроль комплектации",
+   "full": "Только ветка отклонения (B2 / defect): подтверждение или отклонение комплектации. В A1/A2/A3 (happy/stock/mixed) шага нет — после K3 сразу M11. Ок → M11. Отклонение: менеджер → M9 (задание), кладовщик одновременно → K8 (розыск позиции).",
+   "cov": "part",
+   "statuses": [
+    "assembly",
+    "ready_to_ship"
+   ],
+   "cols": [
+    "line_status",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "M11",
+     "label": "ок → готовность",
+     "dashed": false
+    },
+    {
+     "to": "M9",
+     "label": "отклонение → M9 ∥ K8",
+     "dashed": true
+    },
+    {
+     "to": "K8",
+     "label": "кладовщик: розыск",
+     "dashed": true
+    }
+   ],
+   "tz": "Happy-путь без M10. Отклонение: M10→M9∥K8 (B2).",
+   "code": "Частично через статусы.",
+   "conflict": ""
+  },
+  {
+   "id": "M11",
+   "role": "manager",
+   "title": "Уведомление о готовности",
+   "full": "После комплектации (K3): заказ укомплектован / готов к отгрузке. Дальше отгрузочная ведомость (M12). При отказе прав — M13. В ремонте — к выдаче в зону (G3). Контроль комплектации (M10) — только ветка отклонения.",
+   "cov": "no",
+   "statuses": [
+    "ready_to_ship"
+   ],
+   "cols": [
+    "line_status",
+    "shipment_number"
+   ],
+   "next": [
+    {
+     "to": "M12",
+     "label": "ведомость",
+     "dashed": false
+    },
+    {
+     "to": "G3",
+     "label": "в ремонт (G3)",
+     "dashed": true
+    },
+    {
+     "to": "M13",
+     "label": "менеджер без прав",
+     "dashed": true
+    }
+   ],
+   "tz": "K3→M11→M12 (A1–A3); ремонт: M11→G3.",
+   "code": "Отдельного notify нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M12",
+   "role": "manager",
+   "title": "Отгрузочная ведомость",
+   "full": "Формирование отгрузочной ведомости — менеджер. Перед этим M11 (готовность); если прав нет — через M13.",
+   "cov": "no",
+   "statuses": [
+    "ready_to_ship"
+   ],
+   "cols": [
+    "shipment_date",
+    "shipment_number"
+   ],
+   "next": [
+    {
+     "to": "K5",
+     "label": "документы готовы",
+     "dashed": false
+    }
+   ],
+   "tz": "ПФ отгрузочная ведомость. A1–A4: K3→M11→M12 (или M11→M13→M12).",
+   "code": "Печатных форм в расширении нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M13",
+   "role": "manager",
+   "title": "Недостаточно прав, обратись к админу",
+   "full": "Единый блок отказа прав: вирт. закуп / подтверждение чека и попытка сформировать отгрузочную ведомость. Текст менеджеру — обратиться к админу.",
+   "cov": "part",
+   "statuses": [
+    "ordered",
+    "new",
+    "ready_to_ship"
+   ],
+   "cols": [
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "A3",
+     "label": "админ: подтверждение чека",
+     "dashed": false
+    },
+    {
+     "to": "M12",
+     "label": "ведомость",
+     "dashed": false
+    }
+   ],
+   "tz": "Слиты бывшие M14+M15.",
+   "code": "Отказ по матрице роль×статус×поле с текстом (форма; OData — 403 matrix_denied), запись АРМ.Отказ в журнал (v2.13). Единого текста «обратитесь к админу» и запроса админу нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M15",
+   "role": "manager",
+   "title": "Контроль документов",
+   "full": "Перенесено с клиента (бывш. N2b): физ. подпись на отгрузочном и отметка, что оригинал получен (колонка doc_signed_original: галка true → строка не защищена). Видно одновременно с K7 (кладовщик) — не последовательный handoff. Перед заявкой на возврат поставщику (M16). Зеркало у механика — G7.",
+   "cov": "part",
+   "statuses": [
+    "closed",
+    "shipped",
+    "return"
+   ],
+   "cols": [
+    "doc_signed_original",
+    "shipment_date",
+    "shipment_number",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "M16",
+     "label": "если возврат поставщику",
+     "dashed": true
+    }
+   ],
+   "tz": "Бывш. N2b → менеджер M15; параллельно K7.",
+   "code": "Поле «Документ подписан оригинал» (А3) есть: правка по ACL в «Отгружено»/«Возврат» (v2.11, в т.ч. не-админ); Истина сбрасывает автора и отметку строки. Отдельного шага контроля/уведомления нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M16",
+   "role": "manager",
+   "title": "Заявка на возврат поставщику",
+   "full": "Оформление заявки на возврат поставщику (ошибочный заказ / брак). Перед отправкой товар передаётся кладовщику (K6) → поставщик (P3). В C2 после P3 — контроль документов M15∥K7.",
+   "cov": "part",
+   "statuses": [
+    "return"
+   ],
+   "cols": [
+    "supplier",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "K6",
+     "label": "передать кладовщику",
+     "dashed": false
+    },
+    {
+     "to": "P3",
+     "label": "уже со склада → поставщик",
+     "dashed": false
+    }
+   ],
+   "tz": "C2: M16→K6→P3→M15∥K7.",
+   "code": "Статус «Возврат» у закупки вместе с продажей, комментарий (e2e return_mgr). Заявки и документа возврата поставщику нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M17",
+   "role": "manager",
+   "title": "Уведомление о самовывозе",
+   "full": "После самовывоза у внешнего поставщика (N4): менеджер фиксирует уведомление. Видно одновременно с K9 (кладовщик). Дальше складской контур A4: K1→K2→M8→M9→K3→M11→M12→M15∥K7.",
+   "cov": "no",
+   "statuses": [
+    "shipped"
+   ],
+   "cols": [
+    "comment",
+    "shipment_date",
+    "shipment_number"
+   ],
+   "next": [
+    {
+     "to": "K1",
+     "label": "A4: приёмка по УПД",
+     "dashed": false
+    }
+   ],
+   "tz": "N4→M17∥K9 → K1…",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M18",
+   "role": "manager",
+   "title": "Неопознанная позиция",
+   "full": "Уведомление: позиция не опознана. Видно одновременно с главным механиком (G8). В D1 — после розыска (K8) и размещения (K2).",
+   "cov": "no",
+   "statuses": [
+    "new",
+    "acceptance"
+   ],
+   "cols": [
+    "name_fact",
+    "article_fact",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "A1",
+     "label": "к админу: неопознанные",
+     "dashed": true
+    }
+   ],
+   "tz": "D1: K8→K2→M18∥G8.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "M19",
+   "role": "manager",
+   "title": "Отгрузочная ведомость (корректировка)",
+   "full": "Корректировка отгрузочной ведомости при возврате от клиента (C1). После приёмки возврата на складе (K6), вместо обычного контроля документов M15 на этом шаге.",
+   "cov": "no",
+   "statuses": [
+    "return"
+   ],
+   "cols": [
+    "shipment_number",
+    "shipment_date",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "M16",
+     "label": "заявка на возврат поставщику",
+     "dashed": false
+    }
+   ],
+   "tz": "C1: N3→K6→M19→…",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "A1",
+   "role": "admin",
+   "title": "Неопознанные + фото",
+   "full": "Создание позиции в папке «Не опознанные», фотофиксация",
+   "cov": "no",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "name",
+    "article",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "A2",
+     "label": "карточка заполнена",
+     "dashed": false
+    }
+   ],
+   "tz": "НСИ: неопознанные (§2.1).",
+   "code": "Папки/фотофиксации в АРМ нет.",
+   "conflict": ""
+  },
+  {
+   "id": "A2",
+   "role": "admin",
+   "title": "Создание номенклатуры/подтверждение/изменение позиции",
+   "full": "Админ: создание номенклатуры, подтверждение или изменение позиции (артикул, кроссы, перенос в основную номенклатуру). Вход из M2a или после A1.",
+   "cov": "part",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "article",
+    "code_aa",
+    "name",
+    "nomenclature"
+   ],
+   "next": [
+    {
+     "to": "M2",
+     "label": "обратно в поиск",
+     "dashed": true
+    }
+   ],
+   "tz": "Доводка НСИ админом; D: M2→M2a→A2.",
+   "code": "Карточка товара с правкой — каталог PWA; администратор правит любые поля строки в любом статусе (v2.13). Подтверждения позиции и кроссов нет.",
+   "conflict": ""
+  },
+  {
+   "id": "A3",
+   "role": "admin",
+   "title": "Подтверждение чека админом",
+   "full": "Новый блок вирт. закупа: админ подтверждает чек / проводит. Менеджер доходит сюда через «Обратись к админу».",
+   "cov": "no",
+   "statuses": [
+    "ordered",
+    "paid"
+   ],
+   "cols": [
+    "comment",
+    "price",
+    "supplier"
+   ],
+   "next": [
+    {
+     "to": "K1",
+     "label": "к приёмке (как A4 до M9)",
+     "dashed": false
+    }
+   ],
+   "tz": "Вирт. закуп: после M13.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "A5",
+   "role": "admin",
+   "title": "Приход с разбора / ЗН",
+   "full": "Приходование деталей с разбора / заказ-наряда: источник, дата, описание агрегата",
+   "cov": "no",
+   "statuses": [],
+   "cols": [],
+   "next": [
+    {
+     "to": "K2",
+     "label": "оприходовано",
+     "dashed": false
+    }
+   ],
+   "tz": "Черновик на схеме (!!!!!!!).",
+   "code": "Нет.",
+   "conflict": "Узел на схеме помечен как незавершённый."
+  },
+  {
+   "id": "A0",
+   "role": "admin",
+   "title": "НСИ: РРЦ / НМЦК / права",
+   "full": "Вне заявки: РРЦ, расчёт НМЦК = РРЦ × 1,5; настройка прав и статусов",
+   "cov": "part",
+   "statuses": [],
+   "cols": [
+    "rrc",
+    "coefficient"
+   ],
+   "next": [],
+   "tz": "§3.3 и note схемы.",
+   "code": "Цена = коэффициент × (РРЦ, иначе себестоимость); права роль×статус×поле — Арм_МатрицаПрав (57 колонок, v2.14), проверяются в форме и OData; матрица — PWA. НМЦК = РРЦ × 1,5 нет.",
+   "conflict": "Схема/матрица vs ТЗ §3.3 vs код — три разные модели цены."
+  },
+  {
+   "id": "P1",
+   "role": "supplier",
+   "title": "Обработка заказа",
+   "full": "Обработка заказа, подтверждение наличия и остатка. После P1 всегда контроль оплаты (M7).",
+   "cov": "no",
+   "statuses": [
+    "ordered"
+   ],
+   "cols": [
+    "supplier",
+    "qty"
+   ],
+   "next": [
+    {
+     "to": "M7",
+     "label": "к контролю оплаты",
+     "dashed": false
+    }
+   ],
+   "tz": "Порядок: M4→P1→M7.",
+   "code": "Ручной контур; интеграции нет.",
+   "conflict": ""
+  },
+  {
+   "id": "P2",
+   "role": "supplier",
+   "title": "Отгрузка → В пути",
+   "full": "Статус «В пути». Способ доставки — только ручной комментарий (ветку своя/чужая машина не делаем).",
+   "cov": "part",
+   "statuses": [
+    "in_transit"
+   ],
+   "cols": [
+    "line_status",
+    "ordered_in_transit_qty",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "K1",
+     "label": "доставлен",
+     "dashed": false
+    }
+   ],
+   "tz": "Комментарий вместо машин.",
+   "code": "Есть ТоварВПути.",
+   "conflict": ""
+  },
+  {
+   "id": "P3",
+   "role": "supplier",
+   "title": "Приём возврата",
+   "full": "Приём возврата товара от Витавто. В C2 после P3 — контроль документов M15∥K7.",
+   "cov": "no",
+   "statuses": [
+    "return"
+   ],
+   "cols": [
+    "supplier"
+   ],
+   "next": [
+    {
+     "to": "M15",
+     "label": "C2: контроль документов ∥ K7",
+     "dashed": true
+    }
+   ],
+   "tz": "C2: …→P3→M15∥K7.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "K1",
+   "role": "storekeeper",
+   "title": "Приёмка (УПД)",
+   "full": "Приёмка по УПД. Дальше обязательно K2.",
+   "cov": "part",
+   "statuses": [
+    "acceptance"
+   ],
+   "cols": [
+    "receipt",
+    "upd_date",
+    "upd_number",
+    "supplier"
+   ],
+   "next": [
+    {
+     "to": "K2",
+     "label": "→ размещение",
+     "dashed": false
+    }
+   ],
+   "tz": "K1→K2 обязательно.",
+   "code": "Статусы Приходуется/НаСкладе; «Дата УПД» и «№ УПД» — поля регистра (v2.11, T05): ручной ввод кладовщиком по ACL, из приходной накладной — только если в ней есть реквизиты входящего документа.",
+   "conflict": "В коде роль «Снабжение», в ТЗ — Кладовщик."
+  },
+  {
+   "id": "K2",
+   "role": "storekeeper",
+   "title": "Размещение по складам",
+   "full": "После K1 всегда. Сразу затем M8 (уведомление о приходе). В D1 после розыска (K8) — уведомление «Неопознанная позиция» (M18∥G8).",
+   "cov": "no",
+   "statuses": [
+    "acceptance",
+    "reserve"
+   ],
+   "cols": [
+    "stock_qty"
+   ],
+   "next": [
+    {
+     "to": "M8",
+     "label": "уведомление о приходе",
+     "dashed": false
+    },
+    {
+     "to": "M18",
+     "label": "неопознанная позиция ∥ G8",
+     "dashed": true
+    },
+    {
+     "to": "G3",
+     "label": "в ремонт",
+     "dashed": true
+    }
+   ],
+   "tz": "K2→M8 всегда; D1: K2→M18∥G8.",
+   "code": "Зоны АРМ не сделаны.",
+   "conflict": ""
+  },
+  {
+   "id": "K3",
+   "role": "storekeeper",
+   "title": "Комплектация + сборочный лист",
+   "full": "Комплектация: печать сборочного листа, отметка дефектов/недостач. В A1/A2/A3 сразу уведомление о готовности (M11). Контроль комплектации (M10) — только ветка отклонения (B2).",
+   "cov": "part",
+   "statuses": [
+    "assembly"
+   ],
+   "cols": [
+    "line_status",
+    "name_fact",
+    "article_fact"
+   ],
+   "next": [
+    {
+     "to": "M11",
+     "label": "сборка завершена → готовность",
+     "dashed": false
+    },
+    {
+     "to": "M10",
+     "label": "отклонение → контроль (B2)",
+     "dashed": true
+    },
+    {
+     "to": "M4",
+     "label": "дефект → дозаказ",
+     "dashed": true
+    }
+   ],
+   "tz": "A1–A3: K3→M11; отклонение: K3→M10 (B2).",
+   "code": "Статусы Комплектуется/Собран; печати нет.",
+   "conflict": ""
+  },
+  {
+   "id": "K5",
+   "role": "storekeeper",
+   "title": "Отгрузка клиенту / ТК",
+   "full": "Формирование отгрузки → «Отгружено». Клиент — N2a (товар); контроль документов — M15 и K7 одновременно.",
+   "cov": "ok",
+   "statuses": [
+    "shipped"
+   ],
+   "cols": [
+    "shipment_date",
+    "shipment_number"
+   ],
+   "next": [
+    {
+     "to": "N2a",
+     "label": "клиент получил товар",
+     "dashed": false
+    },
+    {
+     "to": "K7",
+     "label": "контроль документов ∥ M15",
+     "dashed": false
+    }
+   ],
+   "tz": "Отгрузка (§5). OCR: split N2.",
+   "code": "Дата/номер отгрузки + РасходнаяНакладная, заказ покупателя в «Отгружено» (v2.18); полная и частичная отгрузка, повторная — защита (e2e m16–m18 на зеркале).",
+   "conflict": ""
+  },
+  {
+   "id": "K6",
+   "role": "storekeeper",
+   "title": "Приёмка / подготовка возврата",
+   "full": "Входы: (1) возврат от клиента (C1) → M19 корректировка ведомости; (2) от менеджера (M16) → P3. Также путь к K7.",
+   "cov": "no",
+   "statuses": [
+    "return"
+   ],
+   "cols": [
+    "comment",
+    "line_status",
+    "supplier"
+   ],
+   "next": [
+    {
+     "to": "M19",
+     "label": "C1: корректировка ведомости",
+     "dashed": false
+    },
+    {
+     "to": "P3",
+     "label": "отгрузка возврата поставщику",
+     "dashed": false
+    },
+    {
+     "to": "M16",
+     "label": "согласование (от клиента)",
+     "dashed": true
+    },
+    {
+     "to": "K7",
+     "label": "контроль документов",
+     "dashed": true
+    }
+   ],
+   "tz": "C1: N3→K6→M19; C2: M16→K6→P3.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "K7",
+   "role": "storekeeper",
+   "title": "Контроль документов",
+   "full": "Тот же контроль документов (подпись / оригинал, колонка doc_signed_original), что у менеджера M15 — видно одновременно с M15, не после handoff.",
+   "cov": "part",
+   "statuses": [
+    "closed",
+    "shipped",
+    "return"
+   ],
+   "cols": [
+    "doc_signed_original",
+    "shipment_date",
+    "shipment_number",
+    "comment"
+   ],
+   "next": [],
+   "tz": "Зеркало M15 для склада; параллельно M15.",
+   "code": "Поле А3 доступно кладовщику по ACL (маска storekeeper, «Отгружено»/«Возврат», v2.11) в основной форме; отдельного экрана контроля нет.",
+   "conflict": ""
+  },
+  {
+   "id": "K8",
+   "role": "storekeeper",
+   "title": "Розыск позиции",
+   "full": "Кладовщик ищет позицию (в т.ч. после отклонения M10). В D1 дальше — размещение (K2), затем уведомление «Неопознанная позиция» менеджеру и механику.",
+   "cov": "no",
+   "statuses": [
+    "assembly",
+    "acceptance",
+    "new"
+   ],
+   "cols": [
+    "line_status",
+    "name_fact",
+    "article_fact",
+    "comment"
+   ],
+   "next": [
+    {
+     "to": "K2",
+     "label": "к размещению (D1)",
+     "dashed": true
+    }
+   ],
+   "tz": "M10→K8∥M9 (B2); D1: K8→K2.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "K9",
+   "role": "storekeeper",
+   "title": "Уведомление о самовывозе",
+   "full": "Зеркало M17: уведомление о самовывозе у внешнего поставщика — видно одновременно с менеджером. Дальше складской контур A4 ведёт менеджер (M17→K1…).",
+   "cov": "no",
+   "statuses": [
+    "shipped"
+   ],
+   "cols": [
+    "comment",
+    "shipment_date",
+    "shipment_number"
+   ],
+   "next": [
+    {
+     "to": "K1",
+     "label": "A4: приёмка (зеркало M17)",
+     "dashed": true
+    }
+   ],
+   "tz": "Зеркало M17; параллельно M17.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "G1",
+   "role": "chief_mechanic",
+   "title": "Открытие заказ-наряда",
+   "full": "Открытие заказ-наряда (аналогично заявке менеджера). В сценарии поступления машины — дальше поиск номенклатуры (M2).",
+   "cov": "no",
+   "statuses": [
+    "new"
+   ],
+   "cols": [
+    "order_header",
+    "fact"
+   ],
+   "next": [
+    {
+     "to": "G2",
+     "label": "заказ запчастей",
+     "dashed": false
+    },
+    {
+     "to": "M2",
+     "label": "поиск номенклатуры",
+     "dashed": true
+    }
+   ],
+   "tz": "§4.3 Главный механик; E: N1→G1→M2.",
+   "code": "Нет объектов заказ-наряда.",
+   "conflict": ""
+  },
+  {
+   "id": "G2",
+   "role": "chief_mechanic",
+   "title": "Заказ для ремонта",
+   "full": "Заказ товаров/услуг для ремонта (интерфейс как у менеджера)",
+   "cov": "no",
+   "statuses": [
+    "ordered"
+   ],
+   "cols": [
+    "nomenclature"
+   ],
+   "next": [
+    {
+     "to": "M2",
+     "label": "в общий поиск",
+     "dashed": true
+    }
+   ],
+   "tz": "Механик ≈ менеджер в матрице.",
+   "code": "Нет. В матрице chief_mechanic = manager.",
+   "conflict": ""
+  },
+  {
+   "id": "G3",
+   "role": "chief_mechanic",
+   "title": "Выдача в ремонтную зону",
+   "full": "Выдача запчастей в Ремонтную зону, списание по заказ-наряду. Дальше нормо-часы и ЗФ (G4∥G5).",
+   "cov": "no",
+   "statuses": [
+    "assembly"
+   ],
+   "cols": [
+    "stock"
+   ],
+   "next": [
+    {
+     "to": "G4",
+     "label": "нормо-часы ∥ ЗФ",
+     "dashed": false
+    }
+   ],
+   "tz": "Ремонтная зона (§2.4).",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "G4",
+   "role": "chief_mechanic",
+   "title": "Нормо-часы",
+   "full": "Расчёт нормо-часов (стоимость часа — по типу техники). В ремонте светится одновременно с G5.",
+   "cov": "no",
+   "statuses": [],
+   "cols": [],
+   "next": [
+    {
+     "to": "G5",
+     "label": "часы рассчитаны",
+     "dashed": false
+    },
+    {
+     "to": "G9",
+     "label": "печать и выдача авто",
+     "dashed": true
+    }
+   ],
+   "tz": "Нормо-часы по типу техники; ∥ G5.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "G5",
+   "role": "chief_mechanic",
+   "title": "Зарплатный фонд",
+   "full": "Формирование зарплатного фонда механиков. В ремонте одновременно с G4, затем G9.",
+   "cov": "no",
+   "statuses": [],
+   "cols": [],
+   "next": [
+    {
+     "to": "G9",
+     "label": "печать и выдача авто",
+     "dashed": false
+    },
+    {
+     "to": "G7",
+     "label": "контроль документов",
+     "dashed": true
+    }
+   ],
+   "tz": "ЗФ механиков; ∥ G4.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "G7",
+   "role": "chief_mechanic",
+   "title": "Контроль документов",
+   "full": "Тот же контроль документов (подпись / оригинал), что у менеджера M15 — в конце дорожки главного механика.",
+   "cov": "no",
+   "statuses": [
+    "closed",
+    "shipped"
+   ],
+   "cols": [
+    "comment",
+    "shipment_date",
+    "shipment_number"
+   ],
+   "next": [],
+   "tz": "Зеркало M15 для механика.",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "G8",
+   "role": "chief_mechanic",
+   "title": "Неопознанная позиция",
+   "full": "Уведомление: позиция не опознана. Зеркало M18 — видно одновременно с менеджером, не после handoff.",
+   "cov": "no",
+   "statuses": [
+    "new",
+    "acceptance"
+   ],
+   "cols": [
+    "name_fact",
+    "article_fact",
+    "comment"
+   ],
+   "next": [],
+   "tz": "Зеркало M18; параллельно M18 (D1).",
+   "code": "Нет.",
+   "conflict": ""
+  },
+  {
+   "id": "G9",
+   "role": "chief_mechanic",
+   "title": "Печать комплекта документов и выдача авто",
+   "full": "Печать комплекта документов по заказ-наряду и выдача автомобиля клиенту после ремонта.",
+   "cov": "no",
+   "statuses": [
+    "closed",
+    "shipped"
+   ],
+   "cols": [
+    "comment",
+    "shipment_date",
+    "shipment_number",
+    "vehicle_plate_fact"
+   ],
+   "next": [],
+   "tz": "E: G4∥G5→G9.",
+   "code": "Нет.",
+   "conflict": ""
+  }
+ ],
+ "zones": [
+  {
+   "id": "Z0",
+   "title": "Поставщик (Авто-Альянс)",
+   "desc": "Внешний источник поставки",
+   "cov": "no",
+   "role": "supplier"
+  },
+  {
+   "id": "Z1",
+   "title": "Зона приёмки",
+   "desc": "Кладовщик, УПД, факт прихода",
+   "cov": "part",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z2",
+   "title": "Позиция опознана?",
+   "desc": "Ветвление на склады / неопознанные",
+   "cov": "no",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z3",
+   "title": "Малый склад",
+   "desc": "Мелкие детали",
+   "cov": "no",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z4",
+   "title": "Большой склад",
+   "desc": "Крупногабарит, жидкости",
+   "cov": "no",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z8",
+   "title": "Резерв / Комплектация",
+   "desc": "Сборка под заказ",
+   "cov": "part",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z9",
+   "title": "Зона укомплектованных",
+   "desc": "Готово к отгрузке",
+   "cov": "part",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z10",
+   "title": "Отгрузка клиенту / ТК",
+   "desc": "Физический выход товара",
+   "cov": "part",
+   "role": "manager"
+  },
+  {
+   "id": "Z5",
+   "title": "Неопознанные и возвраты",
+   "desc": "Брак, возврат, неопознание",
+   "cov": "no",
+   "role": "storekeeper"
+  },
+  {
+   "id": "Z6",
+   "title": "Админ: опознание",
+   "desc": "Фото, артикул, кросс",
+   "cov": "no",
+   "role": "admin"
+  },
+  {
+   "id": "Z14",
+   "title": "Возврат поставщику",
+   "desc": "Брак / ошибка заказа",
+   "cov": "no",
+   "role": "supplier"
+  },
+  {
+   "id": "Z7",
+   "title": "Ремонтная зона",
+   "desc": "Заказ-наряды, механик",
+   "cov": "no",
+   "role": "chief_mechanic"
+  },
+  {
+   "id": "Z12",
+   "title": "Списание по ЗН",
+   "desc": "Расход в ремонт",
+   "cov": "no",
+   "role": "chief_mechanic"
+  }
+ ],
+ "scenarioGroups": [
+  {
+   "id": "main",
+   "title": "A. Основные потоки заявки"
+  },
+  {
+   "id": "purchase",
+   "title": "B. Закупка и поставка (исключения)"
+  },
+  {
+   "id": "returns",
+   "title": "C. Возвраты"
+  },
+  {
+   "id": "mechanic",
+   "title": "E. Главный механик"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "happy",
+   "group": "main",
+   "title": "Основной: закупка → отгрузка",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Клиент передаёт заявку (Excel/фото).",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M1"
+     ],
+     "note": "Менеджер загружает заявку в 1С.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры: остатка нет → закуп.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M4"
+     ],
+     "note": "Заказ поставщику.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "P1"
+     ],
+     "note": "Поставщик обработал заказ.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "M7"
+     ],
+     "note": "Контроль оплаты (после P1).",
+     "status": "paid"
+    },
+    {
+     "nodes": [
+      "P2"
+     ],
+     "note": "Товар в пути; доставка — в комментарии.",
+     "status": "in_transit"
+    },
+    {
+     "nodes": [
+      "K1"
+     ],
+     "note": "Приёмка по УПД.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "K2"
+     ],
+     "note": "Размещение.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M8"
+     ],
+     "note": "Уведомление о приходе (всегда после K2).",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M9"
+     ],
+     "note": "Задание на комплектацию.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Сборка (без контроля комплектации M10).",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности (после K3).",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M12"
+     ],
+     "note": "Менеджер: отгрузочная ведомость.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "K5"
+     ],
+     "note": "Отгрузка.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "N2a"
+     ],
+     "note": "Товар у клиента.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "stock",
+   "group": "main",
+   "title": "Со склада (резерв)",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Заявка клиента.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M1"
+     ],
+     "note": "Загрузка.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры: остаток есть.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M3"
+     ],
+     "note": "Резерв.",
+     "status": "reserve"
+    },
+    {
+     "nodes": [
+      "M9"
+     ],
+     "note": "Задание на комплектацию.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Комплектация (без контроля M10).",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M12"
+     ],
+     "note": "Менеджер: ведомость.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "K5"
+     ],
+     "note": "Отгрузка.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "N2a"
+     ],
+     "note": "Товар.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "mixed_order",
+   "group": "main",
+   "title": "Смешанный заказ (склад + закупка)",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Заявка на несколько позиций.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M1"
+     ],
+     "note": "Загрузка.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры по строкам.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M3"
+     ],
+     "note": "Строки со склада — резерв.",
+     "status": "reserve"
+    },
+    {
+     "nodes": [
+      "M4"
+     ],
+     "note": "Строки без остатка — заказ поставщику.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "P1"
+     ],
+     "note": "Поставщик обработал закупочную часть.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "M7"
+     ],
+     "note": "Оплата после P1.",
+     "status": "paid"
+    },
+    {
+     "nodes": [
+      "P2"
+     ],
+     "note": "Закупка в пути.",
+     "status": "in_transit"
+    },
+    {
+     "nodes": [
+      "K1"
+     ],
+     "note": "Приход закупочной части.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "K2"
+     ],
+     "note": "Размещение.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M8"
+     ],
+     "note": "Уведомление о приходе.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M9"
+     ],
+     "note": "Общее задание на комплектацию.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Сборка смешанного заказа (без контроля M10).",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M12"
+     ],
+     "note": "Менеджер: ведомость.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "K5"
+     ],
+     "note": "Отгрузка.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "N2a"
+     ],
+     "note": "Товар.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "delivery_split",
+   "group": "main",
+   "title": "Самовывоз у внешнего поставщика клиентом",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Заявка: клиент заберёт у внешнего поставщика.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M1"
+     ],
+     "note": "Загрузка заявки.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры → закуп.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M4"
+     ],
+     "note": "Заказ поставщику.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "P1"
+     ],
+     "note": "Поставщик.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "M7"
+     ],
+     "note": "Оплата.",
+     "status": "paid"
+    },
+    {
+     "nodes": [
+      "N4"
+     ],
+     "note": "Самовывоз у внешнего поставщика.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "M17",
+      "K9"
+     ],
+     "note": "Уведомление о самовывозе — менеджер (M17) и кладовщик (K9).",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "K1"
+     ],
+     "note": "Приёмка по УПД (продолжение A4 после M17).",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "K2"
+     ],
+     "note": "Размещение.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M8"
+     ],
+     "note": "Уведомление о приходе.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M9"
+     ],
+     "note": "Задание на комплектацию.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Комплектация (без контроля M10).",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M12"
+     ],
+     "note": "Отгрузочная ведомость.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "virtual_buy",
+   "group": "purchase",
+   "title": "Виртуальный закуп (менеджер → админ)",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Срочная заявка, документов поставщика нет.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M1"
+     ],
+     "note": "Менеджер загружает.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры; Развилка: вирт. контур / права.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M13"
+     ],
+     "note": "Недостаточно прав, обратись к админу.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "A3"
+     ],
+     "note": "Админ: подтверждение чека — конец сценария B1.",
+     "status": "paid"
+    }
+   ]
+  },
+  {
+   "id": "defect",
+   "group": "purchase",
+   "title": "Контроль комплектации → снова задание (продолжение A)",
+   "steps": [
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Продолжение A1/A2/A3: комплектация + сборочный лист.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M10"
+     ],
+     "note": "Контроль комплектации — отклонение.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M9",
+      "K8"
+     ],
+     "note": "Менеджер → M9; кладовщик → розыск (K8) одновременно.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Повторная комплектация.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M12"
+     ],
+     "note": "Отгрузочная ведомость.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "K5"
+     ],
+     "note": "Отгрузка клиенту / ТК.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "N2a"
+     ],
+     "note": "Получение товара клиентом.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "cancel_supplier",
+   "group": "purchase",
+   "title": "Отмена заказа у поставщика",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Заявка клиента.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M1"
+     ],
+     "note": "Загрузка.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M4"
+     ],
+     "note": "Заказ поставщику.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "P1"
+     ],
+     "note": "Поставщик ещё в работе.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "M7"
+     ],
+     "note": "Оплачено или нет — после P1.",
+     "status": "paid"
+    },
+    {
+     "nodes": [
+      "M15"
+     ],
+     "note": "Контроль документов перед возвратом поставщику.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "M16"
+     ],
+     "note": "Отмена / возврат-отказ до прихода.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "P3"
+     ],
+     "note": "Поставщик закрыл заказ (без K6).",
+     "status": "return"
+    }
+   ]
+  },
+  {
+   "id": "return",
+   "group": "returns",
+   "title": "Возврат от клиента",
+   "steps": [
+    {
+     "nodes": [
+      "N3"
+     ],
+     "note": "Клиент инициирует возврат.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "K6"
+     ],
+     "note": "Приёмка возврата на складе.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "M19"
+     ],
+     "note": "Отгрузочная ведомость (корректировка) — вместо M15.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "M16"
+     ],
+     "note": "Менеджер: заявка на возврат поставщику.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "K6"
+     ],
+     "note": "Кладовщик готовит товар к возврату поставщику.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "P3"
+     ],
+     "note": "Поставщик принимает возврат.",
+     "status": "return"
+    }
+   ]
+  },
+  {
+   "id": "return_mgr",
+   "group": "returns",
+   "title": "Возврат поставщику (от менеджера)",
+   "steps": [
+    {
+     "nodes": [
+      "M16"
+     ],
+     "note": "Менеджер: заявка на возврат поставщику.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "K6"
+     ],
+     "note": "Передача кладовщику.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "P3"
+     ],
+     "note": "Отгрузка / приём возврата поставщиком.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "return_internal",
+   "group": "returns",
+   "title": "Отказ клиента при получении товара",
+   "steps": [
+    {
+     "nodes": [
+      "N2a"
+     ],
+     "note": "Продолжение A1/A2/A3: клиент при получении отказывается от товара.",
+     "status": "shipped"
+    },
+    {
+     "nodes": [
+      "N3"
+     ],
+     "note": "Оформление отказа / возврата.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "K6"
+     ],
+     "note": "Приёмка / подготовка возврата на складе.",
+     "status": "return"
+    },
+    {
+     "nodes": [
+      "M10"
+     ],
+     "note": "Контроль комплектации.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M9"
+     ],
+     "note": "Задание на комплектацию.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Комплектация + сборочный лист.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M12"
+     ],
+     "note": "Отгрузочная ведомость.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "M15",
+      "K7"
+     ],
+     "note": "Контроль документов — менеджер и кладовщик одновременно.",
+     "status": "closed"
+    }
+   ]
+  },
+  {
+   "id": "car_repair_in",
+   "group": "mechanic",
+   "title": "Поступление машины в ремонт",
+   "steps": [
+    {
+     "nodes": [
+      "N1"
+     ],
+     "note": "Заявка: машина в ремонт.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "G1"
+     ],
+     "note": "Открытие заказ-наряда.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M2"
+     ],
+     "note": "Поиск + подбор номенклатуры.",
+     "status": "new"
+    },
+    {
+     "nodes": [
+      "M3"
+     ],
+     "note": "Резерв на складе.",
+     "status": "reserve"
+    },
+    {
+     "nodes": [
+      "M4"
+     ],
+     "note": "Заказ поставщику (запчасти).",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "P1"
+     ],
+     "note": "Поставщик: обработка заказа.",
+     "status": "ordered"
+    },
+    {
+     "nodes": [
+      "M7"
+     ],
+     "note": "Контроль оплаты.",
+     "status": "paid"
+    },
+    {
+     "nodes": [
+      "P2"
+     ],
+     "note": "Поставщик: в пути на склад.",
+     "status": "in_transit"
+    },
+    {
+     "nodes": [
+      "K1"
+     ],
+     "note": "Приёмка (УПД).",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "K2"
+     ],
+     "note": "Размещение.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M8"
+     ],
+     "note": "Уведомление о приходе.",
+     "status": "acceptance"
+    },
+    {
+     "nodes": [
+      "M9"
+     ],
+     "note": "Задание на комплектацию.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "K3"
+     ],
+     "note": "Комплектация + сборочный лист.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "M11"
+     ],
+     "note": "Уведомление о готовности.",
+     "status": "ready_to_ship"
+    },
+    {
+     "nodes": [
+      "G3"
+     ],
+     "note": "Выдача в ремонтную зону.",
+     "status": "assembly"
+    },
+    {
+     "nodes": [
+      "G4",
+      "G5"
+     ],
+     "note": "Нормо-часы и зарплатный фонд одновременно.",
+     "status": null
+    },
+    {
+     "nodes": [
+      "G9"
+     ],
+     "note": "Печать комплекта документов и выдача авто.",
+     "status": "closed"
+    }
+   ]
+  }
+ ],
+ "colTitles": {
+  "order_header": "Шапка заказа",
+  "fact": "Факт клиента",
+  "nomenclature": "Номенклатура",
+  "stock": "Остатки / резерв",
+  "receipt": "Приёмка / УПД",
+  "article_fact": "Артикул (факт)",
+  "name_fact": "Наименование (факт)",
+  "qty_fact": "Кол-во (факт)",
+  "vehicle_plate_fact": "ГРЗ",
+  "article": "Артикул",
+  "name": "Наименование",
+  "code_aa": "Код А-А",
+  "supplier": "Поставщик",
+  "price": "Цена",
+  "qty": "Кол-во",
+  "line_status": "Статус",
+  "paid_status": "Оплачено",
+  "payment_form": "Форма оплаты",
+  "stock_qty": "На складе",
+  "reserve_qty": "В резерве",
+  "batch_fifo": "Партия ФИФО",
+  "ordered_in_transit_qty": "В пути",
+  "shipment_date": "Дата отгрузки",
+  "shipment_number": "№ отгрузки",
+  "upd_date": "Дата УПД",
+  "upd_number": "№ УПД",
+  "comment": "Комментарий",
+  "rrc": "РРЦ (рекомендованная розничная цена)",
+  "coefficient": "Коэффициент"
+ }
+}

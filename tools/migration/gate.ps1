@@ -127,10 +127,26 @@ switch ($Stage) {
       $inv = Join-Path $root 'docs\migration\inventory.json'
       if (-not (Test-Path $inv)) { return Pending 'docs/migration/inventory.json ещё не построен (migrator inventory, раздел 8)' }
       $i = Get-Content $inv -Raw -Encoding UTF8 | ConvertFrom-Json
+      if (@($i.errors).Count) { return Fail ('ошибки выгрузки: ' + ($i.errors | ConvertTo-Json -Compress)) }
+      if (@($i.unknown).Count) { return Fail ('неизвестные непустые таблицы: ' + (($i.unknown | ForEach-Object { $_.storage }) -join ', ')) }
       $nonEmpty = @($i.objects | Where-Object { $_.rows -gt 0 })
-      $unassigned = @($nonEmpty | Where-Object { -not $_.rule })
+      $unassigned = @($nonEmpty | Where-Object { @('typed', 'legacy', 'enum', 'skip') -notcontains $_.rule })
       if ($unassigned.Count) { return Fail ("без правила: $($unassigned.Count)") }
-      Pass "непустых объектов $($nonEmpty.Count), все с правилом"
+      $t = $i.totals
+      Pass "объектов $($t.objects), с данными $($t.nonEmpty), строк $($t.dataRows); таблиц PG $($t.pgTables), непустых $($t.pgNonEmpty), неизвестных 0"
+    }
+    Invoke-Check 'G0.6' 'Тесты документации: модель, DDD, данные, ТЗ (node --test)' {
+      $node = Join-Path $env:LOCALAPPDATA 'Programs\node-v22.23.4-win-x64\node.exe'
+      if (-not (Test-Path $node)) { $node = 'node' }
+      Push-Location $root
+      try { $out = & $node --test 'tools/migration/tests/*.test.mjs' 2>&1 | Out-String } finally { Pop-Location }
+      $pass = [regex]::Match($out, '# pass (\d+)').Groups[1].Value
+      $fail = [regex]::Match($out, '# fail (\d+)').Groups[1].Value
+      if ($LASTEXITCODE -ne 0 -or $fail -ne '0') {
+        $names = ([regex]::Matches($out, '(?m)^not ok \d+ - (.+)$') | ForEach-Object { $_.Groups[1].Value }) -join '; '
+        return Fail "pass $pass, fail ${fail}: $names"
+      }
+      Pass "тестов $pass, все зелёные"
     }
   }
   1 {
@@ -184,7 +200,7 @@ switch ($Stage) {
   }
   11 {
     Invoke-Check 'G11.1' 'пять ночных сверок подряд = 0' { Assert-RepoPath 'docs\migration' 'docs/migration'; $f = @(Get-ChildItem (Join-Path $root 'docs\migration') -Filter 'reconcile-*.md' | Sort-Object Name | Select-Object -Last 5); if ($f.Count -lt 5) { return Fail "отчётов $($f.Count) из 5" }; $bad = @($f | Where-Object { (Get-Content $_.FullName -Raw -Encoding UTF8) -notmatch 'Расхождений: 0' }); if ($bad.Count) { Fail ('с расхождениями: ' + ($bad.Name -join ', ')) } else { Pass ($f.Name -join ', ') } }
-    Invoke-Check 'G11.2' 'гейты 0–10 закрыты' { $open = @(0..10 | Where-Object { $p = Join-Path $root "docs\migration\gates\stage-$_.md"; -not (Test-Path $p) -or ((Get-Content $p -Raw -Encoding UTF8) -notmatch 'Итог: этап закрыт') }); if ($open.Count) { Fail ('не закрыты: ' + ($open -join ', ')) } else { Pass 'все закрыты' } }
+    Invoke-Check 'G11.2' 'гейты 0–10 закрыты' { $open = @(0..10 | Where-Object { $p = Join-Path $root "docs\migration\gates\stage-$_.md"; -not (Test-Path $p) -or ((Get-Content $p -Raw -Encoding UTF8) -notmatch 'Итог: этап закрыт') -or ((Get-Content $p -Raw -Encoding UTF8) -notmatch '(?m)^- \[x\]') }); if ($open.Count) { Fail ('не закрыты (автопроверки или ручная отметка): ' + ($open -join ', ')) } else { Pass 'все закрыты' } }
     Invoke-Check 'G11.3' 'сверка после финальной выгрузки' { Invoke-Tool 'backend' 'go' @('run', './cmd/migrator', 'reconcile', '--checks', 'ALL', '--source', $Base) }
   }
 }
