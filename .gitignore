@@ -36,3 +36,4 @@ logs/
 
 # сборки vitauto-api / vitauto-migrator
 deploy/bin/
+docs/migration/last-reconcile.md
