@@ -17,7 +17,11 @@ $ErrorActionPreference = 'Stop'
 if ($Base -eq 'vitauto' -and $Stage -lt 11) { throw "Рабочая база vitauto до этапа 11 не используется; укажите копию (-Base vitauto_dev)." }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$plan = Join-Path $root 'tasks\migration-pg-go-vue.md'
+# портативные инструменты сервера (go, task, oapi-codegen, node) — если их нет в PATH
+foreach ($d in @("$env:LOCALAPPDATA\Programs\go1.27.3\go\bin", "$env:USERPROFILE\go\bin", "$env:LOCALAPPDATA\Programs\node-v22.23.4-win-x64")) {
+  if ((Test-Path $d) -and ($env:Path -notlike "*$d*")) { $env:Path = "$d;$env:Path" }
+}
+$plan =Join-Path $root 'tasks\migration-pg-go-vue.md'
 $mapPath = Join-Path $root 'docs\migration\storage-map.json'
 $results = New-Object System.Collections.Generic.List[object]
 

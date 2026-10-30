@@ -33,3 +33,6 @@ __pycache__/
 
 # РІС‹РіСЂСѓР·РєРё tools/arm-log-report.ps1
 logs/
+
+# сборки vitauto-api / vitauto-migrator
+deploy/bin/

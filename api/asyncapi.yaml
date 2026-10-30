@@ -1,0 +1,190 @@
+asyncapi: 3.0.0
+info:
+  title: Витавто АРМ — события WebSocket
+  version: 0.1.0
+  description: |
+    Обновление страниц в реальном времени (план, раздел 11; ТЗ, ТР-RT1…RT4). Источник событий — sys.change_log
+    и PostgreSQL LISTEN/NOTIFY; клиент — pwa/src/http/realtime.js. События доставляются только тем, кому изменённые
+    данные видны по роли, матрице и доступу к складам.
+servers:
+  local:
+    host: localhost:18100
+    pathname: /api/v1/ws
+    protocol: ws
+    description: vitauto-api (через Apache mod_proxy_wstunnel снаружи)
+channels:
+  ws:
+    address: /api/v1/ws
+    messages:
+      auth:
+        $ref: '#/components/messages/Auth'
+      subscribe:
+        $ref: '#/components/messages/Subscribe'
+      resume:
+        $ref: '#/components/messages/Resume'
+      change:
+        $ref: '#/components/messages/Change'
+      resync:
+        $ref: '#/components/messages/Resync'
+      notice:
+        $ref: '#/components/messages/Notice'
+      matrix:
+        $ref: '#/components/messages/MatrixChanged'
+      session:
+        $ref: '#/components/messages/SessionEnded'
+      appVersion:
+        $ref: '#/components/messages/AppVersion'
+operations:
+  sendAuth:
+    action: send
+    channel:
+      $ref: '#/channels/ws'
+    summary: Первое сообщение клиента — токен сессии
+    messages:
+      - $ref: '#/channels/ws/messages/auth'
+  sendSubscribe:
+    action: send
+    channel:
+      $ref: '#/channels/ws'
+    summary: Подписка на темы открытых экранов
+    messages:
+      - $ref: '#/channels/ws/messages/subscribe'
+  sendResume:
+    action: send
+    channel:
+      $ref: '#/channels/ws'
+    summary: Досылка пропущенных событий после переподключения
+    messages:
+      - $ref: '#/channels/ws/messages/resume'
+  receiveChanges:
+    action: receive
+    channel:
+      $ref: '#/channels/ws'
+    summary: События сервера
+    messages:
+      - $ref: '#/channels/ws/messages/change'
+      - $ref: '#/channels/ws/messages/resync'
+      - $ref: '#/channels/ws/messages/notice'
+      - $ref: '#/channels/ws/messages/matrix'
+      - $ref: '#/channels/ws/messages/session'
+      - $ref: '#/channels/ws/messages/appVersion'
+components:
+  messages:
+    Auth:
+      payload:
+        type: object
+        required: [type, token]
+        properties:
+          type:
+            const: auth
+          token:
+            type: string
+    Subscribe:
+      payload:
+        type: object
+        required: [type, topics]
+        properties:
+          type:
+            const: subscribe
+          topics:
+            type: array
+            description: lines, line:<id>, document:<kind>:<id>, catalog:<name>, stock:<warehouseId>, notices, matrix, session
+            items:
+              type: string
+    Resume:
+      payload:
+        type: object
+        required: [type, seq]
+        properties:
+          type:
+            const: resume
+          seq:
+            type: integer
+    Change:
+      payload:
+        type: object
+        required: [type, seq, entity, op, ids]
+        properties:
+          type:
+            const: change
+          seq:
+            type: integer
+            description: Номер в sys.change_log
+          entity:
+            type: string
+            enum: [line, customer_order, supplier_order, receipt, shipment, transfer, nomenclature, counterparty, car, warehouse, cell, stock, notice]
+          op:
+            type: string
+            enum: [insert, update, delete]
+          ids:
+            type: array
+            items:
+              type: string
+          version:
+            type: object
+            additionalProperties:
+              type: integer
+          fields:
+            type: array
+            items:
+              type: string
+          by:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+          session:
+            type: string
+            description: Сессия автора — свои события клиент применяет без перерисовки
+    Resync:
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type:
+            const: resync
+    Notice:
+      payload:
+        type: object
+        required: [type, id, node, text]
+        properties:
+          type:
+            const: notice
+          id:
+            type: string
+          node:
+            type: string
+          text:
+            type: string
+          customerOrderId:
+            type: string
+    MatrixChanged:
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type:
+            const: matrix
+          role:
+            type: string
+    SessionEnded:
+      payload:
+        type: object
+        required: [type, reason]
+        properties:
+          type:
+            const: session
+          reason:
+            type: string
+            enum: [user_disabled, role_changed, logout]
+    AppVersion:
+      payload:
+        type: object
+        required: [type, version]
+        properties:
+          type:
+            const: app_version
+          version:
+            type: string

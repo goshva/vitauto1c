@@ -25,7 +25,7 @@ test('ТЗ: роли, сверка, наборы тестов и гейты', ()
   for (const r of model.roles) assert.ok(tz.includes('`' + r.id + '`'), r.id);
   for (const id of ['R1', 'R3', 'R4', 'R5', 'R6', 'R7', 'r01', 'r02', 'r03', 'r04', 'r05', 'w01', 'i01', 'x01', 'G0.5', 'G11.3', 'M-*', 'F-*'])
     assert.ok(tz.includes(id), id);
-  assert.ok(/OpenAPI 3\.1/.test(tz) && /AsyncAPI/.test(tz) && /Swagger/.test(tz), 'API');
+  assert.ok(/OpenAPI 3\.\d/.test(tz) && /AsyncAPI/.test(tz) && /Swagger/.test(tz), 'API');
 });
 
 test('ТЗ: цифры инвентаризации совпадают с inventory.json', () => {

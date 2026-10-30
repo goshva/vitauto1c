@@ -1,0 +1,4 @@
+extends: ["spectral:oas", "spectral:asyncapi"]
+rules:
+  oas3-api-servers: off
+  info-contact: off

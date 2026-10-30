@@ -115,7 +115,7 @@
 ```
  ┌───────────────┐ HTTPS REST ┌──────────────────────────────┐  pgx   ┌───────────────────────┐
  │ PWA Vue 3     │ ─────────▶ │ Go: vitauto-api  (/api/v1)   │ ─────▶ │ PostgreSQL vitauto_app│
- │ (тот же код,  │ ◀── WS ─── │  • REST по OpenAPI 3.1       │ LISTEN │  ref, doc, stock, arm,│
+ │ (тот же код,  │ ◀── WS ─── │  • REST по OpenAPI 3.0.3     │ LISTEN │  ref, doc, stock, arm,│
  │ backend=http) │  /api/v1/ws│  • WebSocket: события        │ ◀───── │  imp, auth, integr,   │
  └───────────────┘            │  • матрица прав, статусы     │ NOTIFY │  sys, legacy, onec    │
   Swagger UI /api/docs ◀───── │  • задания, уведомления,     │        └───────────────────────┘
@@ -135,7 +135,7 @@
 | Доступ к данным | `pgx/v5` и `sqlc` | типизированный код из SQL, запросы видны |
 | HTTP | стандартный `net/http` (роутинг Go 1.22+), серверные интерфейсы генерирует `oapi-codegen` (strict server) | маршруты и типы берутся из OpenAPI; расхождение спецификации с кодом не собирается |
 | Реальное время | WebSocket `github.com/coder/websocket`; источник событий — PostgreSQL `LISTEN/NOTIFY` и журнал `sys.change_log` | раздел 11 |
-| Документация API | OpenAPI 3.1 (`api/openapi.yaml`), Swagger UI на `/api/docs`, AsyncAPI 3.0 для WS (`api/asyncapi.yaml`) | раздел 10 |
+| Документация API | OpenAPI 3.0.3 (`api/openapi.yaml`; 3.1 — когда kin-openapi / oapi-codegen поддержат её полностью), Swagger UI на `/api/docs`, AsyncAPI 3.0 для WS (`api/asyncapi.yaml`) | раздел 10 |
 | Аутентификация | логин и пароль (bcrypt), сессионный токен в `auth.session`, роли из `Арм_РолиИнтерфейса` | пароли 1С не выгружаются |
 | Права | матрица из `pwa/src/odata/matrix.json` и `Арм_МатрицаПрав` в таблицах `arm.matrix_*`, проверка в одной функции Go | сейчас проверки разнесены по PWA, `ОтказЗаписиOData` и модулю формы |
 | Фоновые задания | таблица `arm.job` и воркер (`FOR UPDATE SKIP LOCKED`) | заменяет `Арм_ДанныеЗакупокИПродажФон`; контракт `/sales/jobs` → `/jobs/{id}` сохраняется |
@@ -163,7 +163,7 @@
 
 ```
 api/                       контракт (источник истины)
-  openapi.yaml             REST /api/v1 (OpenAPI 3.1)
+  openapi.yaml             REST /api/v1 (OpenAPI 3.0.3)
   asyncapi.yaml            события WebSocket (AsyncAPI 3.0)
 backend/                   Go-модуль (go.mod: vitauto/backend, Go 1.23+)
   cmd/api/                 HTTP + WS сервер (vitauto-api.exe)
@@ -450,14 +450,14 @@ create table legacy.object (
 
 ## 10. API и документация (OpenAPI / Swagger)
 
-- **Источник истины — `api/openapi.yaml` (OpenAPI 3.1).** Описываются:
+- **Источник истины — `api/openapi.yaml` (OpenAPI 3.0.3).** Версия 3.0.3, а не 3.1: генератор oapi-codegen (kin-openapi) поддерживает 3.1 не полностью; переход — без изменения контракта, когда поддержка появится. Основа — прежний контракт `openapi/arm-pwa*.openapi.yaml` из ветки `api`. Описываются:
   - все маршруты текущего контракта PWA из `backend.js`: `/session`, `/matrix`, `/lines`, `/lines/{id}`, `/lines/{id}/mark`, `/lines/transition`, `/lines/reject-assembly`, `/selection`, `/sales/jobs|prepared|shipments|imports|customer-orders…`, `/supply/status`, `/print`, `/notifications`, `/notifications/read`, `/jobs/{id}`, `/documents/{kind}/{id}`, `/directories/{name}`, `/catalog/{goods|services|cars}…`;
   - новые: `/warehouses`, `/cells`, `/stock`, `/transfers`, `/imports*`, `/integration/*`, `/admin/*`, `/changes`, `/ws`, `/health`.
 - **Префикс** `/api/v1`, версия в `info.version` = версия монорепозитория.
 - **Ошибки** — `application/problem+json` (RFC 9457) с полями `code` и `message`, совместимыми с текущим `ApiError` PWA (`unauthorized`, `forbidden_column`, `matrix_denied`, `conflict`, `not_found` …).
 - **Безопасность:** `bearerAuth` (сессионный токен); роль и ограничения по столбцам описаны в `x-arm-roles` у операций.
 - **Примеры** (`examples`) есть у каждой операции. Те же примеры используются в контрактных тестах.
-- **Swagger UI** на `/api/docs`: `swagger-ui-dist` встроен через `go:embed`. На стенде доступен всем, в проде только роли admin. Статическая документация `docs/api/index.html` (redoc) собирается в CI.
+- **Swagger UI** на `/api/docs`: страница `vitauto-api` загружает `swagger-ui-dist` точной версии с jsDelivr, спецификацию — с самого сервиса (`/api/v1/openapi.yaml`, встроена через `go:embed`). На стенде доступен всем, в проде только роли admin. Статическая документация `docs/api/index.html` (redoc) собирается в CI.
 - **События WebSocket** описаны в `api/asyncapi.yaml` (AsyncAPI 3.0) и тоже выводятся на `/api/docs/ws`.
 - **Генерация:**
   - `oapi-codegen` (strict server) делает Go-интерфейсы, и неописанный маршрут не компилируется;

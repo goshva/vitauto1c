@@ -60,7 +60,7 @@ flowchart LR
 
 Виды отношений: см. `node-map.json → contextMap`.
 - **Anti-corruption layer (ACL).** Используется дважды: мигратор (`internal/onec`: перевод GUID, перечислений и составных типов) и коннектор бухгалтерии (`internal/integration`). Понятия 1С (`СтруктурнаяЕдиница`, `Регистратор`, `_IDRRef`) не проходят в доменную модель.
-- **Published language.** Это REST API (OpenAPI 3.1) и события WebSocket (AsyncAPI 3.0). PWA и коннектор бухгалтерии видят только их.
+- **Published language.** Это REST API (OpenAPI 3.0.3) и события WebSocket (AsyncAPI 3.0). PWA и коннектор бухгалтерии видят только их.
 
 ## 1.4 Что остаётся за границей
 

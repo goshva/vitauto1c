@@ -137,7 +137,7 @@
 
 | № | Требование | Проверка |
 |---|---|---|
-| ТР-А1 | REST API `/api/v1` описан в OpenAPI 3.1 (`api/openapi.yaml`), события WebSocket — в AsyncAPI 3.0 | G1.2 |
+| ТР-А1 | REST API `/api/v1` описан в OpenAPI 3.0.3 (`api/openapi.yaml`; 3.1 — после поддержки в генераторе), события WebSocket — в AsyncAPI 3.0 | G1.2 |
 | ТР-А2 | Swagger UI на `/api/docs`; статическая документация `docs/api` собирается в CI | G1.4, ручная |
 | ТР-А3 | Все маршруты текущего контракта PWA (`backend.js`) есть в спецификации | G1.3 |
 | ТР-А4 | Ошибки — `application/problem+json` с кодами текущего `ApiError` PWA | контрактные тесты |

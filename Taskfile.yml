@@ -1,0 +1,48 @@
+# Единые команды монорепозитория (план, раздел 4). Нужны в PATH: go, node (portable: %LOCALAPPDATA%\Programs\...).
+#   task gen | lint | test | gate STAGE=0 | migrate
+version: '3'
+
+vars:
+  SPECTRAL: npx --yes @stoplight/spectral-cli@6.15.0
+  OPENAPI_TS: npx --yes openapi-typescript@7.4.1
+
+tasks:
+  gen:
+    desc: Код из контрактов api/*.yaml — копии для go:embed, типы Go (oapi-codegen), типы PWA (openapi-typescript)
+    cmds:
+      - node -e "const fs=require('fs');for(const f of ['openapi.yaml','asyncapi.yaml'])fs.copyFileSync('api/'+f,'backend/internal/api/'+f)"
+      - cd backend && oapi-codegen -config internal/api/oapi-codegen.yaml ../api/openapi.yaml
+      - "{{.OPENAPI_TS}} api/openapi.yaml -o pwa/src/http/schema.d.ts"
+
+  lint:
+    desc: Спецификации (Spectral) и Go
+    cmds:
+      - "{{.SPECTRAL}} lint api/openapi.yaml api/asyncapi.yaml --fail-severity error"
+      - cd backend && go vet ./...
+
+  test:
+    desc: Go, документы миграции, PWA
+    cmds:
+      - cd backend && go test ./...
+      - node --test "tools/migration/tests/*.test.mjs"
+      - cd pwa && npx vitest run
+
+  gate:
+    desc: Проверка этапа миграции (tools/migration/gate.ps1)
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File tools/migration/gate.ps1 -Stage {{.STAGE}}
+
+  migrate:
+    desc: Полный перенос из копии 1С в vitauto_app (schema-up, legacy, load, derive, reconcile)
+    dir: backend
+    cmds:
+      - go run ./cmd/migrator schema-up
+      - go run ./cmd/migrator legacy
+      - go run ./cmd/migrator load
+      - go run ./cmd/migrator derive
+      - go run ./cmd/migrator reconcile --checks ALL
+
+  e2e:
+    desc: Сквозные сценарии (этап 4+); BACKEND=go|odata, ONLY=фильтр
+    cmds:
+      - echo "e2e на Go-бэкенде появляется на этапе 4 (BACKEND={{.BACKEND}} ONLY={{.ONLY}})" && exit 1
