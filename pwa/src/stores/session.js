@@ -3,7 +3,7 @@ import { api } from '../api';
 import { load, save } from '../storage';
 
 // стандартный интерфейс OData публикации 1С (vite проксирует /odata -> <публикация>/odata/standard.odata)
-export const DEFAULT_BASE = '/odata';
+export const DEFAULT_BASE = '/api/v1';
 
 export const useSessionStore = defineStore('session', {
   state: () => ({

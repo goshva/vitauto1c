@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
             value: `Публикация OData 1С ${target} недоступна (${err.code || err.message}): запущен ли Apache (npm run api)?` } } }));
         });
       }
+    },
+    '/api': {
+      target: 'http://127.0.0.1:18100',
+      changeOrigin: true
     }
   };
   return {
