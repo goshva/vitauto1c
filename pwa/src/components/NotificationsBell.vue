@@ -1,7 +1,9 @@
 <script setup>
-// Уведомления роли АРМ (АРМ v2.23, блок 2): счётчик в шапке, раз в минуту; список и «Отметить прочитанными».
+// Уведомления роли АРМ (АРМ v2.23, блок 2): счётчик в шапке; WS-сигнал 'notices' — немедленный перезапрос,
+// опрос раз в 5 минут — резерв, если канал недоступен.
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { get, post } from '../api';
+import { wsBus } from '../ws';
 import { useToastStore } from '../stores/toast';
 import AppIcon from './AppIcon.vue';
 import AppModal from './AppModal.vue';
@@ -13,7 +15,7 @@ const busy = ref(false);
 let timer = null;
 
 async function load() {
-  try { items.value = (await get('/notifications')).items || []; } catch { /* счётчик не мешает работе: повтор через минуту */ }
+  try { items.value = (await get('/notifications')).items || []; } catch { /* счётчик не мешает работе */ }
 }
 async function markRead(list) {
   busy.value = true;
@@ -27,8 +29,9 @@ async function markRead(list) {
 }
 const when = d => (d ? d.slice(8, 10) + '.' + d.slice(5, 7) + ' ' + d.slice(11, 16) : '');
 
-onMounted(() => { load(); timer = setInterval(load, 60000); });
-onBeforeUnmount(() => clearInterval(timer));
+const onNotice = () => load();
+onMounted(() => { load(); timer = setInterval(load, 300000); wsBus.on('notices', onNotice); });
+onBeforeUnmount(() => { clearInterval(timer); wsBus.off('notices', onNotice); });
 </script>
 
 <template>

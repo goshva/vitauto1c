@@ -1,11 +1,16 @@
 asyncapi: 3.0.0
 info:
   title: Витавто АРМ — события WebSocket
-  version: 0.1.0
+  version: 0.2.0
   description: |
-    Обновление страниц в реальном времени (план, раздел 11; ТЗ, ТР-RT1…RT4). Источник событий — sys.change_log
-    и PostgreSQL LISTEN/NOTIFY; клиент — pwa/src/http/realtime.js. События доставляются только тем, кому изменённые
-    данные видны по роли, матрице и доступу к складам.
+    Сигнальная система обновления страниц (план, раздел 11; ТЗ, ТР-RT1…RT4). WS перевозит ТОЛЬКО сигналы
+    минимального размера — сами данные клиент перезапрашивает нужным GET-эндпоинтом и держит актуальными
+    в рамках сессии. Источник событий — триггеры PostgreSQL LISTEN/NOTIFY:
+      vitauto_notices — новые/обновлённые уведомления (arm.notice);
+      vitauto_changes — инвалидация данных (строки АРМ, возвраты, заказ-наряды, неопознанные, запросы доступа).
+    Сигналы доставляются только ролям, которым изменения видны (роль берётся из сессии при подключении).
+    Пакетные команды дебаунсятся (300 мс): переход 50 строк даёт один change-пакет, а не 50 сообщений.
+    Если клиент отстал (переполнение очереди) — сервер шлёт resync: экран перезагружает данные полностью.
 servers:
   local:
     host: localhost:18100
@@ -15,176 +20,107 @@ servers:
 channels:
   ws:
     address: /api/v1/ws
+    title: Единственный канал событий (подключение авторизовано Bearer-токеном сессии)
     messages:
-      auth:
-        $ref: '#/components/messages/Auth'
-      subscribe:
-        $ref: '#/components/messages/Subscribe'
-      resume:
-        $ref: '#/components/messages/Resume'
+      ping:
+        $ref: '#/components/messages/Ping'
+      pong:
+        $ref: '#/components/messages/Pong'
       change:
         $ref: '#/components/messages/Change'
       resync:
         $ref: '#/components/messages/Resync'
       notice:
         $ref: '#/components/messages/Notice'
-      matrix:
-        $ref: '#/components/messages/MatrixChanged'
-      session:
-        $ref: '#/components/messages/SessionEnded'
-      appVersion:
-        $ref: '#/components/messages/AppVersion'
 operations:
-  sendAuth:
+  sendPing:
     action: send
     channel:
       $ref: '#/channels/ws'
-    summary: Первое сообщение клиента — токен сессии
+    summary: Клиентский keepalive (сервер отвечает pong)
     messages:
-      - $ref: '#/channels/ws/messages/auth'
-  sendSubscribe:
-    action: send
-    channel:
-      $ref: '#/channels/ws'
-    summary: Подписка на темы открытых экранов
-    messages:
-      - $ref: '#/channels/ws/messages/subscribe'
-  sendResume:
-    action: send
-    channel:
-      $ref: '#/channels/ws'
-    summary: Досылка пропущенных событий после переподключения
-    messages:
-      - $ref: '#/channels/ws/messages/resume'
-  receiveChanges:
+      - $ref: '#/channels/ws/messages/ping'
+  receiveEvents:
     action: receive
     channel:
       $ref: '#/channels/ws'
-    summary: События сервера
+    summary: Сигналы сервера — по ним клиент инвалидирует кэш и перезапрашивает API
     messages:
+      - $ref: '#/channels/ws/messages/pong'
       - $ref: '#/channels/ws/messages/change'
       - $ref: '#/channels/ws/messages/resync'
       - $ref: '#/channels/ws/messages/notice'
-      - $ref: '#/channels/ws/messages/matrix'
-      - $ref: '#/channels/ws/messages/session'
-      - $ref: '#/channels/ws/messages/appVersion'
 components:
   messages:
-    Auth:
+    Ping:
+      summary: keepalive клиента
       payload:
         type: object
-        required: [type, token]
+        required: [kind]
         properties:
-          type:
-            const: auth
-          token:
-            type: string
-    Subscribe:
+          kind:
+            const: ping
+    Pong:
+      summary: ответ сервера на ping; сервер также сам шлёт ping каждые 30 с
       payload:
         type: object
-        required: [type, topics]
+        required: [kind]
         properties:
-          type:
-            const: subscribe
-          topics:
-            type: array
-            description: lines, line:<id>, document:<kind>:<id>, catalog:<name>, stock:<warehouseId>, notices, matrix, session
-            items:
-              type: string
-    Resume:
-      payload:
-        type: object
-        required: [type, seq]
-        properties:
-          type:
-            const: resume
-          seq:
-            type: integer
+          kind:
+            const: pong
     Change:
+      summary: СИГНАЛ инвалидации — какие данные изменились, полный список id не перевозится
+      description: >
+        payload — массив сигналов (батч дебаунса). Клиент маппит entity на эндпоинты и перезапрашивает их:
+        line → GET /lines (свой view), return → GET /returns, work_order → GET /work-orders,
+        unidentified → GET /unidentified, access_request → GET /access-requests.
+        Строка line дополнительно содержит order — клиент может обновить только заказ.
       payload:
         type: object
-        required: [type, seq, entity, op, ids]
+        required: [kind, payload]
         properties:
-          type:
+          kind:
             const: change
-          seq:
-            type: integer
-            description: Номер в sys.change_log
-          entity:
-            type: string
-            enum: [line, customer_order, supplier_order, receipt, shipment, transfer, nomenclature, counterparty, car, warehouse, cell, stock, notice]
-          op:
-            type: string
-            enum: [insert, update, delete]
-          ids:
+          payload:
             type: array
+            minItems: 1
             items:
-              type: string
-          version:
-            type: object
-            additionalProperties:
-              type: integer
-          fields:
-            type: array
-            items:
-              type: string
-          by:
-            type: object
-            properties:
-              id:
-                type: string
-              name:
-                type: string
-          session:
-            type: string
-            description: Сессия автора — свои события клиент применяет без перерисовки
+              type: object
+              required: [e]
+              properties:
+                e:
+                  type: string
+                  enum: [line, return, work_order, unidentified, access_request]
+                id:
+                  type: string
+                  description: uuid изменившейся записи (для line — id строки)
+                op:
+                  type: string
+                  enum: [insert, update]
     Resync:
+      summary: очередь клиента переполнена — пропущено слишком много, нужна полная перезагрузка экрана
       payload:
         type: object
-        required: [type]
+        required: [kind]
         properties:
-          type:
+          kind:
             const: resync
     Notice:
+      summary: новое уведомление — только id и узел; текст клиент берёт из GET /notifications
       payload:
         type: object
-        required: [type, id, node, text]
+        required: [kind, topic, payload]
         properties:
-          type:
+          kind:
             const: notice
-          id:
+          topic:
             type: string
-          node:
-            type: string
-          text:
-            type: string
-          customerOrderId:
-            type: string
-    MatrixChanged:
-      payload:
-        type: object
-        required: [type]
-        properties:
-          type:
-            const: matrix
-          role:
-            type: string
-    SessionEnded:
-      payload:
-        type: object
-        required: [type, reason]
-        properties:
-          type:
-            const: session
-          reason:
-            type: string
-            enum: [user_disabled, role_changed, logout]
-    AppVersion:
-      payload:
-        type: object
-        required: [type, version]
-        properties:
-          type:
-            const: app_version
-          version:
-            type: string
+            description: узел процесса (M8, M9, M10, M11, K9, M17, A3)
+          payload:
+            type: object
+            required: [noticeId, node]
+            properties:
+              noticeId:
+                type: string
+              node:
+                type: string

@@ -5,6 +5,8 @@ import { useSessionStore } from './stores/session';
 import { useLogStore } from './stores/log';
 import { useToastStore } from './stores/toast';
 import { useUiStore } from './stores/ui';
+import { useLinesStore } from './stores/lines';
+import { startWs, stopWs, wsBus } from './ws';
 import AppIcon from './components/AppIcon.vue';
 import AppModal from './components/AppModal.vue';
 import NotificationsBell from './components/NotificationsBell.vue';
@@ -13,13 +15,24 @@ const session = useSessionStore();
 const log = useLogStore();
 const toast = useToastStore();
 const ui = useUiStore();
+const lines = useLinesStore();
 const router = useRouter();
 const route = useRoute();
 ui.init();
 
+// Сигнальный WebSocket: старт с токеном сессии, стоп при выходе.
+// Сигнал change по строкам → перезапрос списка (дебаунс 400 мс на всплеск).
+watch(() => session.token, t => { if (t) startWs(t); else stopWs(); }, { immediate: true });
+let wsReload = null;
+wsBus.on('changed', eps => {
+  if (!eps.has('/lines') || route.name !== 'lines' || wsReload) return;
+  wsReload = setTimeout(() => { wsReload = null; lines.load().catch(() => {}); }, 400);
+});
+wsBus.on('resync', () => { if (route.name === 'lines') lines.load().catch(() => {}); });
+
 const VIEW_TITLES = { sales: 'Продажи', purchases: 'Закупки', supply: 'Снабжение' };
 const ROLE_TITLES = { manager: 'Менеджер', storekeeper: 'Кладовщик', chief_mechanic: 'Гл. механик', admin: 'Администратор', supplier: 'Поставщик', client: 'Клиент', supply: 'Снабжение' };
-const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', matrix: 'Матрица прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ' };
+const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', matrix: 'Матрица прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ', returns: 'Возвраты', workOrders: 'Заказ-наряды', accessRequests: 'Запросы доступа' };
 
 // Навигация: основные пункты — в нижней панели телефона, остальные — в «Ещё»; на ПК всё в боковой панели
 const nav = computed(() => [
@@ -28,6 +41,10 @@ const nav = computed(() => [
   { to: '/catalog/goods', title: 'Товары', icon: 'tag' },
   { to: '/catalog/services', title: 'Услуги', icon: 'wrench' },
   { to: '/catalog/cars', title: 'Машины', icon: 'car' },
+  { to: '/returns', title: 'Возвраты', icon: 'undo' },
+  ...(session.role === 'chief_mechanic' || session.role === 'admin' || session.role === 'manager'
+    ? [{ to: '/work-orders', title: 'Заказ-наряды', icon: 'wrench' }] : []),
+  ...(session.role === 'admin' ? [{ to: '/access-requests', title: 'Доступ', icon: 'lock' }] : []),
   { to: '/directories', title: 'Справочники', icon: 'book' },
   { to: '/matrix', title: 'Матрица', icon: 'grid' },
   { to: '/console', title: 'Консоль', icon: 'terminal' },

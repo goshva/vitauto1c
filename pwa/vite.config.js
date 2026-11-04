@@ -28,7 +28,8 @@ export default defineConfig(({ mode }) => {
     },
     '/api': {
       target: 'http://127.0.0.1:18100',
-      changeOrigin: true
+      changeOrigin: true,
+      ws: true // сигнальный WebSocket /api/v1/ws
     }
   };
   return {

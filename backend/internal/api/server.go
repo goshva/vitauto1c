@@ -28,6 +28,9 @@ func NewMux(db Pinger, app *App) *http.ServeMux {
 	mux := http.NewServeMux()
 	if app != nil {
 		app.Register(mux)
+		if app.Apps != nil && app.WS != nil {
+			app.RegisterV2(mux)
+		}
 	}
 	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		h := Health{Status: HealthStatusOk, Version: version.Version}

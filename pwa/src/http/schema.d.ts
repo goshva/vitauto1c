@@ -304,6 +304,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sales/imports/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Загрузить файл листа покупателя (M1, ТЧИ1)
+         * @description To же, что `POST /sales/imports`, но лист передаётся файлом (.xlsx или .csv) в multipart-форме.
+         *     Колонки опознаются по коду шаблона АРМ: К1Срочность, К2Машина, К3Территория, К4Наименование,
+         *     К5Артикул, К6Кол-во, N0Кол-во, V4/V5 номера заказа. Пустое количество принимается за 1
+         *     с предупреждением; в ответе — созданный документ и список предупреждений разбора.
+         *
+         */
+        post: operations["importCustomerFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/supply/status": {
         parameters: {
             query?: never;
@@ -560,7 +584,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Печатная форма по заказам покупателя (M12, K3, M19) */
+        /** Печатная форма по заказам покупателя (M12, K3, M19) или заказ-наряду (G9) */
         post: operations["printForm"];
         delete?: never;
         options?: never;
@@ -712,6 +736,430 @@ export interface paths {
         put?: never;
         /** Снять пометку удаления */
         post: operations["restoreCatalogItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Список возвратов
+         * @description Последние 100 документов возврата (M16). Видят менеджер, кладовщик, администратор.
+         */
+        get: operations["listReturns"];
+        put?: never;
+        /**
+         * Создать возврат (C1/C2)
+         * @description `operation: Продажа` — возврат от клиента (после проведения — приход на склад),
+         *     `Закупка` — возврат поставщику (расход со склада). `sourceLineId` связывает строку
+         *     со строкой АРМ: при проведении она перейдёт в статус «Возврат».
+         *
+         */
+        post: operations["createReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/returns/{returnId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                returnId: components["parameters"]["ReturnId"];
+            };
+            cookie?: never;
+        };
+        /** Карточка возврата со строками */
+        get: operations["getReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/returns/{returnId}/post": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                returnId: components["parameters"]["ReturnId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Провести возврат (K6)
+         * @description Движения склада (`stock.move`), `posted = true`, строки-источники → «Возврат».
+         */
+        post: operations["postReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/returns/{returnId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                returnId: components["parameters"]["ReturnId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отменить возврат
+         * @description Снимает проведение (`posted = false`); движения склада не отменяются — корректирует кладовщик.
+         */
+        post: operations["cancelReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Запросы доступа (только администратор, узел A3)
+         * @description Видит только роль admin (узел A3): последние 50 запросов, новые первыми.
+         */
+        get: operations["listAccessRequests"];
+        put?: never;
+        /**
+         * Запросить действие вне своей матрицы (M13)
+         * @description Роль матрицы получила `403 matrix_denied` и хочет выполнить действие — создаёт запрос.
+         *     Узел A3 получает уведомление (`arm.notice`) и решает через `/access-requests/{id}/decide`.
+         *
+         */
+        post: operations["createAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/access-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: components["parameters"]["RequestId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Детали запроса с payload (только администратор)
+         * @description Запрос с развёрнутым payload действия.
+         */
+        get: operations["getAccessRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/access-requests/{requestId}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: components["parameters"]["RequestId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Одобрить или отклонить (A3)
+         * @description Администратор одобряет или отклоняет запрос; заявитель получает уведомление.
+         */
+        post: operations["decideAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lines/{lineId}/self-pickup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ИдентификаторЗаписи регистра */
+                lineId: components["parameters"]["LineId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отметить самовывоз (N4)
+         * @description Только для строки в статусе «Отгружено», иначе `409`.
+         */
+        post: operations["setSelfPickup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/unidentified": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Неопознанные позиции (M18)
+         * @description Позиции в порядке появления; видят менеджер, кладовщик, механик, администратор.
+         */
+        get: operations["listUnidentified"];
+        put?: never;
+        /**
+         * Зарегистрировать неопознанную позицию
+         * @description Фиксация находки или несовпадения по строке (M18).
+         */
+        post: operations["createUnidentified"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/unidentified/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Карточка неопознанной позиции
+         * @description Полная карточка: факты, фото, привязка, кто и когда решил.
+         */
+        get: operations["getUnidentified"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/unidentified/{itemId}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Привязать к номенклатуре (A1)
+         * @description Роль с доступом к справочнику подбирает номенклатуру (A1); позиция закрывается.
+         */
+        post: operations["linkUnidentified"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/unidentified/{itemId}/found": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Позиция найдена на складе (K8)
+         * @description Кладовщик подтвердил, что позиция на складе (K8); позиция закрывается.
+         */
+        post: operations["markUnidentifiedFound"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Заказ-наряды (G1)
+         * @description Последние 100 заказ-нарядов, открытые и выданные.
+         */
+        get: operations["listWorkOrders"];
+        put?: never;
+        /**
+         * Создать заказ-наряд
+         * @description Шапка (машина, клиент, заказ) и строки работ с нормо-часами (G1-G4).
+         */
+        post: operations["createWorkOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-orders/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Карточка заказ-наряда со строками и нормо-часами
+         * @description Строки с номенклатурой, нормо-часами и статусами связанных строк АРМ.
+         */
+        get: operations["getWorkOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/work-orders/{documentId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Выдать автомобиль, закрыть заказ-наряд (G9)
+         * @description Статус open -> released, фиксируется дата выдачи (G9).
+         */
+        post: operations["releaseWorkOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ячейки склада для размещения (K2)
+         * @description Справочник `ref.storage_cell` с числом закреплённых строк АРМ.
+         *     Пикер ячеек в экране кладовщика; склад по умолчанию — все активные.
+         *
+         */
+        get: operations["listCells"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lines/{lineId}/cell": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ИдентификаторЗаписи регистра */
+                lineId: components["parameters"]["LineId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Разместить закупку в ячейке (K2)
+         * @description Кладовщик привязывает ячейку к закупке в статусе «ПриходУется»; строка автоматически
+         *     переходит в «НаСкладе» (уведомление M8 менеджеру даёт триггер БД).
+         *
+         */
+        post: operations["placeLineCell"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Сигнальный WebSocket (только уведомления об изменениях)
+         * @description Единственный real-time канал. **Данных не переносит** — только сигналы, какой GET-эндпоинт
+         *     устарел. PWA по сигналу перевызывает список и держит актуальные данные в сессии.
+         *     Аутентификация: заголовок `Authorization: Bearer <token>` при handshake (браузерные WebSocket
+         *     заголовок не шлют — PWA передаёт токен так же, как в `fetch`).
+         *
+         *     Рамки сервера (JSON, минимальный размер):
+         *
+         *     | kind      | назначение                                                        |
+         *     |-----------|-------------------------------------------------------------------|
+         *     | `change`  | батч сигналов `[{e,id,op}]`; `e` → эндпоинт: `line`→`/lines`, `return`→`/returns`, `work_order`→`/work-orders`, `unidentified`→`/unidentified`, `access_request`→`/access-requests` |
+         *     | `notice`  | `{noticeId,node}` — перечитать `GET /notifications`                |
+         *     | `resync`  | очередь переполнена — перезагрузить экран целиком                  |
+         *     | `ping`    | keepalive, клиент отвечает `{"kind":"pong"}`                       |
+         *
+         *     Отправка батча `change` — с дебаунсом 300 мс на клиент, не чаще одного сообщения на всплеск
+         *     изменений. Формат и правила — `asyncapi.yaml` (v0.2.0).
+         *
+         */
+        get: operations["openWebSocket"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1030,6 +1478,202 @@ export interface components {
             engine?: string;
             plate?: string;
         };
+        ReturnCreateRequest: {
+            /**
+             * @description Продажа — возврат от клиента; Закупка — возврат поставщику
+             * @enum {string}
+             */
+            operation: "Продажа" | "Закупка";
+            /**
+             * Format: uuid
+             * @description Заказ покупателя, к которому относится возврат (необязательно)
+             */
+            orderId?: string;
+            lines: components["schemas"]["ReturnLineInput"][];
+        };
+        ReturnLineInput: {
+            /** Format: uuid */
+            nomenclatureId: string;
+            /** @default 1 */
+            quantity: number;
+            /** @description Если 0 — сервер подтянет себестоимость из последней строки АРМ */
+            costPrice?: number;
+            /**
+             * Format: uuid
+             * @description Строка АРМ-источник; при проведении перейдёт в «Возврат»
+             */
+            sourceLineId?: string;
+            reason?: string;
+        };
+        ReturnOrder: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            operation: "Продажа" | "Закупка";
+            /** Format: date-time */
+            date: string;
+            totalSum?: number;
+            totalQty?: number;
+            posted: boolean;
+            comment?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        ReturnDetail: components["schemas"]["ReturnOrder"] & {
+            lines?: {
+                /** Format: uuid */
+                id?: string;
+                sortOrder?: number;
+                /** Format: uuid */
+                nomenclatureId?: string;
+                quantity?: number;
+                costPrice?: number;
+                costSum?: number;
+                /** Format: uuid */
+                sourceLineId?: string;
+                reason?: string;
+            }[];
+        };
+        AccessRequestCreate: {
+            /** @description Код действия из матрицы (колонка/команда), которое роль не может выполнить сама */
+            action: string;
+            /** Format: uuid */
+            lineId?: string;
+            /** @description Контекст действия (значение поля, id строки и т. п.) */
+            payload?: {
+                [key: string]: unknown;
+            };
+            reason?: string;
+        };
+        AccessRequest: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            requesterId?: string;
+            requesterRole?: components["schemas"]["Role"];
+            action: string;
+            /** Format: uuid */
+            lineId?: string;
+            reason?: string;
+            /** @enum {string} */
+            status: "new" | "approved" | "denied";
+            /** Format: uuid */
+            decidedById?: string;
+            /** Format: date-time */
+            decidedAt?: string;
+            decisionNote?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AccessRequestDetail: components["schemas"]["AccessRequest"] & {
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** @description Поля `factName` или `lineId` обязательны */
+        UnidentifiedCreate: {
+            /**
+             * Format: uuid
+             * @description Строка АРМ, из-за которой позиция не опознана (или пусто — находка на складе)
+             */
+            lineId?: string;
+            /** @description Как позиция выглядит фактически (со слов / с фото) */
+            factName?: string;
+            photoUrls?: string[];
+        };
+        UnidentifiedItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            lineId?: string;
+            /** @enum {string} */
+            source?: "line" | "stock" | "workshop";
+            factName?: string;
+            factArticle?: string;
+            factQty?: string;
+            factUnit?: string;
+            photoUrls: string[];
+            comment?: string;
+            /**
+             * Format: uuid
+             * @description Заполнено после привязки (A1)
+             */
+            nomenclatureId?: string;
+            /** Format: uuid */
+            resolvedById?: string;
+            /** Format: date-time */
+            resolvedAt?: string;
+            /** @description Кладовщик нашёл позицию на складе (K8) */
+            found: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WorkOrderCreate: {
+            /** Format: uuid */
+            carId?: string;
+            /** Format: uuid */
+            customerId?: string;
+            /** Format: uuid */
+            orderId?: string;
+            lines: {
+                /** Format: uuid */
+                nomenclatureId: string;
+                /** Format: uuid */
+                lineId?: string;
+                quantity?: number;
+                /** @description Нормо-часы работы (G4) */
+                normHours?: number;
+                comment?: string;
+            }[];
+        };
+        WorkOrder: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** Format: date-time */
+            date: string;
+            /** @enum {string} */
+            status: "open" | "released";
+            totalNormHours?: number;
+            laborSum?: number;
+            partsSum?: number;
+            /** Format: date-time */
+            releasedAt?: string;
+            comment?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        WorkOrderDetail: components["schemas"]["WorkOrder"] & {
+            lines?: {
+                /** Format: uuid */
+                id?: string;
+                /** Format: uuid */
+                lineId?: string;
+                /** Format: uuid */
+                nomenclatureId?: string;
+                nomenclatureName?: string;
+                quantity?: number;
+                normHours?: number;
+                comment?: string;
+                lineStatus?: string;
+            }[];
+        };
+        Cell: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            warehouseId: string;
+            /** @example A-01 */
+            code: string;
+            zone?: string;
+            /** @description Вместимость справочная — жёсткий лимит не проверяется */
+            capacity?: number;
+            /** @description Заблокированную ячейку нельзя выбрать при размещении */
+            blocked: boolean;
+            /** @description Число строк АРМ, закреплённых за ячейкой */
+            free: number;
+        };
     };
     responses: {
         /** @description Не разобран запрос */
@@ -1086,6 +1730,8 @@ export interface components {
         DocumentId: string;
         Query: string;
         IfNoneMatch: string;
+        ReturnId: string;
+        RequestId: string;
     };
     requestBodies: never;
     headers: never;
@@ -1598,6 +2244,45 @@ export interface operations {
             400: components["responses"]["BadRequest"];
         };
     };
+    importCustomerFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Лист покупателя (.xlsx, .xlsm или .csv), до 32 МиБ
+                     */
+                    file: string;
+                    /** Format: uuid */
+                    customerId: string;
+                    /** Format: uuid */
+                    contractId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Заказ создан, строки в регистре */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        doc?: components["schemas"]["DocumentRef"];
+                        warnings?: string[];
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     setSupplyStatus: {
         parameters: {
             query?: never;
@@ -1932,8 +2617,9 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    kind: "shipment_sheet" | "assembly_sheet" | "shipment_correction";
-                    customerOrderIds: string[];
+                    kind: "shipment_sheet" | "assembly_sheet" | "shipment_correction" | "work_order";
+                    customerOrderIds?: string[];
+                    workOrderIds?: string[];
                 };
             };
         };
@@ -2222,6 +2908,530 @@ export interface operations {
                 };
             };
             403: components["responses"]["Forbidden"];
+        };
+    };
+    listReturns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Возвраты */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnOrder"][];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Возврат создан (не проведён) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnOrder"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                returnId: components["parameters"]["ReturnId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Возврат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                returnId: components["parameters"]["ReturnId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Проведён */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommandResult"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    cancelReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                returnId: components["parameters"]["ReturnId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Отменён */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAccessRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Запросы */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequest"][];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Запрос создан */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    getAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: components["parameters"]["RequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Запрос */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequestDetail"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    decideAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: components["parameters"]["RequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    approved: boolean;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Решено */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setSelfPickup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ИдентификаторЗаписи регистра */
+                lineId: components["parameters"]["LineId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Отмечено */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listUnidentified: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Позиции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnidentifiedItem"][];
+                };
+            };
+        };
+    };
+    createUnidentified: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnidentifiedCreate"];
+            };
+        };
+        responses: {
+            /** @description Создано */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnidentifiedItem"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    getUnidentified: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Позиция */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnidentifiedItem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    linkUnidentified: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    nomenclatureId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Привязано */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    markUnidentifiedFound: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Найдено */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listWorkOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Заказ-наряды */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrder"][];
+                };
+            };
+        };
+    };
+    createWorkOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Создан (статус `open`) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrder"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    getWorkOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Заказ-наряд */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    releaseWorkOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Выдан */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listCells: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ячейки */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cell"][];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    placeLineCell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ИдентификаторЗаписи регистра */
+                lineId: components["parameters"]["LineId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    cellId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Размещено */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        placed?: boolean;
+                        /** @description Код нового статуса (обычно `to_stock`) */
+                        status?: string;
+                        /** Format: uuid */
+                        cellId?: string;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    openWebSocket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Switching Protocols — сигнальный канал открыт */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
 }

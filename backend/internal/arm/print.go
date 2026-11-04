@@ -16,6 +16,7 @@ import (
 //   shipment_sheet       M12  отгрузочная ведомость: продажи «Собран» / «Подготовлено» / «Отгружено»
 //   assembly_sheet       K3   сборочный лист: «Комплектуется» / «Резервирование» — ячейка, «собрано», «дефект / недостача»
 //   shipment_correction  M19  корректировка ведомости: «Возврат»
+//   work_order           G9   заказ-наряд автосервиса: работы (нормо-часы) + запчасти (doc.work_order*)
 
 type printKind struct {
 	Title    string
@@ -33,10 +34,18 @@ var printKinds = map[string]printKind{
 //go:embed print.html.tmpl
 var printTemplate string
 
+//go:embed work_order.html.tmpl
+var workOrderTemplate string
+
 var printTpl = template.Must(template.New("print").Funcs(template.FuncMap{
 	"money": func(x float64) string { return formatNumber(x, 2) },
 	"qty":   func(x float64) string { return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.3f", x), "0"), ".") },
 }).Parse(printTemplate))
+
+var workOrderTpl = template.Must(template.New("workorder").Funcs(template.FuncMap{
+	"money": func(x float64) string { return formatNumber(x, 2) },
+	"qty":   func(x float64) string { return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.3f", x), "0"), ".") },
+}).Parse(workOrderTemplate))
 
 type printRow struct {
 	No                  int
@@ -164,6 +173,167 @@ func (s *Service) Print(ctx context.Context, kind string, orderIDs []string) (st
 	}
 	var buf bytes.Buffer
 	if err := printTpl.Execute(&buf, map[string]any{"Title": k.Title, "Orders": orders}); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// ——— G9: печатная форма заказ-наряда ———
+
+type woLaborRow struct {
+	No            int
+	Name          string
+	Qty, Price, Sum float64
+}
+
+type woPartRow struct {
+	No                  int
+	Article, Name, Unit string
+	Qty                 float64
+	Status              string
+}
+
+type woPrint struct {
+	Number, Date      string
+	Lines             []string
+	Labor             []woLaborRow
+	Parts             []woPartRow
+	NormHoursTotal    float64
+	LaborSum          float64
+	PartsSum          float64
+	GrandTotal        float64
+	PartsCount        int
+	PartsQtyTotal     float64
+	Comment           string
+}
+
+// PrintWorkOrder — POST /print kind=work_order: заказ-наряд (работы + запчасти), G9.
+func (s *Service) PrintWorkOrder(ctx context.Context, ids []string) (string, error) {
+	var uuids []uuid.UUID
+	seen := map[uuid.UUID]bool{}
+	for _, str := range ids {
+		if u, err := uuid.Parse(str); err == nil && !seen[u] {
+			seen[u] = true
+			uuids = append(uuids, u)
+		}
+	}
+	if len(uuids) == 0 {
+		return "", fail(400, "bad_request", "workOrderIds: заказ-наряды (отметьте или откройте)", "workOrderIds")
+	}
+
+	// Шапки
+	hdrs, err := s.DB.Query(ctx, `select w.id, coalesce(w.number, ''), w.date, coalesce(k.name, ''),
+			coalesce(car.name, ''), coalesce(car.vin, ''), coalesce(org.name, ''), coalesce(w.comment, ''),
+			w.total_norm_hours::float8, w.labor_sum::float8, w.parts_sum::float8, w.status
+		from doc.work_order w
+		left join ref.car car on car.id = w.car_id
+		left join ref.counterparty k on k.id = w.customer_id
+		left join ref.organization org on org.id = (select o.organization_id from doc.customer_order o where o.id = w.customer_order_id)
+		where w.id = any($1) and not w.deleted order by w.date, w.id`, uuids)
+	if err != nil {
+		return "", err
+	}
+	defer hdrs.Close()
+
+	var orders []*woPrint
+	idx := map[uuid.UUID]*woPrint{}
+	for hdrs.Next() {
+		var id uuid.UUID
+		var number, cust, carName, vin, org, comment, status string
+		var odate *time.Time
+		var nh, laborSum, partsSum float64
+		if err := hdrs.Scan(&id, &number, &odate, &cust, &carName, &vin, &org, &comment, &nh, &laborSum, &partsSum, &status); err != nil {
+			return "", err
+		}
+		o := &woPrint{Number: strings.TrimSpace(number), NormHoursTotal: nh, LaborSum: laborSum, PartsSum: partsSum, Comment: comment}
+		if odate != nil {
+			o.Date = odate.Format("02.01.2006")
+		} else {
+			o.Date = s.now().Format("02.01.2006")
+		}
+		o.GrandTotal = round2(laborSum + partsSum)
+		if org != "" {
+			o.Lines = append(o.Lines, "Организация: "+org)
+		}
+		if cust != "" {
+			o.Lines = append(o.Lines, "Клиент: "+cust)
+		}
+		car := "Автомобиль: " + carName
+		if vin != "" {
+			car += ", VIN: " + vin
+		}
+		if carName != "" || vin != "" {
+			o.Lines = append(o.Lines, car)
+		}
+		if status == "released" {
+			o.Lines = append(o.Lines, "Статус: выдан")
+		}
+		o.Lines = append(o.Lines, "Напечатано: "+s.now().Format("02.01.2006 15:04:05"))
+		orders = append(orders, o)
+		idx[id] = o
+	}
+	if err := hdrs.Err(); err != nil {
+		return "", err
+	}
+	if len(orders) == 0 {
+		return "", fail(409, "nothing_to_print", "Заказ-наряд: заказ-наряды не найдены", "workOrderIds")
+	}
+
+	// Работы (нормо-часы)
+	lr, err := s.DB.Query(ctx, `select wl.work_order_id, coalesce(sk.name, ''), wl.quantity::float8, wl.hour_price::float8, wl.amount::float8, coalesce(wl.comment, '')
+		from doc.work_order_labor wl
+		left join ref.service_kind sk on sk.id = wl.service_kind_id
+		where wl.work_order_id = any($1) and not wl.deleted order by wl.created_at`, uuids)
+	if err != nil {
+		return "", err
+	}
+	defer lr.Close()
+	for lr.Next() {
+		var woID uuid.UUID
+		var name, cmt string
+		var qty, price, sum float64
+		if err := lr.Scan(&woID, &name, &qty, &price, &sum, &cmt); err != nil {
+			return "", err
+		}
+		o := idx[woID]
+		if o == nil || name == "" {
+			name = cmt
+		}
+		o.Labor = append(o.Labor, woLaborRow{No: len(o.Labor) + 1, Name: name, Qty: qty, Price: price, Sum: sum})
+	}
+
+	// Запчасти
+	pr, err := s.DB.Query(ctx, `select wol.work_order_id, coalesce(nullif(n.article, ''), l.fact_article, ''), coalesce(n.name, l.fact_name, ''),
+			coalesce(u.name, l.fact_unit, ''), wol.quantity::float8, coalesce(l.status, '')
+		from doc.work_order_line wol
+		left join ref.nomenclature n on n.id = wol.nomenclature_id
+		left join ref.unit u on u.id = n.unit_id
+		left join arm.line l on l.id = wol.line_id
+		where wol.work_order_id = any($1) and not wol.deleted order by wol.created_at`, uuids)
+	if err != nil {
+		return "", err
+	}
+	defer pr.Close()
+	for pr.Next() {
+		var woID uuid.UUID
+		var art, name, unit, lineStatus string
+		var qty float64
+		if err := pr.Scan(&woID, &art, &name, &unit, &qty, &lineStatus); err != nil {
+			return "", err
+		}
+		o := idx[woID]
+		o.Parts = append(o.Parts, woPartRow{No: len(o.Parts) + 1, Article: art, Name: name, Unit: unit, Qty: qty, Status: lineStatus})
+	}
+
+	for _, o := range orders {
+		o.PartsCount = len(o.Parts)
+		for _, p := range o.Parts {
+			o.PartsQtyTotal += p.Qty
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := workOrderTpl.Execute(&buf, map[string]any{"Orders": orders}); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

@@ -6,14 +6,18 @@ import (
 	"net/http"
 	"strings"
 
+	"vitauto/backend/internal/application"
 	"vitauto/backend/internal/arm"
 	"vitauto/backend/internal/auth"
+	"vitauto/backend/internal/platform/ws"
 )
 
 // App — обработчики REST-контракта PWA (api/openapi.yaml) поверх arm.Service и auth.Service.
 type App struct {
 	ARM  *arm.Service
 	Auth *auth.Service
+	Apps *application.Service
+	WS   *ws.Hub
 }
 
 type ctxKey int
@@ -271,9 +275,16 @@ func (app *App) Register(mux *http.ServeMux) {
 		var b struct {
 			Kind             string
 			CustomerOrderIDs []string
+			WorkOrderIDs     []string `json:"workOrderIds"`
 		}
 		if err := body(r, &b); err != nil {
 			writeProblem(w, err)
+			return
+		}
+		// G9: заказ-наряд автосервиса — отдельная форма по doc.work_order
+		if b.Kind == "work_order" {
+			html, err := app.ARM.PrintWorkOrder(r.Context(), b.WorkOrderIDs)
+			reply(w, 200, map[string]string{"html": html}, err)
 			return
 		}
 		html, err := app.ARM.Print(r.Context(), b.Kind, b.CustomerOrderIDs)

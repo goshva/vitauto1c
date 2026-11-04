@@ -18,6 +18,7 @@ import AppIcon from '../components/AppIcon.vue';
 import JobDialog from '../components/JobDialog.vue';
 import LineCard from '../components/LineCard.vue';
 import LineSheet from '../components/LineSheet.vue';
+import CellPicker from '../components/CellPicker.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -186,6 +187,13 @@ async function save(line, column, value) {
     await lines.patch(line, column.field, value);
     if (sheetId.value === line.id) toast.show(`${column.title}: сохранено`, 'ok', 1800);
   } catch (e) {
+    // M13: правку запретила матрица — предлагаем запросить доступ у администратора (A3)
+    if (e.code === 'matrix_denied' && canRequestAccess.value) {
+      if (confirm(`Право «${column.title}» недоступно роли. Запросить доступ у администратора? (M13)`)) {
+        requestAccess(`edit:${column.field}`, line);
+      }
+      return;
+    }
     toast.error(e);
   }
 }
@@ -194,6 +202,27 @@ async function picked(item) {
   picker.value = null;
   if (item === undefined) return;
   await save(p.line, p.column, item ? item.id : null);
+}
+
+// ---------- K2: размещение по ячейкам (кладовщик)
+const cellPicker = ref(null); // массив id строк для размещения
+const canPlace = computed(() => ['storekeeper', 'admin'].includes(session.role));
+function placeCell(line) {
+  lines.current = line.id;
+  cellPicker.value = [line.id];
+}
+
+// ---------- запрос доступа (M13)
+const accessRequest = ref(null);
+const canRequestAccess = computed(() => view.value !== 'supply' && ['manager', 'client', 'supplier'].includes(session.role));
+async function requestAccess(action, line) {
+  lines.current = line.id;
+  const reason = prompt(`Запрос доступа: ${action}\nПричина:`, '');
+  if (reason === null || !reason.trim()) return;
+  try {
+    await post('/access-requests', { action, lineId: line.id, payload: { field: 'СтатусСтроки' }, reason: reason.trim() });
+    toast.show('Запрос отправлен администратору', 'ok');
+  } catch (e) { toast.error(e); }
 }
 
 // ---------- лист деталей строки
@@ -213,12 +242,47 @@ const sheetActions = computed(() => {
     a.push({ key: 'shipment', title: 'Отгрузка', icon: 'supply' });
     a.push({ key: 'post', title: 'Провести заказ', icon: 'send' });
   }
+  if (view.value === 'sales' && l.status === 'shipped' && ['manager', 'admin'].includes(session.role)) {
+    a.push({ key: 'selfPickup', title: l.selfPickup ? 'Самовывоз ✓' : 'Самовывоз', icon: 'car' });
+  }
+  if (view.value === 'sales' && ['ready_to_ship', 'assembly'].includes(l.status) && ['manager', 'admin', 'chief_mechanic'].includes(session.role)) {
+    a.push({ key: 'workOrder', title: 'Заказ-наряд', icon: 'wrench' });
+  }
   a.push({ key: 'strike', title: 'Вычеркнуть', icon: 'trash', danger: true });
   if (view.value === 'sales' && l.customerOrder) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
   return a;
 });
 function sheetAction(key) {
-  ({ add: openAdd, purchase: openAddPurchase, shipment: openShipment, post: postOrder, strike: strikeLine, deleteOrder })[key]();
+  ({ add: openAdd, purchase: openAddPurchase, shipment: openShipment, post: postOrder, strike: strikeLine, deleteOrder,
+    selfPickup: selfPickupLine, workOrder: openWorkOrder })[key]();
+}
+
+// N4: самовывоз — флаг на отгруженной строке
+async function selfPickupLine() {
+  const l = current.value;
+  try {
+    await api('POST', `/lines/${l.id}/self-pickup`);
+    toast.show('Самовывоз отмечен', 'ok');
+    await lines.refreshLine(l.id);
+  } catch (e) { toast.error(e); }
+}
+
+// G1: заказ-наряд из строки ремонта (главный механик)
+async function openWorkOrder() {
+  const l = current.value;
+  const nh = prompt(`Нормо-часы на строку «${l.factName || l.nomenclature?.name || ''}» (G1):`, '1');
+  if (nh === null) return;
+  const hours = Number(String(nh).replace(',', '.'));
+  if (!Number.isFinite(hours) || hours <= 0) { toast.show('Нужно число нормо-часов больше 0', 'error'); return; }
+  try {
+    const wo = await post('/work-orders', {
+      carId: l.car && l.car.id,
+      customerId: l.customer && l.customer.id,
+      orderId: l.customerOrder && l.customerOrder.id,
+      lines: [{ nomenclatureId: (l.nomenclature && l.nomenclature.id) || l.id, lineId: l.id, quantity: l.quantity || 1, normHours: hours }]
+    });
+    toast.show(`Заказ-наряд ${wo.number} создан`, 'ok');
+  } catch (e) { toast.error(e); }
 }
 
 // ---------- отметки
@@ -377,12 +441,15 @@ async function printForm(p) {
 }
 // M10 (АРМ v2.23): отклонить собранное с причиной — строки снова «Комплектуется», кладовщику уведомление с причиной
 const canReject = computed(() => view.value === 'sales' && ['manager', 'admin', 'chief_mechanic'].includes(session.role));
+const rejectOpen = ref(null); // { reason } — модалка M10
 function rejectAssembly() {
-  const reason = prompt('Причина отклонения комплектации (недостача, брак, не та позиция):', '');
-  if (reason === null) return;
-  if (!reason.trim()) { toast.show('Укажите причину — её увидит кладовщик', 'error'); return; }
   closeSheets();
-  return run(() => post('/lines/reject-assembly', { reason }), r => `Комплектация отклонена: ${result(r)}`);
+  rejectOpen.value = { reason: '' };
+}
+async function confirmReject() {
+  const reason = rejectOpen.value.reason.trim();
+  rejectOpen.value = null;
+  await run(() => post('/lines/reject-assembly', { reason }), r => `Комплектация отклонена: ${result(r)}`);
 }
 
 // снабжение
@@ -412,6 +479,50 @@ async function confirmPartial() {
 // ---------- действия с отмеченными
 const actionsOpen = ref(false);
 const selCount = computed(() => (lines.totals ? lines.totals.count : 0));
+
+// C1/C2: возврат по отмеченным строкам — doc.return_order из строк в статусе «Готово к отгрузке» / «Отгружено» / закрытых продаж
+const RETURNABLE = ['ready_to_ship', 'shipped', 'acceptance', 'to_stock'];
+const returnOpen = ref(false);
+function openReturn() {
+  const src = lines.marked.filter(l => RETURNABLE.includes(l.status));
+  if (!src.length) { toast.show('Отметьте строки в статусе приёмки/склада/готово/отгружено — по ним создаётся возврат', 'error'); return; }
+  actionsOpen.value = false;
+  returnOpen.value = { lines: src.map(l => ({ line: l, qty: Number(l.quantity) || 1, reason: '' })) };
+}
+async function createReturn() {
+  const r = returnOpen.value;
+  const body = {
+    operation: view.value === 'purchases' ? 'Закупка' : 'Продажа',
+    orderId: (r.lines[0].line.customerOrder && r.lines[0].line.customerOrder.id) || undefined,
+    lines: r.lines.map(x => ({
+      nomenclatureId: x.line.nomenclature && x.line.nomenclature.id,
+      quantity: x.qty, sourceLineId: x.line.id, reason: x.reason || 'Возврат из PWA'
+    })).filter(x => x.nomenclatureId)
+  };
+  if (!body.lines.length) { toast.show('У строк нет номенклатуры — возврат только по позициям справочника', 'error'); return; }
+  returnOpen.value = null;
+  await run(() => post('/returns', body), d => `Создан возврат ${d.number} — проведите его в разделе «Возвраты»`);
+}
+
+// K2: размещение отмеченных строк приёмки в ячейку (кладовщик, список снабжения)
+function openPlace() {
+  const src = lines.marked.filter(l => l.status === 'acceptance');
+  if (!src.length) { toast.show('Отметьте строки в статусе «Приёмка» — размещение даёт ячейку и перевод «На склад»', 'error'); return; }
+  actionsOpen.value = false;
+  cellPicker.value = src.map(l => l.id);
+}
+async function saveCells(cell) {
+  const ids = Array.isArray(cellPicker.value) ? cellPicker.value : [];
+  cellPicker.value = null;
+  if (!cell || !ids.length) return;
+  await run(async () => {
+    let ok = 0;
+    for (const id of ids) {
+      try { await api('POST', `/lines/${id}/cell`, { body: { cellId: cell.id } }); ok++; } catch { /* строка могла уйти из приёмки */ }
+    }
+    return { processed: ok, total: ids.length };
+  }, r => `Размещено в ${cell.code}: ${r.processed} из ${r.total}`);
+}
 
 function openDocument(doc) {
   sheetId.value = null;
@@ -578,6 +689,15 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             <AppIcon name="supply" /> {{ title }} <span class="hint">{{ node }}</span>
           </button>
         </div>
+        <div class="menu-title">Склад</div>
+        <div class="menu">
+          <button v-if="canPlace" :disabled="busy" @click="openPlace">
+            <AppIcon name="box" /> Разместить в ячейку <span class="hint">K2</span>
+          </button>
+          <button :disabled="busy" @click="openReturn">
+            <AppIcon name="undo" /> Возврат по отмеченным <span class="hint">C2 · K6</span>
+          </button>
+        </div>
       </template>
       <template v-else>
         <template v-if="transitions.length">
@@ -599,6 +719,15 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             </button>
           </div>
         </template>
+        <div class="menu-title">Возвраты и склад</div>
+        <div class="menu">
+          <button :disabled="busy" @click="openReturn">
+            <AppIcon name="undo" /> Возврат по отмеченным <span class="hint">C1 · M16 · K6</span>
+          </button>
+          <button v-if="canPlace" :disabled="busy" @click="openPlace">
+            <AppIcon name="box" /> Разместить в ячейку <span class="hint">K2</span>
+          </button>
+        </div>
         <div class="menu-title">Команды 1С</div>
         <div class="menu">
           <button :disabled="busy" @click="startJob()">
@@ -695,6 +824,33 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 
     <FieldSettings v-if="settings" :role="session.role" :view="view" :columns="matrix.columns" :tab="settings"
                    :sample="lines.currentLine || lines.items[0] || null" @close="settings = null" />
+
+    <!-- возврат по отмеченным (C1/C2) -->
+    <AppModal v-if="returnOpen" title="Возврат по отмеченным" @close="returnOpen = false">
+      <p class="muted small" style="margin: 0">Создаётся документ возврата; провести его (движение склада и статус «Возврат») — в разделе «Возвраты» (K6).</p>
+      <div v-for="(x, i) in returnOpen.lines" :key="x.line.id" class="row" style="gap: 8px; align-items: center; padding: 4px 0">
+        <span class="grow small" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ x.line.factName || (x.line.nomenclature && x.line.nomenclature.name) || x.line.id.slice(0, 8) }}</span>
+        <input v-model="x.qty" type="number" min="0.001" step="any" style="width: 84px" :aria-label="'Количество, строка ' + (i + 1)" />
+        <input v-model="x.reason" placeholder="Причина" style="width: 150px" :aria-label="'Причина, строка ' + (i + 1)" />
+      </div>
+      <template #actions>
+        <button @click="returnOpen = false">Отмена</button>
+        <button class="primary" :disabled="busy" @click="createReturn">Создать возврат</button>
+      </template>
+    </AppModal>
+
+    <!-- M10: отклонение комплектации с причиной -->
+    <AppModal v-if="rejectOpen" title="Отклонить комплектацию" @close="rejectOpen = null">
+      <p class="muted small" style="margin: 0">Строки вернутся в «Комплектуется», кладовщик получит уведомление с причиной (M10).</p>
+      <label class="field">Причина <input v-model="rejectOpen.reason" placeholder="недостача, брак, не та позиция…" autofocus /></label>
+      <template #actions>
+        <button @click="rejectOpen = null">Отмена</button>
+        <button class="primary" :disabled="!rejectOpen.reason.trim() || busy" @click="confirmReject">Отклонить</button>
+      </template>
+    </AppModal>
+
+    <!-- выбор ячейки (K2) -->
+    <CellPicker v-if="cellPicker" @pick="saveCells" @close="cellPicker = null" />
   </section>
 </template>
 
