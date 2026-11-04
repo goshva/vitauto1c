@@ -24,15 +24,15 @@
     {{range .Labor}}<tr><td class="n">{{.No}}</td><td>{{.Name}}</td><td class="n">{{qty .Qty}}</td><td class="n">{{money .Price}}</td><td class="n">{{money .Sum}}</td></tr>{{end}}
     {{if not .Labor}}<tr><td colspan="5">—</td></tr>{{end}}
   </table>
-  <p class="total">Работы: {{qty .NormHoursTotal}} н/ч{{if gt .LaborSum 0}}, сумма: {{money .LaborSum}}{{end}}</p>
+  <p class="total">Работы: {{qty .NormHoursTotal}} н/ч{{if gt .LaborSum 0.0}}, сумма: {{money .LaborSum}}{{end}}</p>
   <h2>Запчасти и материалы</h2>
   <table>
     <tr><th style="width:5%">№</th><th style="width:16%">Артикул</th><th>Наименование</th><th style="width:7%">Ед.</th><th style="width:9%">Кол-во</th><th style="width:22%">Статус обеспечения</th></tr>
     {{range .Parts}}<tr><td class="n">{{.No}}</td><td>{{.Article}}</td><td>{{.Name}}</td><td>{{.Unit}}</td><td class="n">{{qty .Qty}}</td><td>{{.Status}}</td></tr>{{end}}
     {{if not .Parts}}<tr><td colspan="6">—</td></tr>{{end}}
   </table>
-  <p class="total">Позиций: {{.PartsCount}}, количество: {{qty .PartsQtyTotal}}{{if gt .PartsSum 0}}, сумма: {{money .PartsSum}}{{end}}</p>
-  {{if gt .GrandTotal 0}}<p class="grand">Итого: {{money .GrandTotal}}</p>{{end}}
+  <p class="total">Позиций: {{.PartsCount}}, количество: {{qty .PartsQtyTotal}}{{if gt .PartsSum 0.0}}, сумма: {{money .PartsSum}}{{end}}</p>
+  {{if gt .GrandTotal 0.0}}<p class="grand">Итого: {{money .GrandTotal}}</p>{{end}}
   {{if .Comment}}<p>Примечание: {{.Comment}}</p>{{end}}
   <p class="sign">Принял в ремонт ____________________ / ____________________</p>
   <p class="sign">Выполнил ____________________ / ____________________</p>
