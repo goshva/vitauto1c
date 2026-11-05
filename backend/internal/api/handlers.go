@@ -256,7 +256,13 @@ func (app *App) Register(mux *http.ServeMux) {
 		reply(w, 204, nil, app.ARM.DeleteOrder(r.Context(), actor(r), r.PathValue("id")))
 	})
 	h("POST /sales/supplier-orders", func(w http.ResponseWriter, r *http.Request) {
-		writeProblem(w, &arm.Problem{Status: 501, Code: "not_supported", Message: "команда «Заказать» — через «В работе» (POST /sales/jobs)"})
+		var b struct{ LineIDs []string }
+		if err := body(r, &b); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		v, err := app.ARM.SupplierOrder(r.Context(), actor(r), b.LineIDs)
+		reply(w, 201, v, err)
 	})
 	h("POST /supply/status", func(w http.ResponseWriter, r *http.Request) {
 		var b struct {

@@ -35,11 +35,7 @@ const DOC_SETS = { customer_order: 'Document_ЗаказПокупателя', su
 
 const JOBS = new Map();   // итоги «В работе» (need_split/failed в регистр не пишутся)
 
-export const NOT_SUPPORTED = {
-  'POST /sales/supplier-orders': 'команда «Заказать» — в АРМ заглушка (заказ поставщику создаёт «В работе»)'
-};
-
-// Почему ячейку нельзя менять (как useMatrixStore.denyReason) — или null
+export const NOT_SUPPORTED = {};
 export function denyReason(column, line, userName, statuses) {
   if (!column.writable) return 'поле только для чтения';
   if (line.locked) return 'строка заблокирована фоном';
@@ -412,6 +408,67 @@ export function createBackend({ baseUrl, session, log }) {
     return null;
   }
 
+  // POST /sales/supplier-orders { lineIds } — как Go-реализация arm.SupplierOrder: один заказ поставщику
+  // на связку «поставщик + договор + заказ покупателя». Закупки переходят в «Заказано», отметка снимается;
+  // связанная продажа того же ключа связи, количества и без партии — тоже «Заказано».
+  // Проведение (Posted) OData 1С не позволяет из клиента — заказ создаётся непроведённым, проводит его 1С.
+  async function createSupplierOrder({ lineIds }) {
+    requireUser();
+    if (!['supply', 'manager', 'admin'].includes(role())) fail(403, 'matrix_denied', 'Заказ поставщику оформляет снабжение, менеджер или администратор');
+    const ids = [...new Set((Array.isArray(lineIds) ? lineIds : []).filter(Boolean))];
+    if (!ids.length) fail(400, 'bad_request', 'lineIds: id отмеченных строк закупок', 'lineIds');
+    const f = ids.map(id => `ИдентификаторЗаписи eq ${guid(id)}`).join(' or ');
+    const recs = await od.list(ARM, { $filter: `(${f}) and ВидОперации eq 'Закупка' and ОтметкаСтроки eq true and АвторСтроки_Key eq ${guid(me())}
+      and (СтатусСтроки eq 'Черновик' or СтатусСтроки eq 'ВРаботе') and ДокументЗаказПоставщику_Key eq ${guid(EMPTY)} and Удаление eq false` });
+    if (recs.length !== ids.length) fail(409, 'nothing_marked', 'Отметьте свои закупки в статусах «Черновик» или «В работе» без заказа поставщику');
+    for (const r of recs) {
+      if (!r.Поставщик_Key || r.Поставщик_Key === EMPTY) fail(409, 'validation', 'Не указан поставщик для закупки', 'Поставщик');
+      if (!r.Номенклатура_Key || r.Номенклатура_Key === EMPTY) fail(409, 'validation', 'Проверьте сопоставление (пустая номенклатура)', 'Номенклатура');
+      if (!(r.Количество > 0)) fail(409, 'validation', 'Нулевое количество', 'Количество');
+    }
+    const p = x => String(x).padStart(2, '0');
+    const d = new Date(Date.now() + 4 * 864e5);   // дата поступления +4 дня, как в Go
+    const receipt = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T12:00:00`;
+    const groups = new Map();
+    for (const r of recs) {
+      const k = `${r.Поставщик_Key}|${r.Договор_Key}|${r.ДокументЗаказПокупателя_Key}`;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    }
+    const out = [];
+    for (const list of groups.values()) {
+      const sup = list[0].Поставщик_Key, contract = list[0].Договор_Key, order = list[0].ДокументЗаказПокупателя_Key;
+      const items = list.map((r, i) => {
+        const amount = Math.round(r.Количество * (r.Цена || 0) * 100) / 100;
+        return { НомерСтроки: i + 1, Номенклатура_Key: r.Номенклатура_Key, Количество: r.Количество, Цена: r.Цена || 0,
+          Сумма: amount, Всего: amount, ДатаПоступления: receipt, ...(order !== EMPTY ? { ЗаказПокупателя_Key: order } : {}) };
+      });
+      const so = await od.post('Document_ЗаказПоставщику', {
+        Контрагент_Key: sup, ...(contract !== EMPTY ? { Договор_Key: contract } : {}),
+        ...(order !== EMPTY ? { ЗаказПокупателя_Key: order } : {}),
+        ВидОперации: 'ЗаказНаЗакупку', ДатаПоступления: receipt,
+        СуммаДокумента: Math.round(items.reduce((s, x) => s + x.Всего, 0) * 100) / 100,
+        Комментарий: 'АРМ PWA: заказ по выбранным закупкам', Запасы: items });
+      const ref = { id: so.Ref_Key, kind: 'supplier_order', number: so.Number || '', date: (so.Date || '').slice(0, 10), posted: !!so.Posted };
+      out.push(ref);
+      const keys = {};
+      for (const r of list) {
+        await od.patch(keyPath(r), { ДокументЗаказПоставщику_Key: so.Ref_Key, СтатусСтроки: 'Заказано', ДатаЗаказаПоставщику: today() + 'T00:00:00', ...unmark });
+        if (r.КлючСвязиСтрок) keys[r.КлючСвязиСтрок] = r.Количество;
+      }
+      if (!Object.keys(keys).length) continue;
+      // продажа того же количества без партии, связанная с закупкой, считается заказанной вместе с ней
+      const kf = Object.keys(keys).map(k => `КлючСвязиСтрок eq ${lit(k)}`).join(' or ');
+      const sales = await od.list(ARM, { $filter: `(${kf}) and ВидОперации eq 'Продажа' and (СтатусСтроки eq 'Черновик' or СтатусСтроки eq 'ВРаботе')
+        and ДокументЗаказПоставщику_Key eq ${guid(EMPTY)} and Партия_Key eq ${guid(EMPTY)} and Удаление eq false` });
+      for (const sl of sales) {
+        if (keys[sl.КлючСвязиСтрок] !== sl.Количество) continue;
+        await od.patch(keyPath(sl), { ДокументЗаказПоставщику_Key: so.Ref_Key, СтатусСтроки: 'Заказано', ДатаЗаказаПоставщику: today() + 'T00:00:00' });
+      }
+    }
+    return out;
+  }
+
   async function documentCard(kind, id) {
     const set = DOC_SETS[kind];
     if (!set) fail(404, 'not_found', 'Вид документа: ' + Object.keys(DOC_SETS).join(', '));
@@ -694,6 +751,7 @@ export function createBackend({ baseUrl, session, log }) {
       if (op === 'POST /sales/prepared') return ok(await prepared());
       if (op === 'POST /sales/shipments') return ok(await shipments(body || {}));
       if (op === 'POST /sales/imports') return ok(await importSheet(body || {}), 201);
+      if (op === 'POST /sales/supplier-orders') return ok(await createSupplierOrder(body || {}), 201);
       if (seg[1] === 'customer-orders') {
         if (method === 'POST' && seg.length === 2) return ok(await createOrder(body || {}), 201);
         if (method === 'POST' && seg[3] === 'post') return ok(await postOrder(seg[2]));

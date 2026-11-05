@@ -149,11 +149,42 @@ describe('OData: пишущие операции PWA', () => {
     await expect(m.call('POST', `/sales/customer-orders/${order}/post`)).rejects.toMatchObject({ status: 409, code: 'nothing_marked' });
   });
 
-  it('команды АРМ_OData: «В работе» без отметок — 409, задание по Ид, заказ поставщику — 501 (в АРМ заглушка)', async ({ skip }) => {
+  it('команды АРМ_OData: «В работе» без отметок — 409, задание по Ид — 404', async ({ skip }) => {
     if (!reachable) skip();
     const m = await session('arm.manager');
     await expect(m.call('POST', '/sales/jobs', { body: { allowSplit: false } })).rejects.toMatchObject({ status: 409, code: 'nothing_marked' });
     await expect(m.call('GET', '/jobs/cmd-00000000000000000000000000000000')).rejects.toMatchObject({ status: 404 });
-    await expect(m.call('POST', '/sales/supplier-orders', { body: {} })).rejects.toMatchObject({ status: 501 });
+  });
+
+  it('заказ поставщику: 400/403/409, по отмеченной закупке создаётся документ, строка → «Заказано» с снятой отметкой', async ({ skip }) => {
+    if (!reachable) skip();
+    const s = await session('arm.supply');
+    const rec = (await admin.list(ARM, { $filter: `ВидОперации eq 'Закупка' and СтатусСтроки eq 'Черновик' and Удаление eq false
+      and Поставщик_Key ne ${guid(EMPTY)} and Номенклатура_Key ne ${guid(EMPTY)} and Количество gt 0 and ДокументЗаказПоставщику_Key eq ${guid(EMPTY)}`, $top: 1 }))[0];
+    expect(rec, 'нужна закупка с поставщиком и номенклатурой (seed)').toBeTruthy();
+    const created = [];
+    try {
+      await expect(s.call('POST', '/sales/supplier-orders', { body: { lineIds: [] } })).rejects.toMatchObject({ status: 400, code: 'bad_request' });
+      const sk = await session('arm.storekeeper');
+      await expect(sk.call('POST', '/sales/supplier-orders', { body: { lineIds: [rec.ИдентификаторЗаписи] } })).rejects.toMatchObject({ status: 403, code: 'matrix_denied' });
+      // без отметки — ничего не заказано
+      await expect(s.call('POST', '/sales/supplier-orders', { body: { lineIds: [rec.ИдентификаторЗаписи] } })).rejects.toMatchObject({ status: 409, code: 'nothing_marked' });
+      await s.call('POST', `/lines/${rec.ИдентификаторЗаписи}/mark`);
+      const docs = await s.call('POST', '/sales/supplier-orders', { body: { lineIds: [rec.ИдентификаторЗаписи] } });
+      expect(docs).toHaveLength(1);
+      expect(docs[0].kind).toBe('supplier_order');
+      created.push(docs[0].id);
+      const after = await s.call('GET', `/lines/${rec.ИдентификаторЗаписи}`);
+      expect(after.status).toBe('ordered');
+      expect(after.marked).toBe(false);
+      expect(after.supplierOrder?.id).toBe(docs[0].id);
+      const lines = (await admin.list('Document_ЗаказПоставщику', { $filter: `Ref_Key eq ${guid(docs[0].id)}`, $expand: 'Запасы' }))[0];
+      expect(lines.Запасы.map(l => l.Номенклатура_Key)).toEqual([rec.Номенклатура_Key]);
+      // повтор по той же строке — уже не отмечена и есть заказ
+      await expect(s.call('POST', '/sales/supplier-orders', { body: { lineIds: [rec.ИдентификаторЗаписи] } })).rejects.toMatchObject({ status: 409, code: 'nothing_marked' });
+    } finally {
+      await restore(rec, ['СтатусСтроки', 'ОтметкаСтроки', 'АвторСтроки_Key', 'ДокументЗаказПоставщику_Key', 'ДатаЗаказаПоставщику']);
+      for (const id of created) await admin.patch(`Document_ЗаказПоставщику(${guid(id)})`, { DeletionMark: true }).catch(() => {});
+    }
   });
 });

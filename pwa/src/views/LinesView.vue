@@ -365,7 +365,16 @@ function jobClosed() {
 
 const closeSheets = () => { actionsOpen.value = false; };
 const prepared = () => { closeSheets(); return run(() => post('/sales/prepared'), result); };
-const supplierOrder = () => { closeSheets(); return run(() => post('/sales/supplier-orders', {}), result); };
+// POST /sales/supplier-orders: по отмеченным закупкам (сервер требует строки view=purchases,
+// отмеченные текущим пользователем, в «Черновик»/«В работе», без заказа поставщику)
+const canSupplierOrder = computed(() => view.value === 'purchases' && lines.marked.some(l => l.operation === 'purchase'));
+function supplierOrder() {
+  const marked = lines.marked.filter(l => l.operation === 'purchase');
+  if (!marked.length) { toast.show('Отметьте закупки, по которым нужен заказ поставщику', 'error'); return; }
+  closeSheets();
+  return run(() => post('/sales/supplier-orders', { lineIds: marked.map(l => l.id) }),
+    docs => `Создано заказов поставщикам: ${docs.length} (${docs.map(d => d.number).join(', ')})`);
+}
 const postOrder = () => run(() => post(`/sales/customer-orders/${currentOrder.value.id}/post`), r => `Заказ проведён. ${result(r)}`);
 async function deleteOrder() {
   if (!confirm(`Удалить заказ ${currentOrder.value.number}? Заказ помечается на удаление, строки АРМ удаляются.`)) return;
@@ -783,7 +792,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             <span class="switch"><input type="checkbox" v-model="allowSplit" /><span></span></span>
           </label>
           <button v-if="view === 'sales'" :disabled="busy" @click="prepared"><AppIcon name="check" /> Подготовлено</button>
-          <button v-if="view === 'sales'" :disabled="busy" @click="supplierOrder"><AppIcon name="purchases" /> Заказать поставщику</button>
+          <button v-if="view === 'purchases'" :disabled="busy || !canSupplierOrder" @click="supplierOrder"><AppIcon name="purchases" /> Заказать поставщику</button>
         </div>
       </template>
       <div class="menu">

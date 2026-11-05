@@ -440,15 +440,36 @@ paths:
   /sales/supplier-orders:
     post:
       tags: [sales, documents]
-      summary: Создать заказ поставщику по отмеченным закупкам
+      summary: Создать заказы поставщикам по выбранным закупкам (один заказ на поставщика, договор и заказ покупателя)
       operationId: createSupplierOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineIds]
+              properties:
+                lineIds:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+                  description: Строки закупок, отмеченные текущим пользователем (id строки АРМ)
       responses:
         '201':
-          description: Заказ поставщику
+          description: Созданные заказы поставщикам
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentRef'
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentRef'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/shipments:

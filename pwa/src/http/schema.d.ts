@@ -93,8 +93,9 @@ export interface paths {
          * @description То же, что правка ячейки в форме продаж (`ЗаписатьПолеСтрокиАРМ`) и отдельные
          *     обработчики выбора (номенклатура, партия, договор, поставщик, вид услуги,
          *     форма оплаты, количество, цена, коэффициент, комментарий, дата и номер отгрузки).
-         *     После записи сервер пересчитывает сумму себестоимости, цену продажи и коэффициент
-         *     по формулам матрицы и возвращает строку целиком.
+         *     После записи сервер пересчитывает сумму себестоимости, цену продажи и наценку (%)
+         *     по формулам матрицы и возвращает строку целиком. Цена продажи = себестоимость единицы
+         *     × (1 + наценка / 100); при ручном вводе цены наценка = (цена / себестоимость − 1) × 100.
          *
          */
         patch: operations["patchLineField"];
@@ -256,7 +257,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Создать заказ поставщику по отмеченным закупкам */
+        /** Создать заказы поставщикам по выбранным закупкам (один заказ на поставщика, договор и заказ покупателя) */
         post: operations["createSupplierOrder"];
         delete?: never;
         options?: never;
@@ -1141,8 +1142,8 @@ export interface paths {
          * Сигнальный WebSocket (только уведомления об изменениях)
          * @description Единственный real-time канал. **Данных не переносит** — только сигналы, какой GET-эндпоинт
          *     устарел. PWA по сигналу перевызывает список и держит актуальные данные в сессии.
-         *     Аутентификация: заголовок `Authorization: Bearer <token>` при handshake (браузерные WebSocket
-         *     заголовок не шлют — PWA передаёт токен так же, как в `fetch`).
+         *     Аутентификация: заголовок `Authorization: Bearer <token>` при handshake либо query-параметр
+         *     `token` (браузерные WebSocket заголовок не шлют).
          *
          *     Рамки сервера (JSON, минимальный размер):
          *
@@ -1283,6 +1284,7 @@ export interface components {
             paymentForm?: components["schemas"]["NamedRef"];
             rrc?: number;
             paid?: string;
+            /** @description Наценка, % (Цена продажи = Себестоимость единицы × (1 + Наценка / 100)). */
             coefficient?: number;
             salePrice?: number;
             readonly saleSum?: number;
@@ -1309,7 +1311,7 @@ export interface components {
              */
             field: string;
             /** @description Скаляр, uuid ссылки или boolean. Для очистки ссылки — null. */
-            value: unknown;
+            value: (string | null) | number | boolean;
         };
         AddLinesRequest: {
             /** @enum {string} */
@@ -2174,17 +2176,26 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Строки закупок, отмеченные текущим пользователем (id строки АРМ) */
+                    lineIds: string[];
+                };
+            };
+        };
         responses: {
-            /** @description Заказ поставщику */
+            /** @description Созданные заказы поставщикам */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentRef"];
+                    "application/json": components["schemas"]["DocumentRef"][];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
         };
     };
@@ -3417,7 +3428,10 @@ export interface operations {
     };
     openWebSocket: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Токен сеанса (для браузерных WebSocket, которые не шлют Authorization) */
+                token?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

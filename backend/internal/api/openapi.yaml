@@ -240,8 +240,9 @@ paths:
         То же, что правка ячейки в форме продаж (`ЗаписатьПолеСтрокиАРМ`) и отдельные
         обработчики выбора (номенклатура, партия, договор, поставщик, вид услуги,
         форма оплаты, количество, цена, коэффициент, комментарий, дата и номер отгрузки).
-        После записи сервер пересчитывает сумму себестоимости, цену продажи и коэффициент
-        по формулам матрицы и возвращает строку целиком.
+        После записи сервер пересчитывает сумму себестоимости, цену продажи и наценку (%)
+        по формулам матрицы и возвращает строку целиком. Цена продажи = себестоимость единицы
+        × (1 + наценка / 100); при ручном вводе цены наценка = (цена / себестоимость − 1) × 100.
       operationId: patchLineField
       requestBody:
         required: true
@@ -439,15 +440,36 @@ paths:
   /sales/supplier-orders:
     post:
       tags: [sales, documents]
-      summary: Создать заказ поставщику по отмеченным закупкам
+      summary: Создать заказы поставщикам по выбранным закупкам (один заказ на поставщика, договор и заказ покупателя)
       operationId: createSupplierOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineIds]
+              properties:
+                lineIds:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+                  description: Строки закупок, отмеченные текущим пользователем (id строки АРМ)
       responses:
         '201':
-          description: Заказ поставщику
+          description: Созданные заказы поставщикам
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentRef'
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentRef'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
   /sales/shipments:
@@ -1524,8 +1546,8 @@ paths:
       description: |
         Единственный real-time канал. **Данных не переносит** — только сигналы, какой GET-эндпоинт
         устарел. PWA по сигналу перевызывает список и держит актуальные данные в сессии.
-        Аутентификация: заголовок `Authorization: Bearer <token>` при handshake (браузерные WebSocket
-        заголовок не шлют — PWA передаёт токен так же, как в `fetch`).
+        Аутентификация: заголовок `Authorization: Bearer <token>` при handshake либо query-параметр
+        `token` (браузерные WebSocket заголовок не шлют).
 
         Рамки сервера (JSON, минимальный размер):
 
@@ -1538,6 +1560,13 @@ paths:
 
         Отправка батча `change` — с дебаунсом 300 мс на клиент, не чаще одного сообщения на всплеск
         изменений. Формат и правила — `asyncapi.yaml` (v0.2.0).
+      parameters:
+        - name: token
+          in: query
+          required: false
+          description: Токен сеанса (для браузерных WebSocket, которые не шлют Authorization)
+          schema:
+            type: string
       operationId: openWebSocket
       responses:
         '101':
@@ -1870,6 +1899,7 @@ components:
           type: string
         coefficient:
           type: number
+          description: Наценка, % (Цена продажи = Себестоимость единицы × (1 + Наценка / 100)).
         salePrice:
           type: number
         saleSum:
@@ -1925,7 +1955,11 @@ components:
           example: Количество
         value:
           description: Скаляр, uuid ссылки или boolean. Для очистки ссылки — null.
-          nullable: true
+          oneOf:
+            - type: string
+              nullable: true
+            - type: number
+            - type: boolean
     AddLinesRequest:
       type: object
       required: [view, nomenclatureIds]
