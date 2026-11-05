@@ -585,3 +585,104 @@ insert into doc.return_line (id, return_order_id, sort_order, nomenclature_id, q
   (uuidv7(),
    (select id from doc.return_order where onec_key = 'demo:ret:happy'), 1,
    '77777777-7777-7777-7777-777777777702', 1, 250.00, 250.00, 'Не подошёл', 'demo:rel:happy');
+
+-- ============================================================
+-- СЦЕНАРИИ 12–13: sale_purchase — продажа клиенту с закупкой под заказ
+-- sp:1 — закупка приходована и отгружена клиенту (полный цикл);
+-- sp:2 — закупка в пути, продажа ждёт поступления товара.
+-- ============================================================
+
+insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,
+  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, manual_edit, onec_key, sort_order)
+values
+  (uuidv7(), 'lk:sp:1', 'Продажа', 'Черновик',
+   '66666666-6666-6666-6666-666666666601', null, '77777777-7777-7777-7777-777777777701', 2, 0, 1800.00, 2000.00, 1.0,
+   'Масло моторное 5W-30 (5л)', 'MOT5W30-5L', '2', 'M111AA777', 'Заявка-011', 'Продажа под закупку у АвтооптТорг', '2026-11-03 09:00:00', '44444444-4444-4444-4444-444444444401', false,
+   'demo:sp:1', 1),
+  (uuidv7(), 'lk:sp:2', 'Продажа', 'Черновик',
+   '66666666-6666-6666-6666-666666666602', null, '77777777-7777-7777-7777-777777777705', 1, 0, 600.00, 800.00, 1.0,
+   'Свеча зажигания', 'SPK-IR-001', '1', 'M222BB777', 'Заявка-012', 'Продажа под закупку у поставщика ЗапчастьОпт', '2026-11-04 10:00:00', '44444444-4444-4444-4444-444444444401', false,
+   'demo:sp:2', 1)
+on conflict (onec_key) do update set status = excluded.status, updated_at = now();
+
+insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,
+  fact_name, fact_article, fact_qty, client_order_number, comment, order_date, warehouse_id, manual_edit, onec_key, sort_order)
+values
+  (uuidv7(), 'lk:sp:3', 'Закупка', 'Заказано',
+   null, '66666666-6666-6666-6666-666666666604', '77777777-7777-7777-7777-777777777701', 2, 1200.00, 1800.00, 2000.00, 1.0,
+   'Масло моторное 5W-30 (5л)', 'MOT5W30-5L', '2', 'Заявка-011', 'Закупка под заказ клиента ЗК-006', '2026-11-03 11:00:00', '44444444-4444-4444-4444-444444444401', true,
+   'demo:sp:3', 1),
+  (uuidv7(), 'lk:sp:4', 'Закупка', 'Заказано',
+   null, '66666666-6666-6666-6666-666666666605', '77777777-7777-7777-7777-777777777705', 1, 300.00, 600.00, 800.00, 1.0,
+   'Свеча зажигания', 'SPK-IR-001', '1', 'Заявка-012', 'Закупка под заказ клиента ЗК-007', '2026-11-04 11:00:00', '44444444-4444-4444-4444-444444444401', true,
+   'demo:sp:4', 1)
+on conflict (onec_key) do update set status = excluded.status, cost_price = excluded.cost_price, updated_at = now();
+
+-- Продажа 1: заказ клиента → закупка оплачена → в пути → приёмка на склад → отгрузка клиенту
+update arm.line set status = 'Заказано', comment = 'Заказ клиента ЗК-006 подтверждён' where onec_key = 'demo:sp:1';
+update arm.line set status = 'Оплачено' where onec_key = 'demo:sp:3';
+update arm.line set status = 'ТоварВПути' where onec_key = 'demo:sp:3';
+update arm.line set status = 'НаСкладе', batch_id = 'dd000000-0000-0000-0000-000000000001', stock_qty = 2, receipt_date = '2026-11-04', upd_date = '2026-11-04', upd_number = 'УПД-012'
+where onec_key = 'demo:sp:3';
+update arm.line set status = 'Отгружено', shipment_date = '2026-11-05', shipment_number = 'РН-012' where onec_key = 'demo:sp:1';
+update arm.line set status = 'Выполнено', signed_original = true where onec_key = 'demo:sp:1';
+
+-- Продажа 2: заказ клиента ждёт закупку, закупка в пути
+update arm.line set status = 'Заказано', comment = 'Ожидание поступления от поставщика' where onec_key = 'demo:sp:2';
+update arm.line set status = 'Оплачено' where onec_key = 'demo:sp:4';
+update arm.line set status = 'ТоварВПути' where onec_key = 'demo:sp:4';
+
+insert into doc.customer_order (id, date, number, operation, posted, author_id, ship_date,
+  counterparty_id, organization_id, responsible_id, amount_includes_vat, total, client_order_number) values
+  ('a0000000-0000-0000-0000-000000000006', '2026-11-03 09:00:00', 'ЗК-006', 'Продажа', true,
+   '00000000-0000-0000-0000-000000000002', '2026-11-05',
+   '66666666-6666-6666-6666-666666666601', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000002', true, 3600.00, 'Заявка-011'),
+  ('a0000000-0000-0000-0000-000000000007', '2026-11-04 10:00:00', 'ЗК-007', 'Продажа', true,
+   '00000000-0000-0000-0000-000000000002', '2026-11-07',
+   '66666666-6666-6666-6666-666666666602', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000002', true, 600.00, 'Заявка-012')
+on conflict (id) do update set total = excluded.total, number = excluded.number, deleted = false, updated_at = now();
+
+insert into doc.supplier_order (id, date, number, operation, posted, author_id, receipt_date,
+  counterparty_id, organization_id, responsible_id, warehouse_id, amount_includes_vat, total, customer_order_id) values
+  ('b0000000-0000-0000-0000-000000000005', '2026-11-03 11:00:00', 'ЗП-005', 'Закупка', true,
+   '00000000-0000-0000-0000-000000000003', '2026-11-04',
+   '66666666-6666-6666-6666-666666666604', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000003', '44444444-4444-4444-4444-444444444401', true, 2400.00,
+   'a0000000-0000-0000-0000-000000000006'),
+  ('b0000000-0000-0000-0000-000000000006', '2026-11-04 11:00:00', 'ЗП-006', 'Закупка', true,
+   '00000000-0000-0000-0000-000000000003', '2026-11-06',
+   '66666666-6666-6666-6666-666666666605', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000003', '44444444-4444-4444-4444-444444444401', true, 300.00,
+   'a0000000-0000-0000-0000-000000000007')
+on conflict (id) do update set total = excluded.total, number = excluded.number, customer_order_id = excluded.customer_order_id, deleted = false, updated_at = now();
+
+insert into doc.receipt (id, date, number, operation, posted, author_id, incoming_no, incoming_date,
+  counterparty_id, organization_id, responsible_id, warehouse_id, amount_includes_vat, total, supplier_order_id) values
+  ('c1000000-0000-0000-0000-000000000004', '2026-11-04 12:00:00', 'ПН-004', 'Закупка', true,
+   '00000000-0000-0000-0000-000000000004', 'УПД-012', '2026-11-04',
+   '66666666-6666-6666-6666-666666666604', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000004', '44444444-4444-4444-4444-444444444401', true, 2400.00, 'b0000000-0000-0000-0000-000000000005')
+on conflict (id) do update set total = excluded.total, number = excluded.number, deleted = false, updated_at = now();
+
+insert into doc.shipment (id, date, number, operation, posted, author_id,
+  counterparty_id, organization_id, responsible_id, warehouse_id, amount_includes_vat, total, customer_order_id) values
+  ('d1000000-0000-0000-0000-000000000006', '2026-11-05 14:00:00', 'РН-012', 'Продажа', true,
+   '00000000-0000-0000-0000-000000000004',
+   '66666666-6666-6666-6666-666666666601', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000004', '44444444-4444-4444-4444-444444444401', true, 3600.00, 'a0000000-0000-0000-0000-000000000006')
+on conflict (id) do update set total = excluded.total, number = excluded.number, deleted = false, updated_at = now();
+
+-- Привязка строк АРМ к документам сценариев sale_purchase
+update arm.line set customer_order_id = 'a0000000-0000-0000-0000-000000000006', shipment_doc_id = 'd1000000-0000-0000-0000-000000000006' where onec_key = 'demo:sp:1';
+update arm.line set customer_order_id = 'a0000000-0000-0000-0000-000000000007' where onec_key = 'demo:sp:2';
+update arm.line set supplier_order_id = 'b0000000-0000-0000-0000-000000000005', receipt_id = 'c1000000-0000-0000-0000-000000000004' where onec_key = 'demo:sp:3';
+update arm.line set supplier_order_id = 'b0000000-0000-0000-0000-000000000006' where onec_key = 'demo:sp:4';
+
+-- Договоры и форма оплаты (по образцу общих правил выше)
+update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000001' where onec_key = 'demo:sp:3';
+update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000002' where onec_key = 'demo:sp:4';
+update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000003' where onec_key = 'demo:sp:1';
+update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000004' where onec_key = 'demo:sp:2';
+update arm.line set payment_form_id = '33333333-3333-3333-3333-333333333203' where onec_key in ('demo:sp:1', 'demo:sp:3');
+
+-- Связь существующих закупок с заказами клиентов (раньше customer_order_id у supplier_order не проставлялся)
+update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000001' where id = 'b0000000-0000-0000-0000-000000000001';
+update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000004' where id = 'b0000000-0000-0000-0000-000000000002';
+update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000005' where id = 'b0000000-0000-0000-0000-000000000003';
+update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000003' where id = 'b0000000-0000-0000-0000-000000000004';
