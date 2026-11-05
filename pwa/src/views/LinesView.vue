@@ -899,5 +899,5 @@ tr.group:hover td { background: color-mix(in srgb, var(--accent-2) 75%, var(--su
   padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-2); animation: up .2s; }
 .sb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .sb-info .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (min-width: 900px) { .selbar { left: calc(232px + 24px); right: 24px; bottom: 20px; max-width: 900px; } }
+@media (min-width: 900px) { .selbar { left: calc(var(--nav-w, 232px) + 24px); right: 24px; bottom: 20px; max-width: 900px; transition: left .2s; } }
 </style>

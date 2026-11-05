@@ -8,6 +8,7 @@ export const useUiStore = defineStore('ui', {
     theme: load('ui.theme', 'system'),      // system | light | dark
     layout: load('ui.layout', 'auto'),      // auto | cards | table
     density: load('ui.density', 'comfortable'), // comfortable | compact
+    navCollapsed: load('ui.navCollapsed', false), // боковая панель на ПК: свёрнута в узкий столбик с иконками
     wide: typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(min-width: 900px)').matches : true
   }),
   getters: {
@@ -25,6 +26,7 @@ export const useUiStore = defineStore('ui', {
     setTheme(t) { this.theme = t; save('ui.theme', t === 'system' ? null : t); this.applyTheme(); },
     setLayout(l) { this.layout = l; save('ui.layout', l === 'auto' ? null : l); },
     setDensity(d) { this.density = d; save('ui.density', d === 'comfortable' ? null : d); },
+    toggleNav() { this.navCollapsed = !this.navCollapsed; save('ui.navCollapsed', this.navCollapsed ? true : null); },
     applyTheme() {
       if (typeof document === 'undefined') return;
       const el = document.documentElement;

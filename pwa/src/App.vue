@@ -56,6 +56,7 @@ const moreActive = computed(() => nav.value.some(n => !n.main && typeof n.to ===
 const CATALOG_TITLES = { goods: 'Товары', services: 'Услуги', cars: 'Машины' };
 const title = computed(() => (route.name === 'lines' ? VIEW_TITLES[route.params.view]
   : route.name === 'catalog' ? CATALOG_TITLES[route.params.kind] : PAGE_TITLES[route.name] || 'АРМ'));
+watch(title, t => { document.title = t && t !== 'АРМ' ? `${t} · АРМ` : 'АРМ'; }, { immediate: true });
 
 // Сессия истекла (401) — на вход
 watch(() => session.expired, v => {
@@ -74,10 +75,14 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
 </script>
 
 <template>
-  <div :class="['app', { 'logged-in': session.loggedIn }]">
+  <div :class="['app', { 'logged-in': session.loggedIn, 'nav-collapsed': session.loggedIn && ui.navCollapsed }]">
     <nav v-if="session.loggedIn" class="navbar" aria-label="Разделы">
-      <div class="brand"><span class="logo"><AppIcon name="layers" :size="18" /></span>АРМ</div>
-      <RouterLink v-for="n in nav" :key="n.title" :to="n.to" :class="{ 'desk-only': !n.main }">
+      <div class="brand"><span class="logo"><AppIcon name="layers" :size="18" /></span><span class="label">АРМ</span></div>
+      <button class="desk-only nav-toggle" :aria-expanded="String(!ui.navCollapsed)" :aria-label="ui.navCollapsed ? 'Развернуть меню' : 'Свернуть меню'" :title="ui.navCollapsed ? 'Развернуть меню' : 'Свернуть меню'" @click="ui.toggleNav()">
+        <span class="pill"><AppIcon :name="ui.navCollapsed ? 'right' : 'left'" /></span>
+        <span class="label">Свернуть</span>
+      </button>
+      <RouterLink v-for="n in nav" :key="n.title" :to="n.to" :class="{ 'desk-only': !n.main }" :title="ui.navCollapsed ? n.title : null" :aria-label="ui.navCollapsed ? n.title : null">
         <span class="pill"><AppIcon :name="n.icon" /></span>
         <span class="label">{{ n.title }}</span>
         <span v-if="n.badge" class="nav-badge">{{ n.badge }}</span>
@@ -88,10 +93,13 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
         <span v-if="log.errors" class="nav-badge">{{ log.errors }}</span>
       </button>
       <div class="spacer desk-only"></div>
-      <button class="desk-only" @click="more = true"><span class="pill"><AppIcon name="sliders" /></span><span class="label">Настройки</span></button>
+      <button class="desk-only" :title="ui.navCollapsed ? 'Настройки' : null" :aria-label="ui.navCollapsed ? 'Настройки' : null" @click="more = true"><span class="pill"><AppIcon name="sliders" /></span><span class="label">Настройки</span></button>
       <div class="who">
-        <b>{{ session.user.userName }}</b>
-        <span class="muted">{{ ROLE_TITLES[session.role] || session.role }}</span>
+        <span class="who-icon"><AppIcon name="user" :size="18" /></span>
+        <div class="who-text">
+          <b>{{ session.user.userName }}</b>
+          <span class="muted">{{ ROLE_TITLES[session.role] || session.role }}</span>
+        </div>
       </div>
     </nav>
 
