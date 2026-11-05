@@ -168,7 +168,7 @@ func (s *Service) Lines(ctx context.Context, a Actor, q map[string]string) (*Lin
 		add("l.warehouse_id = ?::uuid", v)
 	}
 	if truthy(q["onlyWithPurchases"]) && view == "sales" {
-		where = append(where, "exists (select 1 from arm.line p where p.link_key = l.link_key and p.operation = 'Закупка' and not coalesce(p.deleted, false))")
+		where = append(where, "exists (select 1 from arm.line p join doc.supplier_order so on so.id = p.supplier_order_id where so.customer_order_id = l.customer_order_id and p.operation = 'Закупка' and not coalesce(p.deleted, false))")
 	}
 	limit, _ := strconv.Atoi(q["limit"])
 	if limit <= 0 {
