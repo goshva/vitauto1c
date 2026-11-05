@@ -13,6 +13,8 @@
     Пароль postgres (по умолчанию postgres).
 .PARAMETER SkipInit
     Пропустить инициализацию БД.
+.PARAMETER Reset
+    Пересоздать базу vitauto_app и залить демо-сид без вопроса.
 .EXAMPLE
     .\start-dev.ps1
     .\start-dev.ps1 -PgPassword 'secret' -SkipInit
@@ -20,7 +22,8 @@
 param(
     [int]$PgPort = 5432,
     [string]$PgPassword = 'postgres',
-    [switch]$SkipInit
+    [switch]$SkipInit,
+    [switch]$Reset
 )
 
 Set-StrictMode -Version Latest
@@ -35,6 +38,7 @@ if (-not $isAdmin) {
     $argsList = @("-PgPort", $PgPort)
     if ($PgPassword) { $argsList += "-PgPassword '$PgPassword'" }
     if ($SkipInit) { $argsList += '-SkipInit' }
+    if ($Reset) { $argsList += '-Reset' }
     Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" $($argsList -join ' ')"
     exit 0
 }
@@ -63,7 +67,7 @@ Write-Header "PostgreSQL"
 $pgRunning = $false
 try {
     $tcp = New-Object System.Net.Sockets.TcpClient
-    $tcp.Connect('localhost', $PgPort)
+    $tcp.Connect('127.0.0.1', $PgPort)
     $tcp.Close()
     $pgRunning = $true
     Write-Ok "PostgreSQL на порту $PgPort запущен"
@@ -74,7 +78,16 @@ try {
 # ── Инициализация БД ────────────────────────────────────────────────────────
 if (-not $SkipInit) {
     Write-Header "ИНИЦИАЛИЗАЦИЯ БАЗЫ"
-    & (Join-Path $Root 'init-db.ps1') -PgPort $PgPort -PgPassword $PgPassword
+    # Очистка — только по явному ответу: данные из импорта 1С и правки пользователя удаляются безвозвратно
+    if (-not $Reset) {
+        Write-Host "  Очистить базу и перезалить демо-сид? Все данные vitauto_app будут удалены." -ForegroundColor Yellow
+        $answer = Read-Host "  Введите y для очистки, Enter — оставить как есть (y/N)"
+        if ($answer -match '^(y|д|yes|да)$') { $Reset = $true }
+    }
+    if ($Reset) { Write-Step "Режим очистки: база будет пересоздана и заполнена сидом" }
+    $initArgs = @{ PgPort = $PgPort; PgPassword = $PgPassword }
+    if ($Reset) { $initArgs.Reset = $true }
+    & (Join-Path $Root 'init-db.ps1') @initArgs
     if ($LASTEXITCODE -ne 0 -and -not $pgRunning) { Write-Err "init-db.ps1 завершился с ошибкой"; exit 1 }
 } else {
     if (-not $pgRunning) { Write-Err "PostgreSQL не запущен, а инициализация пропущена (-SkipInit)"; exit 1 }
@@ -92,7 +105,7 @@ Pop-Location
 Write-Ok "Собрано: $GoExe"
 
 $env:VITAUTO_ADDR = '127.0.0.1:18100'
-$env:VITAUTO_DB = "postgres://postgres:${PgPassword}@localhost:${PgPort}/vitauto_app"
+$env:VITAUTO_DB = "postgres://postgres:${PgPassword}@127.0.0.1:${PgPort}/vitauto_app"
 $goProc = Start-Process -FilePath $GoExe -PassThru -WindowStyle Minimized
 Write-Ok "vitauto-api запущен (PID $($goProc.Id)), http://127.0.0.1:18100"
 
