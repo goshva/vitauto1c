@@ -80,6 +80,12 @@ export const useLinesStore = defineStore('lines', {
       await this.load();
       return data;
     },
+    // снять свои отметки вида без заказа (включая строки вне текущей страницы)
+    async clearUnorderedMarks() {
+      const { data } = await api('POST', '/selection', { body: { view: this.view, customerOrderId: '', marked: false } });
+      await this.load();
+      return data;
+    },
     async remove(line) {
       await api('DELETE', '/lines/' + line.id);
       await this.load();

@@ -312,7 +312,7 @@ async function markOrder(order, marked) {
 async function clearMyMarks() {
   actionsOpen.value = false;
   await run(async () => {
-    for (const l of lines.items.filter(x => x.marked && x.markedBy === userName.value)) await lines.toggleMark(l);
+    await lines.clearUnorderedMarks();
   }, 'Отметки сняты');
 }
 

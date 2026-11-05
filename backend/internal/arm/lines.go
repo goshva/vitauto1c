@@ -456,7 +456,17 @@ func (s *Service) MarkOrder(ctx context.Context, a Actor, view, orderID string, 
 	}
 	var n, total int
 	err := s.inTx(ctx, a, func(tx pgx.Tx) error {
-		ls, err := selectLines(ctx, tx, "customer_order_id = $1::uuid and operation = $2 and not coalesce(deleted, false) for update", orderID, viewOp(view))
+		// без заказа снимаются только собственные отметки вида: строки «Без заказа» не имеют кнопки группы
+		where := "customer_order_id = $1::uuid and operation = $2 and not coalesce(deleted, false) for update"
+		args := []any{orderID, viewOp(view)}
+		if orderID == "" {
+			if *marked {
+				return fail(400, "bad_request", "Без заказа можно только снять отметки", "marked")
+			}
+			where = "marked and marked_by_id = $1 and operation = $2 and not coalesce(deleted, false) for update"
+			args = []any{a.UserID, viewOp(view)}
+		}
+		ls, err := selectLines(ctx, tx, where, args...)
 		if err != nil {
 			return err
 		}
