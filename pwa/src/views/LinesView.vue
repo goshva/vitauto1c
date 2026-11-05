@@ -41,6 +41,17 @@ const isEmpty = (line, c) => {
   return v === undefined || v === null || v === '' || v === 0 || v === false;
 };
 const visibleColumns = computed(() => columnsPref.visible(session.role, view.value, matrix.columns, lines.items, isEmpty));
+// колонки визуально делятся по букве кода (В, К, М, Н, О, Р, С, Т): граница отмечает начало новой группы
+const bandStarts = computed(() => {
+  const starts = new Set();
+  let prev = null;
+  for (const c of visibleColumns.value) {
+    const band = (c.code || '').charAt(0);
+    if (band !== prev) starts.add(c.id);
+    prev = band;
+  }
+  return starts;
+});
 const cardFields = computed(() => columnsPref.cardColumns(session.role, view.value, matrix.columns));
 const columnsMode = computed(() => {
   const p = pref.value;
@@ -598,7 +609,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
           <tr>
             <th class="sticky-1">✓</th>
             <th>Статус</th>
-            <th v-for="c in visibleColumns" :key="c.id" :title="c.title + (c.writable ? '' : ' (только чтение)')">
+            <th v-for="c in visibleColumns" :key="c.id" :class="{ 'band-start': bandStarts.has(c.id) }" :title="c.title + (c.writable ? '' : ' (только чтение)')">
               <span class="code">{{ c.code }}</span>{{ c.title }}
             </th>
           </tr>
@@ -640,14 +651,14 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
                 <button class="link" :title="'Подробно'" @click.stop="openLine(r.line)"><span :class="['chip', statusTone(r.line.status)]">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span></button>
               </td>
               <td v-for="c in visibleColumns" :key="c.id"
-                  :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind) }"
+                  :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind), 'band-start': bandStarts.has(c.id) }"
                   :title="deny(r.line, c) || 'Изменить'"
                   @dblclick="startEdit(r.line, c)" @keydown.enter="startEdit(r.line, c)" :tabindex="deny(r.line, c) ? -1 : 0">
                 <template v-if="editing && editing.line.id === r.line.id && editing.column.id === c.id">
                   <input ref="editInput" v-model="editing.value" :type="editing.kind === 'date' ? 'date' : 'text'"
                          @keydown.enter.stop="commitEdit" @keydown.esc="editing = null" @blur="commitEdit" style="width: 150px" />
                 </template>
-                <template v-else>{{ display(r.line, c.field) }}</template>
+                <template v-else><span v-if="!display(r.line, c.field)" class="faint">—</span>{{ display(r.line, c.field) }}</template>
               </td>
             </tr>
           </template>
