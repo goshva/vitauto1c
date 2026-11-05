@@ -31,6 +31,9 @@ NOT_WRITABLE = {'ОтметкаСтроки', 'Порядок', 'СтатусС�
 # роли PWA -> роль матрицы (supply = storekeeper, как Снабжение в ROLE_ENUM_MAP)
 PWA_ROLES = {'manager': 'manager', 'storekeeper': 'storekeeper', 'chief_mechanic': 'chief_mechanic', 'admin': 'admin',
              'supplier': 'supplier', 'client': 'client', 'supply': 'storekeeper'}
+# подтверждено заказчиком: кладовщик и главный механик правят код АА и единицу на статусе «Новый»; админ — всё
+EDITABLE_BY_ROLE_IDS = {'code_aa', 'unit'}
+EDITABLE_BY_ROLE = {'storekeeper': {'new': ('code_aa', 'unit')}, 'chief_mechanic': {'new': ('code_aa', 'unit')}}
 
 
 def read(p):
@@ -62,12 +65,16 @@ def main():
             if not field:
                 continue
             if mrole == 'admin':
-                rights = ''.join('+' if field in admin_fields else '.' for _ in statuses)
+                # админ может всё за все роли: любой статус, все колонки (writable по-прежнему режет запись на бэкенде)
+                rights = '+' * len(statuses)
             else:
-                rights = ''.join('+' if model['masks'][s].get(cid, 0) & bit else '.' for s in statuses)
+                granted = EDITABLE_BY_ROLE.get(mrole, {})
+                rights = ''.join('+' if (model['masks'][s].get(cid, 0) & bit or cid in granted.get(s, ())) else '.'
+                                 for s in statuses)
+            writable = field not in NOT_WRITABLE or cid in EDITABLE_BY_ROLE_IDS
             cols.append({'id': cid, 'field': field, 'code': codes.get(cid, ''), 'title': titles.get(cid, cid),
                          'dataType': {'decimal': 'number', 'checkbox': 'checkbox', 'date': 'date', 'select': 'select'}.get(types.get(cid, 'text'), types.get(cid, 'text')),
-                         'writable': field not in NOT_WRITABLE, 'rights': rights})
+                         'writable': writable, 'rights': rights})
         out['roles'][pwa_role] = cols
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(json.dumps(out, ensure_ascii=False, indent=1) + '\n')

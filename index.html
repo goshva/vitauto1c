@@ -363,7 +363,7 @@
     {id:'invoice_number', title:'Счёт №', group:'payment'},
     {id:'invoice_date', title:'Дата счёта', group:'payment'},
     {id:'qty_norm_hours_client', title:'Кол-во норма час товар для клиента', group:'nomenclature', type:'decimal'},
-    {id:'coefficient', title:'Коэфф', group:'margin_open'},
+    {id:'coefficient', title:'Наценка, %', group:'margin_open'},
     {id:'extra_field_1', title:'Цена продажи', group:'pricing', type:'decimal'},
     {id:'extra_field_2', title:'Сумма продажи', group:'pricing', type:'decimal'},
     {id:'supplier', title:'Поставщик', group:'receipt'},
@@ -487,7 +487,7 @@
     {type:'formula', column:'sum', expr:'price * qty',
       text:'Сумма (себес.) = Цена (себес.) × Кол-во.'},
     {type:'formula', column:'extra_field_1', expr:'(rrc > 0 ? rrc : price) * coefficient', unless:'coefficient = 0',
-      text:'Цена продажи = РРЦ × Коэфф, если РРЦ заполнена; иначе Цена (себес.) × Коэфф. Пока Коэфф не заполнен, цена продажи вводится вручную.'},
+      text:'Цена продажи = Себестоимость × (1 + Наценка, % / 100). Пока наценка не заполнена, цена продажи вводится вручную.'},
     {type:'formula', column:'extra_field_2', expr:'qty_norm_hours_client > 0 ? qty_norm_hours_client * extra_field_1 : qty_fact * extra_field_1',
       text:'Сумма продажи = Кол-во (ФАКТ) × Цена продажи; если заполнено «Кол-во норма час товар для клиента» — Кол-во норма час × Цена продажи.'}
   ];
@@ -517,8 +517,8 @@
     }
     // Сумма себестоимости = цена себестоимости × количество.
     v.sum = (num(v.price) * num(v.qty)).toFixed(2);
-    // Цена продажи = база × Коэфф, где база — РРЦ, если она заполнена, иначе цена себестоимости.
-    // Пока Коэфф не заполнен, цена продажи остаётся введённой вручную.
+    // Цена продажи = себестоимость × (1 + наценка, % / 100).
+    // Пока наценка не заполнена, цена продажи остаётся введённой вручную.
     var hours = num(v.qty_norm_hours_client);
     var coef = num(v.coefficient);
     if (coef > 0){
@@ -539,7 +539,7 @@
     code_aa:'обяз. одно из Наим./Артикул/Код · подтягивает остальные',
     unit:'подтягивается из номенклатуры',
     sum:'= Цена (себес.) × Кол-во',
-    extra_field_1:'= РРЦ × Коэфф, если РРЦ заполнена; иначе Цена (себес.) × Коэфф',
+    extra_field_1:'= Себестоимость × (1 + Наценка, % / 100)',
     extra_field_2:'= Кол-во (ФАКТ) или норма-час × Цена продажи'
   };
 

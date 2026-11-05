@@ -125,7 +125,7 @@ async function pick(node, id) {
   await patch('manager', node, id, 'Номенклатура', NOM.id);
   await patch('manager', node, id, 'Количество', 1);
   await patch('manager', node, id, 'СебестоимостьЕдиницы', 500);
-  await patch('manager', node, id, 'Коэффициент', 1.3);
+  await patch('manager', node, id, 'Коэффициент', 30);
   await patch('manager', node, id, 'Поставщик', SUPPLIER.id);
 }
 async function buy(node, saleId) {
