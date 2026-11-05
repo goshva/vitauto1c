@@ -52,11 +52,11 @@ if (-not $SkipClean) {
 # STEP 1: NSI
 Run-Sql "seed\demo-app.sql" "NSI"
 
-# STEP 2: Stages
-Run-Sql "seed\demo-stages.sql" "Stages"
-
-# STEP 3: Scenarios
+# STEP 2: Scenarios (creates customer orders ZK-001..005)
 Run-Sql "seed\demo-data.sql" "Scenarios"
+
+# STEP 3: Stages (reference customer orders: FK arm.line.customer_order_id)
+Run-Sql "seed\demo-stages.sql" "Stages"
 
 # Summary
 Write-Host ""
