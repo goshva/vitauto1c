@@ -1,0 +1,6 @@
+# oapi-codegen: типы запросов и ответов из api/openapi.yaml (`task gen`). Серверные интерфейсы (strict-server)
+# включаются на этапе 4, когда появятся обработчики всех операций.
+package: api
+output: internal/api/types.gen.go
+generate:
+  models: true

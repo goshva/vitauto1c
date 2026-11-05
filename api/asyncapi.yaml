@@ -1,0 +1,126 @@
+asyncapi: 3.0.0
+info:
+  title: Витавто АРМ — события WebSocket
+  version: 0.2.0
+  description: |
+    Сигнальная система обновления страниц (план, раздел 11; ТЗ, ТР-RT1…RT4). WS перевозит ТОЛЬКО сигналы
+    минимального размера — сами данные клиент перезапрашивает нужным GET-эндпоинтом и держит актуальными
+    в рамках сессии. Источник событий — триггеры PostgreSQL LISTEN/NOTIFY:
+      vitauto_notices — новые/обновлённые уведомления (arm.notice);
+      vitauto_changes — инвалидация данных (строки АРМ, возвраты, заказ-наряды, неопознанные, запросы доступа).
+    Сигналы доставляются только ролям, которым изменения видны (роль берётся из сессии при подключении).
+    Пакетные команды дебаунсятся (300 мс): переход 50 строк даёт один change-пакет, а не 50 сообщений.
+    Если клиент отстал (переполнение очереди) — сервер шлёт resync: экран перезагружает данные полностью.
+servers:
+  local:
+    host: localhost:18100
+    pathname: /api/v1/ws
+    protocol: ws
+    description: vitauto-api (через Apache mod_proxy_wstunnel снаружи)
+channels:
+  ws:
+    address: /api/v1/ws
+    title: Единственный канал событий (подключение авторизовано Bearer-токеном сессии)
+    messages:
+      ping:
+        $ref: '#/components/messages/Ping'
+      pong:
+        $ref: '#/components/messages/Pong'
+      change:
+        $ref: '#/components/messages/Change'
+      resync:
+        $ref: '#/components/messages/Resync'
+      notice:
+        $ref: '#/components/messages/Notice'
+operations:
+  sendPing:
+    action: send
+    channel:
+      $ref: '#/channels/ws'
+    summary: Клиентский keepalive (сервер отвечает pong)
+    messages:
+      - $ref: '#/channels/ws/messages/ping'
+  receiveEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/ws'
+    summary: Сигналы сервера — по ним клиент инвалидирует кэш и перезапрашивает API
+    messages:
+      - $ref: '#/channels/ws/messages/pong'
+      - $ref: '#/channels/ws/messages/change'
+      - $ref: '#/channels/ws/messages/resync'
+      - $ref: '#/channels/ws/messages/notice'
+components:
+  messages:
+    Ping:
+      summary: keepalive клиента
+      payload:
+        type: object
+        required: [kind]
+        properties:
+          kind:
+            const: ping
+    Pong:
+      summary: ответ сервера на ping; сервер также сам шлёт ping каждые 30 с
+      payload:
+        type: object
+        required: [kind]
+        properties:
+          kind:
+            const: pong
+    Change:
+      summary: СИГНАЛ инвалидации — какие данные изменились, полный список id не перевозится
+      description: >
+        payload — массив сигналов (батч дебаунса). Клиент маппит entity на эндпоинты и перезапрашивает их:
+        line → GET /lines (свой view), return → GET /returns, work_order → GET /work-orders,
+        unidentified → GET /unidentified, access_request → GET /access-requests.
+        Строка line дополнительно содержит order — клиент может обновить только заказ.
+      payload:
+        type: object
+        required: [kind, payload]
+        properties:
+          kind:
+            const: change
+          payload:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              required: [e]
+              properties:
+                e:
+                  type: string
+                  enum: [line, return, work_order, unidentified, access_request]
+                id:
+                  type: string
+                  description: uuid изменившейся записи (для line — id строки)
+                op:
+                  type: string
+                  enum: [insert, update]
+    Resync:
+      summary: очередь клиента переполнена — пропущено слишком много, нужна полная перезагрузка экрана
+      payload:
+        type: object
+        required: [kind]
+        properties:
+          kind:
+            const: resync
+    Notice:
+      summary: новое уведомление — только id и узел; текст клиент берёт из GET /notifications
+      payload:
+        type: object
+        required: [kind, topic, payload]
+        properties:
+          kind:
+            const: notice
+          topic:
+            type: string
+            description: узел процесса (M8, M9, M10, M11, K9, M17, A3)
+          payload:
+            type: object
+            required: [noticeId, node]
+            properties:
+              noticeId:
+                type: string
+              node:
+                type: string

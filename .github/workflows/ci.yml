@@ -1,0 +1,62 @@
+# CI монорепозитория (план, раздел 4): контракты, Go, документы миграции, PWA.
+# Проверки, которым нужна база 1С (сверка, гейты G0.3/G0.5 с COM), выполняются на сервере через tools/migration/gate.ps1.
+name: ci
+on:
+  push:
+    branches: [migration/pg-go-vue, master]
+  pull_request:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Spectral (OpenAPI, AsyncAPI)
+        run: npx --yes @stoplight/spectral-cli@6.15.0 lint api/openapi.yaml api/asyncapi.yaml --fail-severity error
+      - name: Документы миграции (модель, DDD, ТЗ, инвентаризация)
+        run: node --test "tools/migration/tests/*.test.mjs"
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5434:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - name: Сгенерированный код актуален (task gen)
+        run: |
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+          cp ../api/openapi.yaml ../api/asyncapi.yaml internal/api/
+          oapi-codegen -config internal/api/oapi-codegen.yaml ../api/openapi.yaml
+          git diff --exit-code
+      - run: go vet ./...
+      - run: go test ./...
+        env:
+          VITAUTO_TEST_DB: postgres://postgres:postgres@localhost:5434/postgres?sslmode=disable
+
+  pwa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pwa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx vitest run
+      - run: npm run build

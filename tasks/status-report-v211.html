@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отчёт Витавто АРМ — сделано и осталось</title>
+<style>
+  :root {
+    --ink: #1a1f24;
+    --muted: #5c6570;
+    --line: #d8dde3;
+    --bg: #f3f5f7;
+    --card: #fff;
+    --ok: #1f6b3a;
+    --ok-bg: #e8f5ec;
+    --warn: #8a5a00;
+    --warn-bg: #fff3d6;
+    --bad: #9b1c1c;
+    --bad-bg: #fde8e8;
+    --info: #1a4a7a;
+    --info-bg: #e8f0f8;
+    --accent: #0d3b66;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.55 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    background: linear-gradient(135deg, #0d3b66 0%, #1a5a8a 55%, #2a7ab0 100%);
+    color: #fff;
+    padding: 2rem 1.5rem 1.75rem;
+  }
+  header .wrap, main, footer { max-width: 980px; margin: 0 auto; }
+  header h1 { margin: 0 0 .4rem; font-size: 1.65rem; font-weight: 650; letter-spacing: -.02em; }
+  header p { margin: 0; opacity: .92; font-size: .95rem; }
+  header .meta { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem .75rem; font-size: .82rem; }
+  .chip {
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.28);
+    padding: .25rem .6rem;
+    border-radius: 4px;
+  }
+  main { padding: 1.25rem 1.5rem 3rem; }
+  nav.toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  nav.toc h2 {
+    margin: 0 0 .5rem;
+    font-size: .9rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  nav.toc ol { margin: 0; padding-left: 1.25rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.25rem 1.35rem;
+    margin-bottom: 1rem;
+  }
+  section h2 {
+    margin: 0 0 .75rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: .5rem;
+  }
+  section h3 { margin: 1.1rem 0 .45rem; font-size: 1.02rem; }
+  p { margin: .4rem 0 .7rem; }
+  ul, ol { margin: .3rem 0 .8rem; padding-left: 1.3rem; }
+  li { margin: .28rem 0; }
+  .verdict {
+    border-left: 4px solid var(--warn);
+    background: var(--warn-bg);
+    padding: 1rem 1.15rem;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 1rem;
+  }
+  .verdict strong { color: var(--warn); }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: .65rem;
+    margin-bottom: 1.25rem;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: .85rem 1rem;
+  }
+  .stat .n { font-size: 1.65rem; font-weight: 700; line-height: 1.1; letter-spacing: -.03em; }
+  .stat .l { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+  .stat.ok .n { color: var(--ok); }
+  .stat.wait .n { color: var(--warn); }
+  .stat.later .n { color: var(--info); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+    margin: .5rem 0 1rem;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: .45rem .55rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef1f4; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code {
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: .86em;
+    background: #eef1f4;
+    padding: .05em .3em;
+    border-radius: 3px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 650;
+    padding: .15rem .45rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .b-ok { background: var(--ok-bg); color: var(--ok); }
+  .b-wait { background: var(--warn-bg); color: var(--warn); }
+  .b-later { background: var(--info-bg); color: var(--info); }
+  .b-skip { background: #eee; color: var(--muted); }
+  .test-block {
+    border: 1px solid #c5d4e8;
+    background: var(--info-bg);
+    border-radius: 8px;
+    padding: 1rem 1.15rem;
+    margin: .75rem 0;
+  }
+  .test-block h3 { margin-top: 0; color: var(--info); }
+  .check li { list-style: none; margin-left: 0; padding-left: 0; }
+  .check li::before { content: "☐ "; color: var(--muted); }
+  a.file { color: var(--accent); }
+  footer {
+    padding: 0 1.5rem 2.5rem;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  @media print {
+    body { background: #fff; }
+    nav.toc { display: none; }
+    section { break-inside: avoid; }
+    header { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Отчёт: Витавто АРМ — что сделано и что осталось</h1>
+    <p>Понятное резюме по ветке <code>fix/open-tasks</code>: релизы v2.10 и v2.11, открытые шаги и план ручной проверки.</p>
+    <div class="meta">
+      <span class="chip">Репо goshva/vitauto1c</span>
+      <span class="chip">Ветка fix/open-tasks @ 6032be2</span>
+      <span class="chip">Дата отчёта: 06.10.2026</span>
+      <span class="chip">process-api — вне scope (lab)</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="verdict">
+    <strong>Коротко.</strong>
+    В коде на ветке уже два продуктовых шага поверх <code>dev</code> (v2.8):
+    <b>v2.10</b> (номер отгрузки из накладной, статусы MVP, договор, А3-минимум)
+    и <b>v2.11</b> (права по матрице, заглушки колонок, ед.изм., тесты).
+    Всё запушено. <b>Не сделано вручную:</b> загрузка расширения на тестовую базу и прогон формы глазами.
+    Merge в <code>dev</code> — только по отдельному решению.
+  </div>
+
+  <div class="summary">
+    <div class="stat ok"><div class="n">v2.11</div><div class="l">код + .cfe<br>на GitHub</div></div>
+    <div class="stat ok"><div class="n">71</div><div class="l">автотеста ACL<br>зелёные</div></div>
+    <div class="stat wait"><div class="n">T00</div><div class="l">ручная приёмка<br>не начата</div></div>
+    <div class="stat later"><div class="n">D7</div><div class="l">merge → dev<br>ждёт ок</div></div>
+  </div>
+
+  <nav class="toc">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#done">Что сделано за всё время</a></li>
+      <li><a href="#left">Что осталось</a></li>
+      <li><a href="#manual">План ручного тестирования</a></li>
+      <li><a href="#links">Ссылки</a></li>
+    </ol>
+  </nav>
+
+  <section id="done">
+    <h2>1. Что сделано за всё время</h2>
+    <p>Работа шла на ветке <code>fix/open-tasks</code> (от <code>dev</code>). Лабораторный контур <code>process-api</code> (HTTP API, PWA) <b>не смешивали</b> с этой веткой и в прод не планировали.</p>
+
+    <h3>1.1. Релиз v2.10 — «закрыть повисания матрицы»</h3>
+    <p>Файл: <code>АРМЗакупокИПродаж_v2.10.cfe</code>. Коммит линейки: <code>226dd49</code> (+ patch-notes <code>78a4d1d</code>).</p>
+    <table>
+      <thead><tr><th>Тема</th><th>Простыми словами</th><th>Статус</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Номер отгрузки</td>
+          <td>Больше нельзя вписать номер руками. Система подставляет номер расходной накладной при отгрузке. Дату по-прежнему можно указать вручную.</td>
+          <td><span class="badge b-ok">в коде</span></td>
+        </tr>
+        <tr>
+          <td>Статусы</td>
+          <td>Кнопки «Резервирование», «Ожидаем поступление», «Возврат» (сначала только для администратора).</td>
+          <td><span class="badge b-ok">в коде</span></td>
+        </tr>
+        <tr>
+          <td>Договор</td>
+          <td>Если сменили заказчика — чужой договор очищается. Выбор договора только по текущему заказчику (это было раньше + доработка).</td>
+          <td><span class="badge b-ok">в коде</span></td>
+        </tr>
+        <tr>
+          <td>Документ подписан (А3)</td>
+          <td>Галка снимает «автора» строки и отметку (минимум для разблокировки).</td>
+          <td><span class="badge b-ok">в коде</span></td>
+        </tr>
+        <tr>
+          <td>Формулы цены / сумма</td>
+          <td>Пришли из v2.8 на <code>dev</code> (цена × количество и т.п.) — в ветке сохранены.</td>
+          <td><span class="badge b-ok">было на dev</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>1.2. Релиз v2.11 — «права как в матрице» + доработки</h3>
+    <p>Файл: <code>АРМЗакупокИПродаж_v2.11.cfe</code> (~482 КБ). Коммит: <code>6032be2</code>. Автотесты: <code>python tools/test_arm_matrix_rights.py</code> → 71 OK.</p>
+    <table>
+      <thead><tr><th>Тема</th><th>Простыми словами</th><th>Статус</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Права по ролям и статусам (ACL)</td>
+          <td>Появился модуль «матрица прав»: менеджер/кладовщик/клиент и др. могут править только то, что разрешено в матрице для <b>текущего статуса</b> строки. Нет роли в регистре — править нельзя (смотреть можно). Админ по-прежнему правит свой широкий список полей (как раньше), но не номер отгрузки и не статус «с ячейки».</td>
+          <td><span class="badge b-ok">в коде + тесты</span></td>
+        </tr>
+        <tr>
+          <td>Кнопки статусов</td>
+          <td>Теперь и <b>менеджер</b>, и администратор (не только админ). Менеджеру — только если матрица разрешает смену статуса в этой ситуации.</td>
+          <td><span class="badge b-ok">частично / MVP</span></td>
+        </tr>
+        <tr>
+          <td>Пять «пустых» колонок</td>
+          <td>№ шасси, кол-во в резерве, кол-во в пути, дата и № УПД — теперь настоящие поля регистра, а не пустая картинка. Кто что может писать — через те же права.</td>
+          <td><span class="badge b-ok">в коде</span></td>
+        </tr>
+        <tr>
+          <td>Ед. измерения (факт)</td>
+          <td>Выпадающий список: шт, компл, л, кг, м, н/ч.</td>
+          <td><span class="badge b-ok">в коде</span></td>
+        </tr>
+        <tr>
+          <td>Обязательные поля (минимум)</td>
+          <td>При смене статуса / очистке ключевых полей менеджеру могут отказать, если не заполнены обязательные (например госномер или агрегат). Документы и seed этим не ломаем.</td>
+          <td><span class="badge b-ok">минимум</span></td>
+        </tr>
+        <tr>
+          <td>Снабжение</td>
+          <td>Форма снабжения: чужие роли (клиент/поставщик/без роли) не жмут цепочку закупки и отметки.</td>
+          <td><span class="badge b-ok">минимум</span></td>
+        </tr>
+        <tr>
+          <td>Защита seed</td>
+          <td>Скрипт заполнения базы не молча идёт в <code>C:\1c_bases\…</code> без явного флага «можно на прод».</td>
+          <td><span class="badge b-ok">в скрипте</span></td>
+        </tr>
+        <tr>
+          <td>Документация</td>
+          <td>Планы, промпты задач, patch-notes, описание возвратов/печати (только постановка), обновление подписей в process.html.</td>
+          <td><span class="badge b-ok">в репо</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>1.3. Что сознательно не трогали</h3>
+    <ul>
+      <li>Ветку <code>process-api</code>, Node API и PWA — это лаборатория, не этот релиз.</li>
+      <li>Merge в <code>dev</code> / <code>master</code> / <code>basdev</code>.</li>
+      <li>Загрузку расширения на боевую базу.</li>
+      <li>Полный сценарий «механик», полный процесс возвратов и печать ведомости (есть только описания «что делать потом»).</li>
+    </ul>
+  </section>
+
+  <section id="left">
+    <h2>2. Что осталось</h2>
+
+    <h3>2.1. Нужно сделать вручную (без этого релиз «не принят»)</h3>
+    <table>
+      <thead><tr><th>#</th><th>Что</th><th>Зачем</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Загрузить <code>АРМЗакупокИПродаж_v2.11.cfe</code> на <b>тестовую</b> ИБ (LoadCfg + обновить БД, выключить безопасный режим расширения)</td>
+          <td>Код на диске ≠ проверено в 1С</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Пройти ручной чеклист ниже (раздел 3) и отметить pass/fail</td>
+          <td>Приёмка T00 / ACL / новые колонки</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Завести/проверить входы под ролями (менеджер, кладовщик, админ…)</td>
+          <td>Без этого нельзя проверить права</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Если найдутся критичные баги — hotfix (задача T00b)</td>
+          <td>Чинить только то, что реально сломалось</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>2.2. Решение владельца (не код)</h3>
+    <ul>
+      <li><b>D7:</b> вливать ли <code>fix/open-tasks</code> в <code>dev</code> после успешной приёмки.</li>
+    </ul>
+
+    <h3>2.3. Можно отложить (есть постановка, кода мало или нет)</h3>
+    <table>
+      <thead><tr><th>Тема</th><th>Состояние</th></tr></thead>
+      <tbody>
+        <tr><td>Полный набор переходов статусов (не только 3 кнопки)</td><td><span class="badge b-later">частично</span></td></tr>
+        <tr><td>Возвраты «как в process.html» (документы, сценарии)</td><td><span class="badge b-later">только план</span></td></tr>
+        <tr><td>Печать ведомости / уведомления</td><td><span class="badge b-later">только план</span></td></tr>
+        <tr><td>Процессный seed (заказы «как в жизни», не только статусы)</td><td><span class="badge b-later">только описание</span></td></tr>
+        <tr><td>Справочник авто и автозаполнение по госномеру</td><td><span class="badge b-skip">не делали (MVP без справочника)</span></td></tr>
+        <tr><td>Механик (G1–G9)</td><td><span class="badge b-skip">снято с горизонта</span></td></tr>
+        <tr><td>Допилить отдельные «немые» клики по колонкам (T02 хвост)</td><td><span class="badge b-later">после приёмки</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="manual">
+    <h2>3. План ручного тестирования</h2>
+    <p>Перед стартом: тестовая база (не боевая), расширение <b>v2.11</b> загружено, безопасный режим выключен, в АРМ есть строки (seed на эту же test-ИБ). Результаты удобно писать в <a class="file" href="acceptance-v2.10.md">acceptance-v2.10.md</a>.</p>
+
+    <div class="test-block">
+      <h3>Шаг 0. Подготовка</h3>
+      <ol class="check">
+        <li>Скопировать/указать путь тестовой ИБ (не <code>C:\1c_bases\autoservice</code> без отдельного ок).</li>
+        <li>LoadCfg: файл <code>АРМЗакупокИПродаж_v2.11.cfe</code> → обновить конфигурацию БД.</li>
+        <li>Проверить: расширение не в безопасном режиме.</li>
+        <li>При необходимости прогнать seed на <b>эту</b> test-ИБ (<code>seed-1c.ps1 -IbDir …</code>, без <code>-AllowProd</code> на боевую).</li>
+        <li>Убедиться, что у тестовых пользователей есть запись роли в регистре прав АРМ (см. <a class="file" href="test-arm-accounts.md">test-arm-accounts.md</a>).</li>
+      </ol>
+    </div>
+
+    <div class="test-block">
+      <h3>Блок A — регресс «как раньше» (v2.10-поведение внутри v2.11)</h3>
+      <p>Проверять под <b>Администратором</b>, если не указано иное.</p>
+      <ol class="check">
+        <li>АРМ открывается, в заголовках колонок видны коды матрицы (Е4, Р2…), порядок колонок привычный.</li>
+        <li>Меняются цена / количество — пересчитываются суммы (себестоимость и продажа).</li>
+        <li>«Договор с заказчиком»: видны только договоры выбранного заказчика; чужой выбрать нельзя.</li>
+        <li>Смена заказчика очищает договор, если он был от другого контрагента.</li>
+        <li>Отгрузить строку → появился <b>номер отгрузки</b> из расходной накладной; вручную номер ввести нельзя.</li>
+        <li>Диалог даты отгрузки: можно задать дату; поля номера в диалоге нет (или оно скрыто).</li>
+        <li>Кнопки «Статус: резервирование / ожидаем / возврат» работают на отмеченных (или текущей) строках.</li>
+        <li>Галка «Документ подписан оригинал» сбрасывает автора строки и отметку.</li>
+      </ol>
+    </div>
+
+    <div class="test-block">
+      <h3>Блок B — права (главное в v2.11)</h3>
+      <ol class="check">
+        <li><b>Менеджер</b>, статус «Черновик» / «В работе»: может менять заказчика, номенклатуру, количество, цену, коэффициент, комментарий — значения сохраняются.</li>
+        <li><b>Менеджер</b>, статус «Заказано» (или другой «поздний»): попытка сменить заказчика / количество — отказ с понятным текстом (роль / статус / поле).</li>
+        <li><b>Менеджер</b>, «Отгружено»: можно поставить «Документ подписан»; количество менять нельзя.</li>
+        <li>«Номер отгрузки» не редактируется ни у менеджера, ни у админа.</li>
+        <li><b>Менеджер</b> на «Черновик» жмёт «Статус: резервирование» — статус меняется; на статусе, где матрица запрещает — отказ.</li>
+        <li>Пользователь <b>без роли</b> в регистре прав АРМ: форма открывается, любая правка — отказ «не задана роль».</li>
+        <li><b>Клиент</b>: может править комментарий; заказчика / цену — нельзя.</li>
+        <li><b>Админ</b>: широкий набор полей правится; номер отгрузки и смена статуса «из ячейки» — нет; кнопки статусов — да.</li>
+      </ol>
+    </div>
+
+    <div class="test-block">
+      <h3>Блок C — новые колонки и ед.изм.</h3>
+      <ol class="check">
+        <li>В таблице видны колонки: № шасси, кол-во в резерве, кол-во в пути, дата УПД, № УПД (не пустые «заглушки»-константы).</li>
+        <li><b>Менеджер</b> в «Черновик»/«В работе» вводит № шасси — сохраняется; в чужом статусе — отказ.</li>
+        <li><b>Кладовщик</b> (или снабжение по вашей схеме) в статусах приёмки/склада вводит дату и № УПД — сохраняется.</li>
+        <li>«Ед. изм. (ФАКТ)»: двойной щелчок → список шт / компл / л / кг / м / н/ч; количество само не прыгает.</li>
+        <li>Колонка «Ед. изм.» номенклатуры (М4) только для просмотра.</li>
+      </ol>
+    </div>
+
+    <div class="test-block">
+      <h3>Блок D — снабжение и обязательность</h3>
+      <ol class="check">
+        <li>Под ролью <b>Клиент</b> или <b>Поставщик</b> на форме снабжения кнопки смены статусов закупки / отметки — отказ.</li>
+        <li>Под <b>Менеджер / Снабжение / Кладовщик / Админ</b> цепочка снабжения работает как раньше (дымок).</li>
+        <li><b>Менеджер</b>, «Черновик» без госномера и без агрегата → «Статус: резервирование» — отказ с перечнем незаполненного (если так задумано в T08).</li>
+      </ol>
+    </div>
+
+    <div class="test-block">
+      <h3>Блок E — сквозной дымок документов</h3>
+      <ol class="check">
+        <li>Записать/провести заказ покупателя — строки появляются/обновляются в АРМ без ошибок журнала.</li>
+        <li>Довести до отгрузки — расходная накладная, статус «Отгружено», номер отгрузки заполнен.</li>
+        <li>В журнале регистрации нет ошибок «поле не найдено» по новым реквизитам (НомерШасси, ДатаУПД…).</li>
+        <li>Фоновое «ЗаблокированоФоном»: строку править нельзя, пока фон не отпустил.</li>
+      </ol>
+    </div>
+
+    <h3>Как фиксировать результат</h3>
+    <ul>
+      <li>По каждому пункту: <b>pass</b> / <b>fail</b> / <b>skip</b> + коротко «что увидели».</li>
+      <li>Баги: приоритет P0 (блокирует работу) / P1 / P2 + шаги воспроизведения.</li>
+      <li>P0 → чинить hotfix’ом на ветке; потом снова блок B/E.</li>
+      <li>Если всё зелёное → можно обсуждать merge в <code>dev</code>.</li>
+    </ul>
+  </section>
+
+  <section id="links">
+    <h2>4. Ссылки</h2>
+    <ul>
+      <li><a class="file" href="autonomous-done.md">autonomous-done.md</a> — чеклист ночного дожима</li>
+      <li><a class="file" href="patch-notes-v2.10.md">patch-notes-v2.10.md</a> · <a class="file" href="patch-notes-v2.11.md">patch-notes-v2.11.md</a></li>
+      <li><a class="file" href="impl-plan-matrix-arm.md">impl-plan-matrix-arm.md</a> — план задач T00…T13</li>
+      <li><a class="file" href="acceptance-v2.10.md">acceptance-v2.10.md</a> — шаблон заполнения приёмки</li>
+      <li><a class="file" href="test-arm-accounts.md">test-arm-accounts.md</a> — роли для входа</li>
+      <li><a class="file" href="../diff/АРМЗакупокИПродаж_v2.10__v2.11.md">diff v2.10 → v2.11</a></li>
+      <li>Канон матрицы: <a href="https://goshva.github.io/vitauto1c/?role=manager&amp;level=order&amp;mode=all">goshva.github.io/vitauto1c</a></li>
+      <li>Коммит tip: <a href="https://github.com/goshva/vitauto1c/commit/6032be2f0acb45446034915a4a8231a780ef4d8f">6032be2</a></li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  Отчёт для согласования и ручной приёмки. Не заменяет прогон в предприятии 1С.
+  Ветка <code>fix/open-tasks</code>, без merge в <code>dev</code> до отдельного ок.
+</footer>
+
+</body>
+</html>

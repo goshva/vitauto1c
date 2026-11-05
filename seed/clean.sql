@@ -1,0 +1,11 @@
+delete from doc.return_line where onec_key like 'demo:rel:%';
+delete from doc.return_order where onec_key like 'demo:ret:%';
+delete from doc.work_order_line where onec_key like 'demo:wol:%';
+delete from doc.work_order_labor where onec_key like 'demo:wal:%';
+delete from doc.work_order where onec_key like 'demo:wo:%';
+delete from arm.notice where onec_key like 'demo:notice:%';
+delete from arm.line where onec_key like 'demo:%';
+delete from doc.shipment where id::text like 'd1000000%';
+delete from doc.receipt where id::text like 'c1000000%';
+delete from doc.supplier_order where id::text like 'b0000000%';
+delete from doc.customer_order where id::text like 'a0000000%';

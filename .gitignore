@@ -1,0 +1,39 @@
+# --- артефакты установщиков 1С (install-1c.ps1, install-1c-pgsql.ps1) ---
+
+# большие дистрибутивы и установщики (скачиваются/ставятся отдельно)
+*.rar
+*.zip
+*.msi
+*.dt
+# дампы PostgreSQL (backup-1c-full.ps1) — переносятся отдельно, не через git
+*.dump
+
+# проприетарное расширение конфигурации 1С (кладётся рядом со скриптом вручную)
+#*.cfe
+
+# бинарники / хвосты старого коллектора (скрипт его больше не ставит)
+*.exe
+pgtrace/pgtrace
+
+# каталоги данных и распаковки установщика
+logs/
+tj/
+pglog/
+config_autoservice/
+platform_*/
+postgresql_15*/
+PGDATA*/
+srvinfo/
+
+# сведения о машине от preflight-1c.ps1
+1c-env.json
+
+# Python
+__pycache__/
+
+# выгрузки tools/arm-log-report.ps1
+logs/
+
+# ������ vitauto-api / vitauto-migrator
+deploy/bin/
+docs/migration/last-reconcile.md

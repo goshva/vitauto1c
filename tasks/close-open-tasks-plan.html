@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>План: закрытие open-tasks — выбор ветки и этапы</title>
+<style>
+  :root {
+    --ink: #1a1f24; --muted: #5c6570; --line: #d8dde3; --bg: #f3f5f7; --card: #fff;
+    --ok: #1f6b3a; --ok-bg: #e8f5ec; --warn: #8a5a00; --warn-bg: #fff3d6;
+    --bad: #9b1c1c; --bad-bg: #fde8e8; --info: #1a4a7a; --info-bg: #e8f0f8; --accent: #0d3b66;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  header {
+    background: linear-gradient(145deg, #0d3b66 0%, #1a5570 55%, #2a6f8a 100%);
+    color: #fff; padding: 2rem 1.5rem 1.75rem;
+  }
+  header .wrap, main, footer { max-width: 1000px; margin: 0 auto; }
+  header h1 { margin: 0 0 .4rem; font-size: 1.6rem; font-weight: 650; letter-spacing: -.02em; }
+  header p { margin: 0; opacity: .9; font-size: .95rem; }
+  header .meta { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem .75rem; font-size: .82rem; }
+  header .chip { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); padding: .25rem .6rem; border-radius: 4px; }
+  main { padding: 1.25rem 1.5rem 3rem; }
+  .verdict {
+    border-left: 4px solid var(--accent); background: var(--info-bg);
+    padding: 1rem 1.15rem; border-radius: 0 8px 8px 0; margin-bottom: 1rem;
+  }
+  nav.toc, section {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.15rem 1.3rem; margin-bottom: 1rem;
+  }
+  nav.toc h2, section h2 {
+    margin: 0 0 .65rem; font-size: 1.1rem; border-bottom: 1px solid var(--line); padding-bottom: .45rem;
+  }
+  nav.toc h2 { font-size: .9rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border: 0; padding: 0; }
+  nav.toc ol { margin: 0; padding-left: 1.25rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  h3 { margin: 1rem 0 .4rem; font-size: 1rem; }
+  p, ul, ol { margin: .35rem 0 .7rem; }
+  li { margin: .25rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .5rem 0 1rem; }
+  th, td { border: 1px solid var(--line); padding: .45rem .55rem; text-align: left; vertical-align: top; }
+  th { background: #eef1f4; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: .86em; background: #eef1f4; padding: .05em .3em; border-radius: 3px; }
+  .badge { display: inline-block; font-size: .72rem; font-weight: 650; padding: .15rem .45rem; border-radius: 3px; white-space: nowrap; }
+  .badge-rec { background: var(--ok-bg); color: var(--ok); }
+  .badge-alt { background: var(--warn-bg); color: var(--warn); }
+  .badge-no { background: var(--bad-bg); color: var(--bad); }
+  .badge-gate { background: var(--info-bg); color: var(--info); }
+  .card-grid { display: grid; gap: .75rem; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .card-grid { grid-template-columns: 1fr; } }
+  .opt {
+    border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; background: #fafbfc;
+  }
+  .opt.rec { border-color: #9bc4a8; background: #f3faf5; }
+  .opt h3 { margin-top: 0; }
+  .phase {
+    border: 1px solid var(--line); border-radius: 8px; padding: .85rem 1rem; margin: .6rem 0;
+    background: #fafbfc;
+  }
+  .phase h3 { margin: 0 0 .4rem; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+  .stop { background: var(--bad-bg); border: 1px solid #f0c0c0; border-radius: 8px; padding: 1rem 1.15rem; }
+  .stop h3 { margin-top: 0; color: var(--bad); }
+  footer { padding: 0 1.5rem 2rem; font-size: .82rem; color: var(--muted); }
+  a.file { color: var(--accent); }
+  @media print { nav.toc { display: none; } .phase, section { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>План закрытия открытых задач</h1>
+    <p>От какой ветки шагать · этапы доработок · согласование. Без внедрений.</p>
+    <div class="meta">
+      <span class="chip">Источник: <a class="file" href="open-tasks.html" style="color:#fff">open-tasks.html</a></span>
+      <span class="chip">Аудит API: <a class="file" href="process-api-audit.html" style="color:#fff">process-api-audit.html</a></span>
+      <span class="chip">Дата: 05.10.2026</span>
+      <span class="chip">dev = df7ad43 · process-api = 101c86c</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="verdict">
+    <b>Решение (05.10.2026):</b>
+    <code>process-api</code> — <b>лабораторный контур разрабов</b> (работа с базой/API/PWA).
+    <b>В прод не идёт</b>, в <code>dev</code>/<code>master</code> как прод-путь не мержить.
+    <br><br>
+    База прод-доработок и багов: ветка <code>fix/open-tasks</code> от <code>dev</code> @ <code>df7ad43</code>
+    (назначение — <a class="file" href="fix-open-tasks.md">fix-open-tasks.md</a>).
+    Сюда: приёмка «повисло», баги тонкого клиента, недоработки матрицы/seed.
+    <br><br>
+    <b>Не шагать</b> от <code>basdev</code>, <code>master</code>, <code>api</code>, старой md-ветки shipment,
+    уже влитых feature — либо устарели, либо уже в <code>dev</code>.
+  </div>
+
+  <nav class="toc">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#why">Почему не другие ветки</a></li>
+      <li><a href="#choice">Выбор базы: A vs B</a></li>
+      <li><a href="#gates">Гейты согласования</a></li>
+      <li><a href="#phases">Этапы закрытия open-tasks</a></li>
+      <li><a href="#map">Карта: задача → этап</a></li>
+      <li><a href="#branches">Предлагаемые feature-ветки</a></li>
+      <li><a href="#stop">Без ок не делать</a></li>
+    </ol>
+  </nav>
+
+  <section id="why">
+    <h2>1. Почему не другие ветки</h2>
+    <table>
+      <thead>
+        <tr><th>Ветка</th><th>Состояние vs <code>dev</code></th><th>Вердикт</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>dev</code></td>
+          <td>интеграционная, есть seed + v2.8</td>
+          <td><span class="badge badge-rec">база приёмки UI</span> и цель merge</td>
+        </tr>
+        <tr>
+          <td><code>process-api</code></td>
+          <td><code>dev</code> + 3 коммита (v2.9 API, PWA, e2e, transition)</td>
+          <td><span class="badge badge-rec">рекомендуемая база кода</span> после ок аудита</td>
+        </tr>
+        <tr>
+          <td><code>api</code></td>
+          <td>1 коммит (только md + openapi 2.7), без v2.8</td>
+          <td><span class="badge badge-no">не база</span> — устарела относительно <code>dev</code></td>
+        </tr>
+        <tr>
+          <td><code>task/shipment-number-system-fill</code></td>
+          <td>1 коммит (только md), без v2.8</td>
+          <td><span class="badge badge-no">не база</span> — перенести задачу на новую ветку от выбранной базы</td>
+        </tr>
+        <tr>
+          <td><code>arm-price-qty-sum</code>, <code>seed-data</code></td>
+          <td>уже влиты в <code>dev</code></td>
+          <td><span class="badge badge-no">не база</span></td>
+        </tr>
+        <tr>
+          <td><code>admin-columns-matrix</code>, <code>contract-filter-…</code>, <code>arm-v2.3</code></td>
+          <td>старые feature, содержимое в <code>dev</code> через v2.3+</td>
+          <td><span class="badge badge-no">не база</span></td>
+        </tr>
+        <tr>
+          <td><code>basdev</code>, <code>master</code></td>
+          <td>не содержат свежий seed/API контур</td>
+          <td><span class="badge badge-no">не трогать</span> без ок владельца</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="choice">
+    <h2>2. Выбор базы — зафиксировано</h2>
+    <div class="card-grid">
+      <div class="opt rec">
+        <h3><span class="badge badge-rec">Выбрано</span> <code>fix/open-tasks</code> ← <code>dev</code></h3>
+        <p>Все баги и недоработки прод-контура (тонкий клиент, матрица, seed, приёмка).</p>
+        <ol>
+          <li>Ветка создана от <code>origin/dev</code> (<code>df7ad43</code>).</li>
+          <li>Scope: <a class="file" href="fix-open-tasks.md">fix-open-tasks.md</a>.</li>
+          <li>Дочерние темы (shipment, УПД, ACL…) — либо коммиты в этой ветке пачками, либо ветки от <code>fix/open-tasks</code>.</li>
+        </ol>
+      </div>
+      <div class="opt">
+        <h3><span class="badge badge-alt">Lab only</span> <code>process-api</code></h3>
+        <p>Специально для разрабов: HTTP API, PWA, e2e против базы. <b>В прод не пойдёт.</b></p>
+        <ul>
+          <li>Не база для багфиксов формы АРМ.</li>
+          <li>Не merge в <code>dev</code> как продуктовый путь.</li>
+          <li>Аудит остаётся справочным для lab-контура.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="gates">
+    <h2>3. Гейты согласования (до кода доработок)</h2>
+    <table>
+      <thead><tr><th>Гейт</th><th>Вопрос владельцу</th><th>Блокирует</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-gate">G0</span></td>
+          <td>Вариант базы: <b>A</b> (process-api) или <b>B</b> (dev)?</td>
+          <td>все feature-ветки</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gate">G1</span></td>
+          <td>Runtime канон: только 1С <code>Арм_API</code>? Node <code>api/</code> = simulator?</td>
+          <td>merge process-api, README</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gate">G2</span></td>
+          <td>Единый OpenAPI 2.9 в одной ветке?</td>
+          <td>артефакты контракта</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gate">G3</span></td>
+          <td>Номер отгрузки: system-fill (матрица RO) или смена канона под ручной ввод?</td>
+          <td>задача shipment + API shipments</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gate">G4</span></td>
+          <td><code>/lines/transition</code>: апрув hardcoded ACL или генерация из process.html?</td>
+          <td>статусы из формы / паритет</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gate">G5</span></td>
+          <td>PWA = только lab/acceptance или путь к замене тонкого клиента?</td>
+          <td>объём UI-работ</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Минимум для старта варианта A: <b>G0 + G1 + G2 + G3</b>. Фаза 0 (приёмка) гейтов не требует.</p>
+  </section>
+
+  <section id="phases">
+    <h2>4. Этапы закрытия open-tasks</h2>
+
+    <div class="phase">
+      <h3>Фаза 0 · Приёмка «повисло» <span class="badge badge-rec">fix/open-tasks · v2.8</span></h3>
+      <p><b>Цель:</b> закрыть §2 open-tasks; баги — коммитами в <code>fix/open-tasks</code>.</p>
+      <ol>
+        <li>Тестовая ИБ: LoadCfg <code>АРМЗакупокИПродаж_v2.8.cfe</code>, safe mode off, seed.</li>
+        <li>Пройти и зафиксировать отчёт:
+          <ul>
+            <li><code>check-from-install.md</code> шаг 5 (5.1–5.14)</li>
+            <li><code>price-qty-sum.md</code> чеклист 1–5</li>
+            <li><code>admin-columns-matrix.md</code> UI п.1–6</li>
+            <li><code>contract-filter-by-customer.md</code> п.1–11</li>
+          </ul>
+        </li>
+        <li>Дефекты → правки в <code>fix/open-tasks</code>.</li>
+      </ol>
+    </div>
+
+    <div class="phase">
+      <h3>Фаза 1 · (не прод) Lab process-api</h3>
+      <p><b>Вне этой ветки.</b> <code>process-api</code> остаётся у разрабов для API/PWA/e2e.
+      В <code>fix/open-tasks</code> и в прод-контур не переносится. Аудит — справочник lab.</p>
+    </div>
+
+    <div class="phase">
+      <h3>Фаза 2 · Номер отгрузки (блокер матрицы)</h3>
+      <p><b>База:</b> <code>fix/open-tasks</code> (от <code>dev</code>), не старая md-ветка shipment.</p>
+      <ol>
+        <li>System-fill номера (канон: RO в матрице; источник — по согласованию, рекомендуется РН).</li>
+        <li>Убрать ручной ввод номера из формы АРМ.</li>
+        <li>Не синхронизировать с контрактом process-api, пока lab отдельно (или поправить lab отдельно у разрабов).</li>
+        <li>Приёмка по чеклисту задачи shipment.</li>
+      </ol>
+    </div>
+
+    <div class="phase">
+      <h3>Фаза 3 · Паритет процесса тонкий клиент ↔ API <span class="badge badge-gate">после G4</span></h3>
+      <p><b>База:</b> <code>dev</code> после фаз 1–2.</p>
+      <ol>
+        <li>Либо кнопки/команды формы под таблицу <code>/lines/transition</code>, либо генерация ACL из process.html (по G4).</li>
+        <li>Новые статусы (резерв / ожидаем / возврат) — переходы не только seed/API.</li>
+        <li>Ручная приёмка <code>arm-api-processes-manual-check</code> + e2e на test_fresh.</li>
+      </ol>
+      <p><b>Закрывает:</b> §1 п.6; частично coverage/manual-check.</p>
+    </div>
+
+    <div class="phase">
+      <h3>Фаза 4 · Продуктовые дыры матрицы</h3>
+      <p><b>База:</b> <code>dev</code>. Отдельные ветки/задачи (не склеивать в один PR):</p>
+      <ol>
+        <li><b>Заглушки данных:</b> УПД, резерв, в пути, шасси — поля регистра + заполнение.</li>
+        <li><b>Права не-админов:</b> editable по роли×статусу из матрицы (сейчас whitelist админа).</li>
+        <li><b>Очистка договора</b> при смене заказчика.</li>
+        <li><b>Ед. изм.</b> — сначала завести <code>tasks/…md</code>, потом ветка.</li>
+        <li><b>Unlock по А3</b> в форме (канон матрицы: галка → снять защиту строки).</li>
+      </ol>
+      <p><b>Закрывает:</b> §1 п.3–5, 9–10; остаток admin-columns «следующая задача».</p>
+    </div>
+
+    <div class="phase">
+      <h3>Фаза 5 · Seed и контур данных</h3>
+      <ol>
+        <li>Процессный seed (шаг 3): сценарии через реальные операции, не только <code>СтатусСтроки</code>.</li>
+        <li>Учётные записи для входа: либо перенести <code>arm.*</code> из process-api в основной seed, либо документировать два контура.</li>
+        <li>Повторный прогон accounting-дозаполнения — только test_fresh / после бэкапа.</li>
+      </ol>
+      <p><b>Закрывает:</b> §1 п.7–8.</p>
+    </div>
+
+    <div class="phase">
+      <h3>Фаза 6 · Жёсткость prod (по желанию владельца)</h3>
+      <ul>
+        <li>Пароли <code>arm.*</code>, политика safe mode, единый путь базы C: vs D:.</li>
+        <li><code>supplier-orders</code>: реализовать / убрать из контракта / оставить 501 явно.</li>
+        <li>PWA: объём по G5.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="map">
+    <h2>5. Карта: пункт open-tasks → этап</h2>
+    <table>
+      <thead>
+        <tr><th>Пункт open-tasks</th><th>Этап</th><th>База ветки</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>§2 приёмка (4 шт.)</td><td>Фаза 0</td><td><code>dev</code> (без merge)</td></tr>
+        <tr><td>§1.2 HTTP API постановка + аудит</td><td>Фаза 1</td><td><code>process-api</code></td></tr>
+        <tr><td>§3 coverage / manual-check (довести)</td><td>Фазы 1–3</td><td>после merge → <code>dev</code></td></tr>
+        <tr><td>§1.1 номер отгрузки</td><td>Фаза 2</td><td>обновлённый <code>dev</code></td></tr>
+        <tr><td>§1.6 переходы статусов из формы</td><td>Фаза 3</td><td><code>dev</code></td></tr>
+        <tr><td>§1.3 права ролей</td><td>Фаза 4</td><td><code>dev</code></td></tr>
+        <tr><td>§1.4 заглушки УПД/резерв/путь</td><td>Фаза 4</td><td><code>dev</code></td></tr>
+        <tr><td>§1.5 очистка договора</td><td>Фаза 4</td><td><code>dev</code></td></tr>
+        <tr><td>§1.9 ед. изм.</td><td>Фаза 4</td><td><code>dev</code> (+ новая task md)</td></tr>
+        <tr><td>§1.10 unlock А3</td><td>Фаза 4</td><td><code>dev</code></td></tr>
+        <tr><td>§1.7–1.8 процессный seed / логины</td><td>Фаза 5</td><td><code>dev</code></td></tr>
+        <tr><td>§3 matrix open questions</td><td>Фазы 3–4</td><td><code>dev</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="branches">
+    <h2>6. Предлагаемые feature-ветки (после G0)</h2>
+    <table>
+      <thead>
+        <tr><th>Ветка</th><th>От</th><th>Содержание</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>process-api-merge-prep</code></td><td><code>process-api</code></td><td>Фаза 1 (контракт, README, формулировки)</td></tr>
+        <tr><td><code>task/shipment-number-system-fill</code> (новая)</td><td><code>dev</code> после фазы 1</td><td>Фаза 2</td></tr>
+        <tr><td><code>task/form-process-transitions</code></td><td><code>dev</code></td><td>Фаза 3</td></tr>
+        <tr><td><code>task/matrix-stub-fields</code></td><td><code>dev</code></td><td>УПД / резерв / путь / шасси</td></tr>
+        <tr><td><code>task/role-status-acl</code></td><td><code>dev</code></td><td>права не-админов</td></tr>
+        <tr><td><code>task/units-of-measure</code></td><td><code>dev</code></td><td>ед. изм. (после md)</td></tr>
+        <tr><td><code>task/doc-signed-unlock</code></td><td><code>dev</code></td><td>А3 unlock в форме</td></tr>
+        <tr><td><code>task/seed-process</code></td><td><code>dev</code></td><td>процессный seed + логины</td></tr>
+        <tr><td>hotfix из фазы 0</td><td><code>dev</code></td><td>только найденные баги приёмки</td></tr>
+      </tbody>
+    </table>
+    <p>Правило репо: <b>не мержить ветки между собой от имени разработчика</b> без явного ок владельца; PR в <code>dev</code> — по поручению.</p>
+  </section>
+
+  <section id="stop">
+    <div class="stop">
+      <h3>7. Без явного ок не делать</h3>
+      <ul>
+        <li>Merge <code>process-api</code> → <code>dev</code> / <code>master</code> / <code>basdev</code></li>
+        <li>Начинать feature от <code>api</code> или старой md-ветки shipment</li>
+        <li>Менять канон матрицы под ручной номер отгрузки «заодно»</li>
+        <li><code>deploy-prod.ps1</code> на боевую базу</li>
+        <li>Склеивать фазы 2–5 в один огромный PR</li>
+        <li>Считать закрытым open-tasks без отмеченной приёмки фазы 0</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Что нужно от владельца ответом</h2>
+    <ol>
+      <li><b>G0:</b> вариант <b>A</b> или <b>B</b>?</li>
+      <li><b>G1–G3:</b> runtime / OpenAPI / номер отгрузки (если A).</li>
+      <li>Ок на <b>Фазу 0</b> (приёмка UI на test ИБ) — можно стартовать сразу?</li>
+    </ol>
+    <p>После ответов план фиксируется как канон работ; внедрения — только по следующему явному «внедряй» на конкретную фазу/ветку.</p>
+  </section>
+
+</main>
+
+<footer>
+  Связано: <a href="open-tasks.html">open-tasks.html</a>,
+  <a href="process-api-audit.html">process-api-audit.html</a>.
+  План на согласование, 05.10.2026. Внедрений не выполнялось.
+</footer>
+
+</body>
+</html>
