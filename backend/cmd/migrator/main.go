@@ -7,7 +7,7 @@
 //	vitauto-migrator all                      # extract → legacy → load → derive → reconcile ALL
 //
 // Источник — копия 1С (--source vitauto_dev или DSN; рабочая vitauto запрещена до этапа 11 без --allow-prod),
-// приёмник — VITAUTO_DB (по умолчанию postgres://postgres:postgres@localhost:5434/vitauto_app).
+// приёмник — VITAUTO_DB (по умолчанию postgres://postgres:postgres@localhost:5432/vitauto_app).
 package main
 
 import (
@@ -30,7 +30,7 @@ func main() {
 	cmd := os.Args[1]
 	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	source := fs.String("source", env("VITAUTO_SRC", "vitauto_dev"), "база 1С (имя на localhost:5433) или DSN")
-	target := fs.String("target", env("VITAUTO_DB", "postgres://postgres:postgres@localhost:5434/vitauto_app"), "DSN vitauto_app")
+	target := fs.String("target", env("VITAUTO_DB", "postgres://postgres:postgres@localhost:5432/vitauto_app"), "DSN vitauto_app")
 	root := fs.String("root", "", "корень репозитория (по умолчанию — над backend)")
 	checks := fs.String("checks", "ALL", "проверки reconcile через запятую")
 	strict := fs.Bool("strict", false, "schema-status: ошибка, если есть неприменённые миграции")
