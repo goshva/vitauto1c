@@ -259,10 +259,23 @@ const sheetActions = computed(() => {
   if (view.value === 'sales' && ['ready_to_ship', 'assembly'].includes(l.status) && ['manager', 'admin', 'chief_mechanic'].includes(session.role)) {
     a.push({ key: 'workOrder', title: 'Заказ-наряд', icon: 'wrench' });
   }
-  a.push({ key: 'strike', title: 'Вычеркнуть', icon: 'trash', danger: true });
-  if (view.value === 'sales' && l.customerOrder) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
+  // пункты, которые сервер отклонит (409), не показываем: сервер проверяет те же условия
+  if (canStrikeLine(l)) a.push({ key: 'strike', title: 'Вычеркнуть', icon: 'trash', danger: true });
+  if (view.value === 'sales' && l.customerOrder && canDeleteOrder(l)) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
   return a;
 });
+// совпадает с StrikeLine (arm/lines.go): статус «Черновик»/«В работе» и не чужая отметка
+const OPEN_STATUSES = ['new', 'in_work'];
+function canStrikeLine(l) {
+  return OPEN_STATUSES.includes(l.status) && (!l.markedBy || l.markedBy === userName.value);
+}
+// совпадает с DeleteOrder (arm/docs.go): все активные строки заказа в статусе «Черновик»/«В работе»
+// (заказы поставщику на клиенте не видны — их сервер проверит сам)
+function canDeleteOrder(l) {
+  return lines.items
+    .filter(x => x.customerOrder && x.customerOrder.id === l.customerOrder.id && !x.deleted)
+    .every(x => OPEN_STATUSES.includes(x.status));
+}
 function sheetAction(key) {
   ({ add: openAdd, purchase: openAddPurchase, shipment: openShipment, post: postOrder, strike: strikeLine, deleteOrder,
     selfPickup: selfPickupLine, workOrder: openWorkOrder })[key]();
@@ -413,16 +426,37 @@ async function addLines(items) {
 }
 
 // переходы процессов (POST /lines/transition) — к отмеченным строкам списка, по ролям, как в Арм_API.ПереходыПроцессов
+// rules — допустимые статусы строки по ролям (как в домене backend/internal/domain/domain.go);
+// переход показывается, только если хотя бы одна своя отмеченная строка может его выполнить
 const TRANSITIONS = [
-  { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'] },
-  { to: 'assembly', title: 'На комплектацию', node: 'M9 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'] },
-  { to: 'ready_to_ship', title: 'Собрано', node: 'K3', icon: 'check', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'] },
-  { to: 'shipped', title: 'Самовывоз', node: 'N4', icon: 'supply', roles: ['manager', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'acceptance', title: 'Принять по УПД', node: 'K1', icon: 'file', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'return', title: 'Возврат', node: 'N3 · M16 · K6', icon: 'undo', roles: ['manager', 'storekeeper', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'closed', title: 'Закрыть', node: 'M15 · K7 · G9', icon: 'check', roles: ['manager', 'storekeeper', 'admin', 'chief_mechanic'], views: ['sales', 'purchases'] }
+  { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'],
+    rules: [{ roles: ['manager', 'admin'], from: ['new', 'in_work'] }] },
+  { to: 'assembly', title: 'На комплектацию', node: 'M9 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'],
+    rules: [
+      { roles: ['manager', 'admin'], from: ['reserve', 'to_stock', 'acceptance'] },
+      { roles: ['manager', 'admin', 'chief_mechanic'], from: ['ready_to_ship'] },
+      { roles: ['manager', 'admin'], from: ['return'] }
+    ] },
+  { to: 'ready_to_ship', title: 'Собрано', node: 'K3', icon: 'check', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'],
+    rules: [{ roles: ['storekeeper', 'manager', 'admin'], from: ['assembly'] }] },
+  { to: 'shipped', title: 'Самовывоз', node: 'N4', icon: 'supply', roles: ['manager', 'admin'], views: ['sales', 'purchases'],
+    rules: [{ roles: ['manager', 'admin'], from: ['paid', 'in_transit'] }] },
+  { to: 'acceptance', title: 'Принять по УПД', node: 'K1', icon: 'file', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'],
+    rules: [{ roles: ['storekeeper', 'admin'], from: ['shipped'] }] },
+  { to: 'return', title: 'Возврат', node: 'N3 · M16 · K6', icon: 'undo', roles: ['manager', 'storekeeper', 'admin'], views: ['sales', 'purchases'],
+    rules: [{ roles: ['manager', 'storekeeper', 'admin'], from: ['shipped', 'ordered', 'paid', 'in_transit', 'to_stock', 'closed'] }] },
+  { to: 'closed', title: 'Закрыть', node: 'M15 · K7 · G9', icon: 'check', roles: ['manager', 'storekeeper', 'admin', 'chief_mechanic'], views: ['sales', 'purchases'],
+    rules: [
+      { roles: ['manager', 'storekeeper', 'admin'], from: ['shipped', 'ready_to_ship', 'return'] },
+      { roles: ['chief_mechanic', 'admin'], from: ['assembly'] }
+    ] }
 ];
-const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value)));
+// статусы в API приходят в виде кода (new, paid, ...), проверка идёт по своим отметкам — как на сервере
+function canRun(t) {
+  const allowed = t.rules.filter(r => r.roles.includes(session.role)).flatMap(r => r.from);
+  return lines.marked.some(l => l.markedBy === userName.value && allowed.includes(l.status));
+}
+const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value) && canRun(t)));
 const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
 // печать (АРМ v2.23, блок 3): формы 1С по заказам отмеченных строк, без отметок — по заказу открытой строки
 const PRINTS = [
