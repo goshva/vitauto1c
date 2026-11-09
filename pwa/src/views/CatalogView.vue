@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router';
 import { get, api, post } from '../api';
 import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
+import { useSessionStore } from '../stores/session';
 import AppIcon from '../components/AppIcon.vue';
 import AppModal from '../components/AppModal.vue';
 import RefPicker from '../components/RefPicker.vue';
@@ -13,6 +14,7 @@ import RefPicker from '../components/RefPicker.vue';
 const route = useRoute();
 const toast = useToastStore();
 const ui = useUiStore();
+const session = useSessionStore();
 const KINDS = {
   goods: { title: 'Товары', one: 'товар', icon: 'tag', search: 'Наименование или артикул' },
   services: { title: 'Услуги', one: 'услугу', icon: 'wrench', search: 'Наименование услуги' },
@@ -24,6 +26,9 @@ const isCars = computed(() => kind.value === 'cars');
 
 const q = ref('');
 const groupId = ref('');
+const brandId = ref('');
+const searchStatus = ref('');
+const ownership = ref('');
 const showDeleted = ref(false);
 const items = ref([]);
 const nextSkip = ref(null);
@@ -31,12 +36,16 @@ const canEdit = ref(false);
 const loading = ref(false);
 const groups = ref([]);
 const units = ref([]);
+const brands = ref([]);
 const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
+const STATUSES = ['В работе', 'Найден', 'Не опознан'];
+const OWNERSHIPS = ['Заказная', 'Закупочная', 'Тендерная'];
 
 async function load(more = false) {
   loading.value = true;
   try {
     const page = await get('/catalog/' + kind.value, { q: q.value.trim() || undefined, groupId: groupId.value || undefined,
+      brandId: brandId.value || undefined, searchStatus: searchStatus.value || undefined, ownership: ownership.value || undefined,
       deleted: showDeleted.value ? 'true' : undefined, skip: more ? nextSkip.value : undefined, limit: 50 });
     items.value = more ? [...items.value, ...page.items] : page.items;
     nextSkip.value = page.nextSkip;
@@ -50,23 +59,30 @@ async function load(more = false) {
 async function loadRefs() {
   try {
     if (isCars.value) groups.value = await get('/directories/car-groups');
-    else if (!units.value.length) units.value = await get('/directories/units');
+    else {
+      if (!units.value.length) units.value = await get('/directories/units');
+      if (!brands.value.length) brands.value = await get('/directories/brands');
+    }
   } catch (e) { toast.error(e); }
 }
 // ---------- карточка (объявлена до watch(kind, …, { immediate: true }), который её сбрасывает)
 const edit = ref(null);      // { id, form, item }
 const picker = ref(false);   // выбор модели
+const analogPicker = ref(false);
 const busy = ref(false);
-watch(kind, () => { q.value = ''; groupId.value = ''; items.value = []; edit.value = null; load(); loadRefs(); }, { immediate: true });
+const photoBusy = ref(false);
+watch(kind, () => { q.value = ''; groupId.value = ''; brandId.value = ''; searchStatus.value = ''; ownership.value = '';
+  items.value = []; edit.value = null; load(); loadRefs(); }, { immediate: true });
 let timer;
 watch(q, () => { clearTimeout(timer); timer = setTimeout(() => load(), 300); });
-watch([groupId, showDeleted], () => load());
+watch([groupId, brandId, searchStatus, ownership, showDeleted], () => load());
 
 function formOf(it) {
   if (isCars.value) return { vin: it.vin || '', plate: it.plate || '', model: it.model, groupId: it.group ? it.group.id : (groupId.value || ''),
     year: it.year || '', chassis: it.chassis || '', engine: it.engine || '', comment: it.comment || '', name: it.name || '' };
   return { name: it.name || '', article: it.article || '', unitId: it.unit ? it.unit.id : (units.value.find(u => /^шт/.test(u.name)) || {}).id || '',
-    price: it.price ?? '', comment: it.comment || '' };
+    price: it.price ?? '', comment: it.comment || '', brandId: it.brand ? it.brand.id : '', searchStatus: it.searchStatus || '',
+    ownership: it.ownership || '', analog: it.analog || null };
 }
 function open(it) {
   edit.value = { id: it ? it.id : null, item: it || null, form: formOf(it || {}) };
@@ -77,7 +93,60 @@ function open(it) {
 function bodyOf(f) {
   if (isCars.value) return { vin: f.vin, plate: f.plate, modelId: f.model ? f.model.id : '', groupId: f.groupId, year: f.year || null,
     chassis: f.chassis, engine: f.engine, comment: f.comment, ...(edit.value.id ? { name: f.name } : {}) };
-  return { name: f.name, article: f.article, unitId: f.unitId, comment: f.comment, price: f.price === '' ? undefined : f.price };
+  return { name: f.name, article: f.article, unitId: f.unitId, comment: f.comment, price: f.price === '' ? undefined : f.price,
+    brandId: f.brandId || '', searchStatus: f.searchStatus || '', ownership: f.ownership || '',
+    analogId: f.analog ? f.analog.id : '' };
+}
+// Догрузить карточку после смены фото/аналога.
+async function refreshItem() {
+  if (!edit.value || !edit.value.id) return;
+  try {
+    const full = await get(`/catalog/${kind.value}/${edit.value.id}`);
+    edit.value.item = full;
+    const i = items.value.findIndex(x => x.id === full.id);
+    if (i >= 0) items.value.splice(i, 1, full);
+  } catch (e) { toast.error(e); }
+}
+// Фото карточки: multipart на /attachments, токен — в заголовке.
+async function uploadPhoto(ev) {
+  const f = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!f || !edit.value || !edit.value.id) return;
+  photoBusy.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('ownerType', 'nomenclature');
+    fd.append('ownerId', edit.value.id);
+    fd.append('file', f);
+    const res = await fetch(`/api/v1/attachments`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Не удалось загрузить фото');
+    }
+    toast.show('Фото добавлено', 'ok');
+    await refreshItem();
+  } catch (e) { toast.show(e.message || String(e), 'error'); } finally { photoBusy.value = false; }
+}
+async function deletePhoto(id) {
+  if (!confirm('Удалить фото?')) return;
+  photoBusy.value = true;
+  try {
+    await api('DELETE', `/attachments/${id}`);
+    toast.show('Фото удалено', 'ok');
+    await refreshItem();
+  } catch (e) { toast.error(e); } finally { photoBusy.value = false; }
+}
+function photoSrc(p) { return `${p.url}?token=${encodeURIComponent(session.token)}`; }
+// Новый бренд из карточки: справочник ведёт администратор.
+async function addBrand() {
+  const name = prompt('Название нового бренда');
+  if (!name || !name.trim()) return;
+  try {
+    const b = await post('/brands', { name: name.trim() });
+    brands.value = [...brands.value, b].sort((x, y) => x.name.localeCompare(y.name, 'ru'));
+    if (edit.value) edit.value.form.brandId = b.id;
+    toast.show(`Бренд «${b.name}» добавлен`, 'ok');
+  } catch (e) { toast.error(e); }
 }
 async function save() {
   busy.value = true;
@@ -134,6 +203,18 @@ function priceGroups(list) {
         <button class="chip" :class="{ on: !groupId }" @click="groupId = ''">Все</button>
         <button v-for="g in groups" :key="g.id" class="chip" :class="{ on: groupId === g.id }" @click="groupId = g.id">{{ g.name }}</button>
       </div>
+      <div v-if="!isCars" class="chips" role="group" aria-label="Бренд">
+        <button class="chip" :class="{ on: !brandId }" @click="brandId = ''">Все бренды</button>
+        <button v-for="b in brands" :key="b.id" class="chip" :class="{ on: brandId === b.id }" @click="brandId = b.id">{{ b.name }}</button>
+      </div>
+      <div v-if="!isCars" class="chips" role="group" aria-label="Статус поиска">
+        <button class="chip" :class="{ on: !searchStatus }" @click="searchStatus = ''">Любой статус</button>
+        <button v-for="s in STATUSES" :key="s" class="chip" :class="{ on: searchStatus === s }" @click="searchStatus = s">{{ s }}</button>
+      </div>
+      <div v-if="!isCars" class="chips" role="group" aria-label="Принадлежность">
+        <button class="chip" :class="{ on: !ownership }" @click="ownership = ''">Любая принадлежность</button>
+        <button v-for="o in OWNERSHIPS" :key="o" class="chip" :class="{ on: ownership === o }" @click="ownership = o">{{ o }}</button>
+      </div>
       <div class="muted small">{{ loading ? 'Загрузка…' : `Показано: ${items.length}${nextSkip ? '+' : ''}` }}<template v-if="!canEdit"> · только просмотр</template></div>
     </div>
 
@@ -142,7 +223,7 @@ function priceGroups(list) {
       <table>
         <thead>
           <tr v-if="isCars"><th>Госномер</th><th>Модель</th><th>VIN</th><th>Год</th><th>Вид техники</th><th>Комментарий</th></tr>
-          <tr v-else><th>Наименование</th><th v-if="kind === 'goods'">Артикул</th><th>Ед.</th><th style="text-align: right">Цена</th><th>Комментарий</th><th>Код</th></tr>
+          <tr v-else><th>Наименование</th><th v-if="kind === 'goods'">Артикул</th><th>Бренд</th><th>Статус поиска</th><th>Принадлежность</th><th>Аналог</th><th>Ед.</th><th style="text-align: right">Цена</th><th>Комментарий</th><th>Фото</th><th>Код</th></tr>
         </thead>
         <tbody>
           <tr v-for="it in items" :key="it.id" :class="['cat-row', { deleted: it.deleted }]" tabindex="0" @click="open(it)" @keydown.enter="open(it)">
@@ -151,8 +232,15 @@ function priceGroups(list) {
               <td>{{ it.year || '' }}</td><td>{{ it.group ? it.group.name : '' }}</td><td>{{ it.comment }}</td>
             </template>
             <template v-else>
-              <td>{{ it.name }}</td><td v-if="kind === 'goods'" class="mono">{{ it.article }}</td><td>{{ it.unit ? it.unit.name : '' }}</td>
-              <td class="num">{{ it.price != null ? money.format(it.price) : '—' }}</td><td>{{ it.comment }}</td><td class="faint">{{ it.code }}</td>
+              <td>{{ it.name }}</td><td v-if="kind === 'goods'" class="mono">{{ it.article }}</td>
+              <td>{{ it.brand ? it.brand.name : '—' }}</td>
+              <td><span v-if="it.searchStatus" class="chip" :class="{ info: it.searchStatus === 'Найден', err: it.searchStatus === 'Не опознан' }">{{ it.searchStatus }}</span><span v-else class="faint">—</span></td>
+              <td>{{ it.ownership || '—' }}</td>
+              <td class="faint">{{ it.analog ? it.analog.name : '—' }}</td>
+              <td>{{ it.unit ? it.unit.name : '' }}</td>
+              <td class="num">{{ it.price != null ? money.format(it.price) : '—' }}</td><td>{{ it.comment }}</td>
+              <td><span v-if="it.photoCount" class="chip">{{ it.photoCount }} 📷</span><span v-else class="faint">—</span></td>
+              <td class="faint">{{ it.code }}</td>
             </template>
           </tr>
         </tbody>
@@ -216,6 +304,50 @@ function priceGroups(list) {
               <label class="field grow">Цена, ₽ (розничная) <input v-model="edit.form.price" inputmode="decimal" /></label>
             </div>
             <p v-if="edit.item && edit.item.priceDate" class="faint small" style="margin: -4px 0 0">Цена установлена {{ edit.item.priceDate.split('-').reverse().join('.') }}<template v-if="kind === 'services'"> — для моделей без своей цены</template></p>
+            <div class="row" style="flex-wrap: nowrap; align-items: flex-end">
+              <label class="field grow">Бренд
+                <select v-model="edit.form.brandId">
+                  <option value="">—</option>
+                  <option v-for="b in brands" :key="b.id" :value="b.id">{{ b.name }}</option>
+                </select>
+              </label>
+              <button type="button" class="icon" title="Добавить бренд" aria-label="Добавить бренд" @click="addBrand"><AppIcon name="plus" :size="18" /></button>
+            </div>
+            <div class="row" style="flex-wrap: nowrap">
+              <label class="field grow">Статус поиска
+                <select v-model="edit.form.searchStatus">
+                  <option value="">—</option>
+                  <option v-for="s in STATUSES" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </label>
+              <label class="field grow">Принадлежность
+                <select v-model="edit.form.ownership">
+                  <option value="">—</option>
+                  <option v-for="o in OWNERSHIPS" :key="o" :value="o">{{ o }}</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">Аналог (кросс-код)
+              <span class="row" style="gap: 6px; flex-wrap: nowrap">
+                <button type="button" class="grow" style="text-align: left" @click="analogPicker = true">
+                  {{ edit.form.analog ? edit.form.analog.name + (edit.form.analog.article ? ' · ' + edit.form.analog.article : '') : 'Выбрать карточку-аналог…' }}
+                </button>
+                <button v-if="edit.form.analog" type="button" class="icon" title="Снять аналог" aria-label="Снять аналог" @click="edit.form.analog = null"><AppIcon name="x" :size="18" /></button>
+              </span>
+            </label>
+            <p class="faint small" style="margin: -4px 0 0">Связь прямая и парная: у карточки один аналог, дерево аналогов не ведётся.</p>
+            <div v-if="edit.id" class="col" style="gap: 8px">
+              <div class="menu-title" style="padding-left: 0">Фото</div>
+              <div v-if="edit.item && edit.item.photos && edit.item.photos.length" class="row" style="gap: 8px; flex-wrap: wrap">
+                <div v-for="p in edit.item.photos" :key="p.id" class="photo-tile">
+                  <img :src="photoSrc(p)" :alt="p.name" loading="lazy" />
+                  <button type="button" class="icon" title="Удалить фото" aria-label="Удалить фото" :disabled="photoBusy" @click="deletePhoto(p.id)"><AppIcon name="x" :size="14" /></button>
+                </div>
+              </div>
+              <label class="field">Добавить фото (JPEG/PNG, до 5 МБ)
+                <input type="file" accept="image/*" :disabled="photoBusy" @change="uploadPhoto" />
+              </label>
+            </div>
           </template>
           <label class="field">Комментарий <textarea v-model="edit.form.comment" rows="2" style="font-family: var(--font); font-size: 15px"></textarea></label>
         </fieldset>
@@ -237,6 +369,8 @@ function priceGroups(list) {
       </template>
     </AppModal>
     <RefPicker v-if="picker" dir="car-models" title="Модель" @pick="m => { edit.form.model = m; picker = false }" @close="picker = false" />
+    <RefPicker v-if="analogPicker" dir="nomenclature" title="Аналог (кросс-код)"
+               @pick="m => { edit.form.analog = m; analogPicker = false }" @close="analogPicker = false" />
   </section>
 </template>
 
@@ -253,6 +387,11 @@ function priceGroups(list) {
 .mp-group { border: 1px solid var(--line); border-radius: var(--r-s); padding: 8px 12px; background: var(--surface-2); }
 .mp-group summary { cursor: pointer; }
 .mp-list { padding-top: 6px; line-height: 1.6; }
+.photo-tile { position: relative; width: 84px; height: 84px; border-radius: var(--r-s); overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+.photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-tile .icon { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.55); color: #fff; border-radius: 50%; padding: 2px; }
+.photo-tile { --x: 0; }
+.photo-tile button { --icon-size: 14px; }
 .fab { position: fixed; right: 16px; bottom: calc(var(--nav-h) + var(--safe-b) + 16px); z-index: 35; height: 56px; min-width: 56px; border-radius: 18px; padding: 0 18px; box-shadow: var(--shadow-2); }
 .fab-label { display: none; }
 @media (min-width: 900px) { .fab { bottom: 24px; right: 24px; } .fab-label { display: inline; } }

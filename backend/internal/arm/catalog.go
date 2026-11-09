@@ -63,8 +63,10 @@ func (s *Service) Directory(ctx context.Context, name string, q map[string]strin
 		return jsonRows(ctx, s.DB, "select jsonb_build_object('id', id, 'name', name, 'main', is_main) from ref.warehouse where not deleted and is_warehouse order by is_main desc, name")
 	case "cells":
 		return jsonRows(ctx, s.DB, "select jsonb_build_object('id', id, 'name', code, 'warehouseId', warehouse_id) from ref.storage_cell where not deleted and ($1 = '' or warehouse_id = $1::uuid) order by code", q["warehouseId"])
+	case "brands":
+		return jsonRows(ctx, s.DB, "select "+brandJSON+" from ref.brand where not deleted and ($1 = '' or lower(name) like $2) order by name limit 100", strings.TrimSpace(q["q"]), like(q["q"]))
 	}
-	return nil, fail(404, "not_found", "Справочник: counterparties, contracts, nomenclature, batches, service-types, payment-forms, units, car-models, car-groups, warehouses, cells")
+	return nil, fail(404, "not_found", "Справочник: counterparties, contracts, nomenclature, batches, service-types, payment-forms, units, car-models, car-groups, warehouses, cells, brands")
 }
 
 // CatalogEdit — кто меняет разделы «Товары», «Услуги», «Машины».
@@ -76,9 +78,22 @@ const retailPrice = "Розничная цена"
 
 const nomItem = `jsonb_build_object('id', n.id, 'code', coalesce(n.code, ''), 'name', n.name, 'fullName', coalesce(nullif(n.full_name, ''), n.name),
 	'article', coalesce(n.article, ''), 'unit', case when u.id is null then null else jsonb_build_object('id', u.id, 'name', u.name) end,
+	'brand', case when b.id is null then null else jsonb_build_object('id', b.id, 'name', b.name) end,
+	'searchStatus', coalesce(n.search_status, ''), 'ownership', coalesce(n.ownership, ''),
+	'analog', case when a.id is null then null else jsonb_build_object('id', a.id, 'name', a.name, 'article', coalesce(a.article, ''),
+		'code', coalesce(a.code, ''), 'brand', case when ab.id is null then null else jsonb_build_object('id', ab.id, 'name', ab.name) end) end,
+	'photoCount', (select count(*) from ref.attachment p where p.owner_type = 'nomenclature' and p.owner_id = n.id and not p.deleted),
+	'photos', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.file_name, 'url', '/api/v1/attachments/' || p.id) order by p.created_at)
+		from ref.attachment p where p.owner_type = 'nomenclature' and p.owner_id = n.id and not p.deleted), '[]'::jsonb),
 	'comment', coalesce(n.comment, ''), 'deleted', n.deleted, 'type', n.kind,
 	'price', (select p.price from ref.price p join ref.price_type t on t.id = p.price_type_id where t.name = 'Розничная цена' and p.nomenclature_id = n.id order by p.period desc limit 1),
 	'priceDate', (select to_char(p.period, 'YYYY-MM-DD') from ref.price p join ref.price_type t on t.id = p.price_type_id where t.name = 'Розничная цена' and p.nomenclature_id = n.id order by p.period desc limit 1))`
+
+// nomJoins — связи карточки: единица, бренд, аналог (кросс-код) и бренд аналога.
+const nomJoins = ` left join ref.unit u on u.id = n.unit_id
+	left join ref.brand b on b.id = n.brand_id
+	left join ref.nomenclature a on a.id = n.analog_id
+	left join ref.brand ab on ab.id = a.brand_id`
 
 const carItem = `jsonb_build_object('id', c.id, 'code', coalesce(c.code, ''), 'name', c.name, 'vin', coalesce(c.vin, ''),
 	'year', case when c.year is null then null else extract(year from c.year)::int end,
@@ -102,9 +117,15 @@ func (s *Service) CatalogList(ctx context.Context, a Actor, kind string, q map[s
 			where not coalesce(c.is_folder, false) and ($1 or not c.deleted) and ($2 = '' or c.parent_id = $2::uuid)
 			  and ($3 = '' or lower(c.name) like $4 or lower(c.vin) like $4) order by c.name limit $5 offset $6`, deleted, q["groupId"], q["q"], like(q["q"]), limit+1, skip)
 	} else {
-		items, err = jsonRows(ctx, s.DB, `select `+nomItem+` from ref.nomenclature n left join ref.unit u on u.id = n.unit_id
+		items, err = jsonRows(ctx, s.DB, `select `+nomItem+` from ref.nomenclature n`+nomJoins+`
 			where not coalesce(n.is_folder, false) and ($1 or not n.deleted) and n.kind = $2
-			  and ($3 = '' or lower(n.name) like $4 or lower(n.article) like $4) order by n.name limit $5 offset $6`, deleted, nomKind[kind], q["q"], like(q["q"]), limit+1, skip)
+			  and ($3 = '' or lower(n.name) like $4 or lower(n.article) like $4)
+			  and ($7 = '' or n.brand_id = $7::uuid)
+			  and ($8 = '' or n.search_status = $8)
+			  and ($9 = '' or n.ownership = $9)
+			  and ($10 = '' or n.analog_id = $10::uuid)
+			order by n.name limit $5 offset $6`, deleted, nomKind[kind], q["q"], like(q["q"]), limit+1, skip,
+			q["brandId"], q["searchStatus"], q["ownership"], q["analogId"])
 	}
 	if err != nil {
 		return nil, err
@@ -131,7 +152,7 @@ func (s *Service) CatalogItem(ctx context.Context, kind, id string) (json.RawMes
 				'price', x.price, 'date', to_char(x.period, 'YYYY-MM-DD')) order by x.price, m.name)
 			from (select distinct on (model_id) model_id, price, period from ref.labor_price where nomenclature_id = n.id and coalesce(active, true) order by model_id, period desc) x
 			left join ref.car_model m on m.id = x.model_id), '[]'::jsonb)) else '{}'::jsonb end
-			from ref.nomenclature n left join ref.unit u on u.id = n.unit_id where n.id = $1`, iid, kind).Scan(&b)
+			from ref.nomenclature n`+nomJoins+` where n.id = $1`, iid, kind).Scan(&b)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fail(404, "not_found", "Элемент не найден")
@@ -231,6 +252,29 @@ func (s *Service) CatalogSave(ctx context.Context, a Actor, kind, id string, b m
 		if v, ok := str("comment"); ok {
 			set["comment"] = v
 		}
+		if v, ok := str("brandId"); ok {
+			set["brand_id"] = uuidOrNil(v)
+		}
+		if v, ok := str("searchStatus"); ok {
+			if v != "" && !contains([]string{"В работе", "Найден", "Не опознан"}, v) {
+				return fail(400, "bad_request", "Статус поиска: «В работе», «Найден» или «Не опознан»", "searchStatus")
+			}
+			if v == "" {
+				set["search_status"] = nil
+			} else {
+				set["search_status"] = v
+			}
+		}
+		if v, ok := str("ownership"); ok {
+			if v != "" && !contains([]string{"Заказная", "Закупочная", "Тендерная"}, v) {
+				return fail(400, "bad_request", "Принадлежность: «Заказная», «Закупочная» или «Тендерная»", "ownership")
+			}
+			if v == "" {
+				set["ownership"] = nil
+			} else {
+				set["ownership"] = v
+			}
+		}
 		if ref == uuid.Nil {
 			if set["name"] == nil {
 				return fail(400, "bad_request", "Наименование не заполнено", "name")
@@ -249,6 +293,12 @@ func (s *Service) CatalogSave(ctx context.Context, a Actor, kind, id string, b m
 			}
 		} else if err := updateRow(ctx, tx, "ref.nomenclature", ref, set); err != nil {
 			return err
+		}
+		// Кросс-код (ТЗ 2.1): прямая пара «карточка ↔ карточка», пустая строка снимает связь.
+		if v, ok := str("analogId"); ok {
+			if err := setAnalog(ctx, tx, ref, v); err != nil {
+				return err
+			}
 		}
 		if v, ok := str("price"); ok && v != "" {
 			p, err := strconv.ParseFloat(strings.ReplaceAll(v, ",", "."), 64)
