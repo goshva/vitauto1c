@@ -1,3 +1,5 @@
+// TODO (docs/TODO.md, п. 24): файл не парсится — второй it(...) не закрыт, третий вложен в него,
+// поэтому vitest падает с «invalid JS syntax». Закрыть блок и вернуть проверку снятия фильтра по «×».
 // Вложенные строки заказа в таблице: по умолчанию раскрыты и сворачиваются кликом по шапке заказа.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
