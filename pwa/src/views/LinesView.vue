@@ -10,6 +10,7 @@ import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
 import { api, post } from '../api';
 import { fieldInfo, valueOf, display, STATUS_TITLES, statusTone } from '../lib/columns';
+import { cellText, matchesQuick, filtersAria } from '../lib/quickFilter';
 import { useColumnsStore, STAGES } from '../stores/columns';
 import RefPicker from '../components/RefPicker.vue';
 import FieldSettings from '../components/FieldSettings.vue';
@@ -41,6 +42,20 @@ const urgencyColumn = computed(() => matrix.columns.find(c => c.field === 'Ср�
 async function setUrgent(line, on) {
   await save(line, urgencyColumn.value, on ? 'срочно' : null);
 }
+
+// ---------- быстрый фильтр по значению (двойной клик по ячейке таблицы)
+const quick = ref(null); // { field, title, value }
+const quickText = (line, field) => cellText(line, field, display);
+function quickFilter(line, column) {
+  const v = quickText(line, column.field);
+  if (!v || v === '—') return;
+  quick.value = { field: column.field, title: column.title, value: v };
+  lines.current = line.id;
+}
+function quickFilterStatus(line) {
+  quick.value = { field: 'status', title: 'Статус', value: line.status };
+}
+function matchQuick(l) { return matchesQuick(l, quick.value, display); }
 
 // ---------- поля
 const settings = ref(null); // вкладка настройки полей или null
@@ -82,14 +97,15 @@ async function reload() {
 }
 // ---------- поиск (по загруженным строкам) и группировка по заказам
 const q = ref('');
-watch(view, () => { q.value = ''; reload(); }, { immediate: true });
+watch(view, () => { q.value = ''; quick.value = null; reload(); }, { immediate: true });
 
 const searchText = l => [l.factName, l.factArticle, l.nomenclature && l.nomenclature.name, l.nomenclature && l.nomenclature.article,
   l.customerOrder && l.customerOrder.number, l.clientOrderNumber, l.customer && l.customer.name, l.supplier && l.supplier.name, l.comment]
   .filter(Boolean).join(' ').toLowerCase();
 const shown = computed(() => {
+  const base = quick.value ? lines.items.filter(matchQuick) : lines.items;
   const s = q.value.trim().toLowerCase();
-  return s ? lines.items.filter(l => searchText(l).includes(s)) : lines.items;
+  return s ? base.filter(l => searchText(l).includes(s)) : base;
 });
 const rows = computed(() => {
   if (!lines.filters.groupByCustomerOrder) return shown.value.map(l => ({ line: l }));
@@ -137,6 +153,14 @@ const activeFilters = computed(() => {
   const f = lines.filters;
   return [f.periodFrom, f.periodTo, f.hideShipped, !f.hideDeleted, f.onlyWithPurchases].filter(Boolean).length;
 });
+// Счётчик для кнопки «Фильтры»: сколько фильтров активно и сколько строк осталось.
+const filterCount = computed(() => activeFilters.value + (quick.value ? 1 : 0));
+const filterAria = computed(() => filtersAria(filterCount.value, shown.value.length, lines.items.length));
+function resetFilters() {
+  quick.value = null;
+  lines.resetFilters();
+  applyFilters();
+}
 function toggleFilter(k) {
   lines.filters[k] = !lines.filters[k];
   reload();
@@ -596,8 +620,8 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 <template>
   <section :class="['lines', { dense: ui.density === 'compact', 'has-sel': selCount > 0 }]">
     <Teleport to="#appbar-actions" defer>
-      <button class="icon" :class="{ on: activeFilters }" aria-label="Фильтры" title="Фильтры" @click="filtersOpen = true">
-        <AppIcon name="filter" /><span v-if="activeFilters" class="icon-badge">{{ activeFilters }}</span>
+      <button class="icon" :class="{ on: filterCount }" :aria-label="filterAria" :title="filterAria" @click="filtersOpen = true">
+        <AppIcon name="filter" /><span v-if="filterCount" class="icon-badge">{{ filterCount }}</span>
       </button>
       <button class="icon" :aria-label="layout === 'cards' ? 'Таблицей' : 'Карточками'" :title="layout === 'cards' ? 'Показать таблицей' : 'Показать карточками'"
               @click="ui.setLayout(layout === 'cards' ? 'table' : 'cards')"><AppIcon :name="layout === 'cards' ? 'table' : 'cards'" /></button>
@@ -615,6 +639,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         <button v-if="lines.filters.customerOrderId" class="chip on" @click="clearOrder" title="Показать все заказы">
           Заказ {{ (lines.items[0] && lines.items[0].customerOrder && lines.items[0].customerOrder.number) || lines.filters.customerOrderId.slice(0, 8) }} <AppIcon name="x" :size="14" />
         </button>
+        <button v-if="quick" class="chip on" @click="quick = null" :title="`Снять фильтр по значению «${quick.value}»`">
+          {{ quick.title }}: {{ quick.value }} <AppIcon name="x" :size="14" />
+        </button>
         <button class="chip" :class="{ on: lines.filters.groupByCustomerOrder }" @click="toggleFilter('groupByCustomerOrder')">По заказам</button>
         <button v-if="layout === 'table' && lines.filters.groupByCustomerOrder && groupKeys.length" class="chip" data-expand-all @click="toggleAll">
           <AppIcon :name="allOpen ? 'up' : 'down'" :size="14" /> {{ allOpen ? 'Свернуть все' : 'Развернуть все' }}
@@ -630,7 +657,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       </div>
       <div class="muted small lines-count">
         <span v-if="lines.loading">Загрузка…</span>
-        <span v-else>Строк: {{ shown.length }}<template v-if="q"> из {{ lines.items.length }}</template><template v-if="groupKeys.length"> · заказов {{ groupKeys.length }}</template></span>
+        <span v-else>Строк: {{ shown.length }}<template v-if="q || quick"> из {{ lines.items.length }}</template><template v-if="groupKeys.length"> · заказов {{ groupKeys.length }}</template></span>
       </div>
     </div>
 
@@ -699,12 +726,12 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
                 <input type="checkbox" :checked="r.line.marked" :disabled="!!markDenied(r.line)" @click.prevent="toggleMark(r.line)" />
               </td>
               <td>
-                <button class="link" :title="'Подробно'" @click.stop="openLine(r.line)"><span :class="['chip', statusTone(r.line.status)]">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span></button>
+                <button class="link" :title="'Подробно (двойной клик по статусу — фильтр по нему)'" @click.stop="openLine(r.line)" @dblclick.stop="quickFilterStatus(r.line)"><span :class="['chip', statusTone(r.line.status)]">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span></button>
               </td>
               <td v-for="c in visibleColumns" :key="c.id"
                   :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind), 'band-start': bandStarts.has(c.id) }"
-                  :title="deny(r.line, c) || 'Изменить'"
-                  @dblclick="startEdit(r.line, c)" @keydown.enter="startEdit(r.line, c)" :tabindex="deny(r.line, c) ? -1 : 0">
+                  :title="deny(r.line, c) || 'Двойной клик — фильтр по значению, Enter — правка'"
+                  @dblclick.stop="quickFilter(r.line, c)" @keydown.enter="startEdit(r.line, c)" :tabindex="deny(r.line, c) ? -1 : 0">
                 <template v-if="editing && editing.line.id === r.line.id && editing.column.id === c.id">
                   <input ref="editInput" v-model="editing.value" :type="editing.kind === 'date' ? 'date' : 'text'"
                          @keydown.enter.stop="commitEdit" @keydown.esc="editing = null" @blur="commitEdit" style="width: 150px" />
@@ -733,7 +760,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
     <div v-if="lines.nextCursor" class="row" style="justify-content: center; padding: 12px">
       <button :disabled="lines.loading" @click="lines.loadMore()">Загрузить ещё</button>
     </div>
-    <p v-if="layout === 'table'" class="muted small">Двойной клик по голубой ячейке — правка, по статусу — карточка строки. Права — по матрице роли.</p>
+    <p v-if="layout === 'table'" class="muted small">Двойной клик по значению — фильтр по нему, Enter по ячейке — правка, по статусу — карточка строки. Права — по матрице роли.</p>
 
     <!-- новый заказ -->
     <button v-if="view === 'sales' && !selCount" class="fab primary" aria-label="Новый заказ" title="Новый заказ" :disabled="busy" @click="openNewOrder">
@@ -840,7 +867,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <label v-if="view === 'sales'" class="row sw">Только с закупками <span class="switch"><input type="checkbox" v-model="lines.filters.onlyWithPurchases" /><span></span></span></label>
       <label class="row sw">Группировать по заказам <span class="switch"><input type="checkbox" v-model="lines.filters.groupByCustomerOrder" /><span></span></span></label>
       <template #actions>
-        <button @click="lines.resetFilters(); applyFilters()">Сбросить</button>
+        <button @click="resetFilters">Сбросить</button>
         <button class="primary" @click="applyFilters">Показать</button>
       </template>
     </AppModal>
