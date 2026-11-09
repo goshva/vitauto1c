@@ -932,7 +932,7 @@
     "title": "Цена (себес.)",
     "dataType": "number",
     "writable": true,
-    "rights": ".......++......"
+    "rights": "..............."
    },
    {
     "id": "sum",
@@ -968,7 +968,7 @@
     "title": "Оплачено (счёт, оплата, постоплата)",
     "dataType": "select",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "invoice_number",
@@ -977,7 +977,7 @@
     "title": "Счёт №",
     "dataType": "text",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "invoice_date",
@@ -986,7 +986,7 @@
     "title": "Дата счёта",
     "dataType": "date",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "coefficient",
@@ -3507,7 +3507,7 @@
     "title": "Цена (себес.)",
     "dataType": "number",
     "writable": true,
-    "rights": ".......++......"
+    "rights": "..............."
    },
    {
     "id": "sum",
@@ -3543,7 +3543,7 @@
     "title": "Оплачено (счёт, оплата, постоплата)",
     "dataType": "select",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "invoice_number",
@@ -3552,7 +3552,7 @@
     "title": "Счёт №",
     "dataType": "text",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "invoice_date",
@@ -3561,7 +3561,7 @@
     "title": "Дата счёта",
     "dataType": "date",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "coefficient",

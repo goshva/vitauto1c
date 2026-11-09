@@ -1246,7 +1246,8 @@ class TestV213(MatrixCase):
         self.assertIn('Возврат СтавкаНДС22();', procedure_text(oan, 'НайтиСтавкуНДС'))
 
     def test_v221_changes_only_expected_bsl(self):
-        """v2.21 относительно v2.20: сумма строк заказа покупателя — только Арм_ДанныеЗакупокИПродажФон."""
+        """v2.21 относительно v2.20: сумма строк заказа покупателя — Арм_ДанныеЗакупокИПродажФон;
+        плюс Арм_МатрицаПрав, который переписывает генератор при правке матрицы (ФТ п. 3, кладовщик без себестоимости)."""
         changed = []
         for dp, _dn, fns in os.walk(EXT):
             for f in fns:
@@ -1256,7 +1257,10 @@ class TestV213(MatrixCase):
                 q = os.path.join(V220, rel)
                 if not os.path.isfile(q) or read(q) != read(os.path.join(dp, f)):
                     changed.append(rel)
-        self.assertEqual(changed, ['CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl'])
+        self.assertEqual(sorted(changed), sorted([
+            'CommonModule/Арм_ДанныеЗакупокИПродажФон/CommonModule.obj.bsl',
+            'CommonModule/Арм_МатрицаПрав/CommonModule.obj.bsl',
+        ]))
 
     def test_v221_customer_order_rows_have_sum(self):
         """v2.21 (тех. долг P0-1): каждая строка заказа покупателя получает Сумму до расчёта НДС (была 0)."""
