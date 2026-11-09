@@ -423,13 +423,20 @@ async function strikeLine() {
 
 // отгрузка
 const shipment = ref(null);
+const zones = ref([]);
+async function loadZones() {
+  if (zones.value.length) return;
+  try { zones.value = await get('/directories/zones'); } catch (e) { toast.error(e); }
+}
 function openShipment() {
-  shipment.value = { shipmentDate: new Date().toISOString().slice(0, 10), shipmentNumber: '' };
+  loadZones();
+  shipment.value = { shipmentDate: new Date().toISOString().slice(0, 10), shipmentNumber: '', zoneId: '' };
 }
 async function saveShipment() {
   const s = shipment.value;
   shipment.value = null;
-  await run(() => post('/sales/shipments', { customerOrderId: currentOrder.value.id, ...s }), result);
+  await run(() => post('/sales/shipments', { customerOrderId: currentOrder.value.id, shipmentDate: s.shipmentDate,
+    shipmentNumber: s.shipmentNumber, ...(s.zoneId ? { zoneId: s.zoneId } : {}) }), result);
 }
 
 // новый заказ
@@ -501,7 +508,27 @@ function canRun(t) {
   return lines.marked.some(l => l.markedBy === userName.value && allowed.includes(l.status));
 }
 const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value) && canRun(t)));
-const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
+// резерв: зона склада выбирается в форме (M3, ТЗ 2.4)
+const reserveOpen = ref(false);
+const reserveZone = ref('');
+async function openReserve() {
+  actionsOpen.value = false;
+  await loadZones();
+  reserveZone.value = '';
+  reserveOpen.value = true;
+}
+async function saveReserve() {
+  const zoneId = reserveZone.value;
+  reserveOpen.value = false;
+  closeSheets();
+  await run(() => post('/lines/transition', { view: view.value, to: 'reserve', ...(zoneId ? { zoneId } : {}) }),
+    r => `Зарезервировать: ${result(r)}`);
+}
+const transition = t => {
+  if (t.to === 'reserve') return openReserve();
+  closeSheets();
+  return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`);
+};
 // печать (АРМ v2.23, блок 3): формы 1С по заказам отмеченных строк, без отметок — по заказу открытой строки
 const PRINTS = [
   { kind: 'shipment_sheet', title: 'Отгрузочная ведомость', node: 'M12' },
@@ -894,9 +921,30 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <p class="muted small" style="margin: 0">Заказ {{ currentOrder && currentOrder.number }}: строки «Готово к отгрузке» и «Возврат», а также строки с партией в «Новый» / «В работе».</p>
       <label class="field">Дата <input type="date" v-model="shipment.shipmentDate" /></label>
       <label class="field">Номер <input v-model="shipment.shipmentNumber" autofocus /></label>
+      <label class="field">Зона отгрузки
+        <select v-model="shipment.zoneId">
+          <option value="">— не указывать —</option>
+          <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.code }} · {{ z.name }}</option>
+        </select>
+      </label>
       <template #actions>
         <button @click="shipment = null">Отмена</button>
         <button class="primary" :disabled="!shipment.shipmentDate || !shipment.shipmentNumber" @click="saveShipment">Записать</button>
+      </template>
+    </AppModal>
+
+    <!-- резерв: зона склада (M3, ТЗ 2.4: шесть зон по схеме) -->
+    <AppModal v-if="reserveOpen" title="Резерв: зона склада" @close="reserveOpen = false">
+      <p class="muted small" style="margin: 0">Зона склада по схеме: приёмка, малый и большой склад, неопознанные и возвраты, ремонтная зона, укомплектованные.</p>
+      <label class="field">Зона склада
+        <select v-model="reserveZone">
+          <option value="">— не указывать —</option>
+          <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.code }} · {{ z.name }}</option>
+        </select>
+      </label>
+      <template #actions>
+        <button @click="reserveOpen = false">Отмена</button>
+        <button class="primary" :disabled="busy" @click="saveReserve">Зарезервировать</button>
       </template>
     </AppModal>
 

@@ -58,12 +58,16 @@ insert into ref.warehouse (id, code, name, unit_type, is_warehouse, is_main) val
 on conflict (id) do update set name = excluded.name, is_warehouse = true, is_main = true;
 
 -- Ячейки склада
-insert into ref.storage_cell (id, warehouse_id, code, zone) values
-  ('88888888-8888-8888-8888-888888888801', '44444444-4444-4444-4444-444444444401', 'A-01', 'Z3'),
-  ('88888888-8888-8888-8888-888888888802', '44444444-4444-4444-4444-444444444401', 'A-02', 'Z3'),
-  ('88888888-8888-8888-8888-888888888803', '44444444-4444-4444-4444-444444444401', 'B-01', 'Z8'),
-  ('88888888-8888-8888-8888-888888888804', '44444444-4444-4444-4444-444444444401', 'B-02', 'Z8')
-on conflict (id) do nothing;
+insert into ref.storage_cell (id, warehouse_id, code, zone, zone_id) values
+  ('88888888-8888-8888-8888-888888888801', '44444444-4444-4444-4444-444444444401', 'P-01', 'Z1', (select id from ref.warehouse_zone where code = 'Z1')),
+  ('88888888-8888-8888-8888-888888888802', '44444444-4444-4444-4444-444444444401', 'A-01', 'Z3', (select id from ref.warehouse_zone where code = 'Z3')),
+  ('88888888-8888-8888-8888-888888888803', '44444444-4444-4444-4444-444444444401', 'A-02', 'Z3', (select id from ref.warehouse_zone where code = 'Z3')),
+  ('88888888-8888-8888-8888-888888888804', '44444444-4444-4444-4444-444444444401', 'B-01', 'Z4', (select id from ref.warehouse_zone where code = 'Z4')),
+  ('88888888-8888-8888-8888-888888888805', '44444444-4444-4444-4444-444444444401', 'B-02', 'Z4', (select id from ref.warehouse_zone where code = 'Z4')),
+  ('88888888-8888-8888-8888-888888888806', '44444444-4444-4444-4444-444444444401', 'R-01', 'Z5', (select id from ref.warehouse_zone where code = 'Z5')),
+  ('88888888-8888-8888-8888-888888888807', '44444444-4444-4444-4444-444444444401', 'M-01', 'Z7', (select id from ref.warehouse_zone where code = 'Z7')),
+  ('88888888-8888-8888-8888-888888888808', '44444444-4444-4444-4444-444444444401', 'S-01', 'Z9', (select id from ref.warehouse_zone where code = 'Z9'))
+on conflict (id) do update set code = excluded.code, zone = excluded.zone, zone_id = excluded.zone_id, deleted = false;
 
 -- Организация
 insert into ref.organization (id, code, name, inn) values

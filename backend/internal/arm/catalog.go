@@ -62,11 +62,19 @@ func (s *Service) Directory(ctx context.Context, name string, q map[string]strin
 	case "warehouses":
 		return jsonRows(ctx, s.DB, "select jsonb_build_object('id', id, 'name', name, 'main', is_main) from ref.warehouse where not deleted and is_warehouse order by is_main desc, name")
 	case "cells":
-		return jsonRows(ctx, s.DB, "select jsonb_build_object('id', id, 'name', code, 'warehouseId', warehouse_id) from ref.storage_cell where not deleted and ($1 = '' or warehouse_id = $1::uuid) order by code", q["warehouseId"])
+		return jsonRows(ctx, s.DB, `select jsonb_build_object('id', c.id, 'name', c.code, 'warehouseId', c.warehouse_id,
+				'zone', coalesce(c.zone, ''), 'zoneId', c.zone_id, 'zoneName', coalesce(z.name, ''))
+			from ref.storage_cell c left join ref.warehouse_zone z on z.id = c.zone_id
+			where not c.deleted and ($1 = '' or c.warehouse_id = $1::uuid) order by coalesce(z.sort, 99), c.code`, q["warehouseId"])
+	case "zones":
+		return jsonRows(ctx, s.DB, `select jsonb_build_object('id', z.id, 'code', z.code, 'name', z.name,
+				'purpose', coalesce(z.purpose, ''),
+				'cells', (select count(*) from ref.storage_cell c where c.zone_id = z.id and not c.deleted))
+			from ref.warehouse_zone z where not z.deleted order by z.sort, z.code`)
 	case "brands":
 		return jsonRows(ctx, s.DB, "select "+brandJSON+" from ref.brand where not deleted and ($1 = '' or lower(name) like $2) order by name limit 100", strings.TrimSpace(q["q"]), like(q["q"]))
 	}
-	return nil, fail(404, "not_found", "Справочник: counterparties, contracts, nomenclature, batches, service-types, payment-forms, units, car-models, car-groups, warehouses, cells, brands")
+	return nil, fail(404, "not_found", "Справочник: counterparties, contracts, nomenclature, batches, service-types, payment-forms, units, car-models, car-groups, warehouses, cells, zones, brands")
 }
 
 // CatalogEdit — кто меняет разделы «Товары», «Услуги», «Машины».

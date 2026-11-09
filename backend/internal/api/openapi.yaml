@@ -493,6 +493,10 @@ paths:
                   format: date
                 shipmentNumber:
                   type: string
+                zoneId:
+                  type: string
+                  format: uuid
+                  description: Зона отгрузки (ref.warehouse_zone, ТЗ 2.4)
       responses:
         '200':
           description: Сколько строк обновлено
@@ -675,6 +679,20 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Brand'
+  /directories/zones:
+    get:
+      tags: [directories]
+      summary: Зоны склада (ТЗ 2.4) — шесть предопределённых зон
+      operationId: listZones
+      responses:
+        '200':
+          description: Зоны с числом ячеек
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Zone'
   /directories/contracts:
     get:
       tags: [directories]
@@ -807,6 +825,10 @@ paths:
                 to:
                   type: string
                   enum: [reserve, assembly, ready_to_ship, shipped, acceptance, return, closed]
+                zoneId:
+                  type: string
+                  format: uuid
+                  description: Зона склада для перехода «В резерв» (ref.warehouse_zone, ТЗ 2.4)
       responses:
         '200':
           description: Переход применён хотя бы к одной строке
@@ -2362,6 +2384,20 @@ components:
           type: integer
         url:
           type: string
+    Zone:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        purpose:
+          type: string
+        cells:
+          type: integer
     NamedRef:
       type: object
       properties:

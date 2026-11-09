@@ -577,7 +577,8 @@ func (s *Service) statusSet(l *line, status string) map[string]any {
 }
 
 // Transition — POST /lines/transition: переход отмеченных строк вида по таблице Transitions и роли.
-func (s *Service) Transition(ctx context.Context, a Actor, view, to string) (map[string]any, error) {
+// zoneID — необязательная зона склада для перехода «В резерв» (reserve): сохраняется в строке.
+func (s *Service) Transition(ctx context.Context, a Actor, view, to, zoneID string) (map[string]any, error) {
 	if view != "sales" && view != "purchases" {
 		return nil, fail(400, "bad_request", "view: sales или purchases", "view")
 	}
@@ -601,6 +602,21 @@ func (s *Service) Transition(ctx context.Context, a Actor, view, to string) (map
 	}
 	var done, total int
 	var skipped []string
+	var zone *uuid.UUID
+	if zoneID != "" {
+		z, err := parseID(zoneID)
+		if err != nil {
+			return nil, fail(400, "bad_request", "zoneId: нужен идентификатор зоны склада", "zoneId")
+		}
+		var exists bool
+		if err := s.DB.QueryRow(ctx, "select exists(select 1 from ref.warehouse_zone where id = $1 and not deleted)", z).Scan(&exists); err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, fail(404, "not_found", "Зона склада не найдена", "zoneId")
+		}
+		zone = &z
+	}
 	err := s.inTx(ctx, a, func(tx pgx.Tx) error {
 		marked, err := selectLines(ctx, tx, "marked and marked_by_id = $1 and operation = $2 and not coalesce(deleted, false) order by sort_order for update", a.UserID, viewOp(view))
 		if err != nil {
@@ -632,7 +648,12 @@ func (s *Service) Transition(ctx context.Context, a Actor, view, to string) (map
 				skipped = append(skipped, name+": не отмечено «Документ подписан оригинал»")
 				continue
 			}
-			if err := updateLine(ctx, tx, l.ID, merge(s.statusSet(l, t.Status), unmark)); err != nil {
+			set := merge(s.statusSet(l, t.Status), unmark)
+			// Зона склада из формы резерва: сохраняем в строке (для отгрузки/приёмки — по ячейке).
+			if to == "reserve" && zone != nil {
+				set["zone_id"] = *zone
+			}
+			if err := updateLine(ctx, tx, l.ID, set); err != nil {
 				return err
 			}
 			done++
@@ -749,13 +770,29 @@ func (s *Service) RejectAssembly(ctx context.Context, a Actor, reason string) (m
 }
 
 // Shipments — POST /sales/shipments (M12): дата и номер отгрузки строкам заказа, готовым к отгрузке.
-func (s *Service) Shipments(ctx context.Context, a Actor, orderID, date, number string) (map[string]any, error) {
+// zoneID — необязательная зона отгрузки: пишется в строки и в расходную накладную.
+func (s *Service) Shipments(ctx context.Context, a Actor, orderID, date, number, zoneID string) (map[string]any, error) {
 	if date == "" || number == "" {
 		return nil, fail(400, "bad_request", "Нужны shipmentDate и shipmentNumber")
 	}
 	d, err := time.ParseInLocation("2006-01-02", date, time.Local)
 	if err != nil {
 		return nil, fail(400, "bad_request", "shipmentDate: ГГГГ-ММ-ДД", "shipmentDate")
+	}
+	var zone *uuid.UUID
+	if zoneID != "" {
+		z, err := parseID(zoneID)
+		if err != nil {
+			return nil, fail(400, "bad_request", "zoneId: нужен идентификатор зоны склада", "zoneId")
+		}
+		var exists bool
+		if err := s.DB.QueryRow(ctx, "select exists(select 1 from ref.warehouse_zone where id = $1 and not deleted)", z).Scan(&exists); err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, fail(404, "not_found", "Зона склада не найдена", "zoneId")
+		}
+		zone = &z
 	}
 	var n, total int
 	err = s.inTx(ctx, a, func(tx pgx.Tx) error {
@@ -770,7 +807,11 @@ func (s *Service) Shipments(ctx context.Context, a Actor, orderID, date, number 
 			inWork := l.Batch != nil && (l.Status == stInWork || l.Status == stDraft)
 			ready := contains([]string{stAssembled, stPrepared, stReturn}, l.Status)
 			if free && (inWork || ready) {
-				if err := updateLine(ctx, tx, l.ID, map[string]any{"shipment_date": d, "shipment_number": number}); err != nil {
+				set := map[string]any{"shipment_date": d, "shipment_number": number}
+				if zone != nil {
+					set["zone_id"] = *zone
+				}
+				if err := updateLine(ctx, tx, l.ID, set); err != nil {
 					return err
 				}
 				n++

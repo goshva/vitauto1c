@@ -135,12 +135,15 @@ func (app *App) Register(mux *http.ServeMux) {
 		reply(w, 201, v, err)
 	})
 	h("POST /lines/transition", func(w http.ResponseWriter, r *http.Request) {
-		var b struct{ View, To string }
+		var b struct {
+			View, To string
+			ZoneID   string `json:"zoneId"`
+		}
 		if err := body(r, &b); err != nil {
 			writeProblem(w, err)
 			return
 		}
-		v, err := app.ARM.Transition(r.Context(), actor(r), b.View, b.To)
+		v, err := app.ARM.Transition(r.Context(), actor(r), b.View, b.To, b.ZoneID)
 		reply(w, 200, v, err)
 	})
 	h("POST /lines/reject-assembly", func(w http.ResponseWriter, r *http.Request) {
@@ -215,12 +218,15 @@ func (app *App) Register(mux *http.ServeMux) {
 		reply(w, 200, v, err)
 	})
 	h("POST /sales/shipments", func(w http.ResponseWriter, r *http.Request) {
-		var b struct{ CustomerOrderID, ShipmentDate, ShipmentNumber string }
+		var b struct {
+			CustomerOrderID, ShipmentDate, ShipmentNumber string
+			ZoneID                                        string `json:"zoneId"`
+		}
 		if err := body(r, &b); err != nil {
 			writeProblem(w, err)
 			return
 		}
-		v, err := app.ARM.Shipments(r.Context(), actor(r), b.CustomerOrderID, b.ShipmentDate, b.ShipmentNumber)
+		v, err := app.ARM.Shipments(r.Context(), actor(r), b.CustomerOrderID, b.ShipmentDate, b.ShipmentNumber, b.ZoneID)
 		reply(w, 200, v, err)
 	})
 	h("POST /sales/imports", func(w http.ResponseWriter, r *http.Request) {

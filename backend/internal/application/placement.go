@@ -14,13 +14,15 @@ import (
 
 // Cell — строка справочника ячеек (GET /cells) для CellPicker.
 type Cell struct {
-	ID          uuid.UUID `json:"id"`
-	WarehouseID uuid.UUID `json:"warehouseId"`
-	Code        string    `json:"code"`
-	Zone        string    `json:"zone,omitempty"`
-	Capacity    float64   `json:"capacity,omitempty"`
-	Blocked     bool      `json:"blocked"`
-	Free        int64     `json:"free"` // строк АРМ, закреплённых за ячейкой
+	ID          uuid.UUID  `json:"id"`
+	WarehouseID uuid.UUID  `json:"warehouseId"`
+	Code        string     `json:"code"`
+	Zone        string     `json:"zone,omitempty"`
+	ZoneID      *uuid.UUID `json:"zoneId,omitempty"`
+	ZoneName    string     `json:"zoneName,omitempty"`
+	Capacity    float64    `json:"capacity,omitempty"`
+	Blocked     bool       `json:"blocked"`
+	Free        int64      `json:"free"` // строк АРМ, закреплённых за ячейкой
 }
 
 // Cells — список ячеек; warehouseID пустой — все активные склады.
@@ -36,11 +38,12 @@ func (s *Service) Cells(ctx context.Context, a domain.Actor, warehouseID string)
 		}
 		wh = &id
 	}
-	rows, err := s.DB.Query(ctx, `select c.id, c.warehouse_id, c.code, coalesce(c.zone, ''), coalesce(c.capacity, 0), c.blocked,
+	rows, err := s.DB.Query(ctx, `select c.id, c.warehouse_id, c.code, coalesce(c.zone, ''), c.zone_id, coalesce(z.name, ''),
+			coalesce(c.capacity, 0), c.blocked,
 			(select count(*) from arm.line l where l.cell_id = c.id and not l.deleted)
-		from ref.storage_cell c
+		from ref.storage_cell c left join ref.warehouse_zone z on z.id = c.zone_id
 		where not c.deleted and ($1::uuid is null or c.warehouse_id = $1)
-		order by c.code limit 500`, wh)
+		order by coalesce(z.sort, 99), c.code limit 500`, wh)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +51,7 @@ func (s *Service) Cells(ctx context.Context, a domain.Actor, warehouseID string)
 	var out []Cell
 	for rows.Next() {
 		var c Cell
-		if err := rows.Scan(&c.ID, &c.WarehouseID, &c.Code, &c.Zone, &c.Capacity, &c.Blocked, &c.Free); err != nil {
+		if err := rows.Scan(&c.ID, &c.WarehouseID, &c.Code, &c.Zone, &c.ZoneID, &c.ZoneName, &c.Capacity, &c.Blocked, &c.Free); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
