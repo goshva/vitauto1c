@@ -35,7 +35,9 @@ function Write-Step($text) { Write-Host "  [..] $text" -ForegroundColor Yellow }
 function Write-Ok($text) { Write-Host "  [OK] $text" -ForegroundColor Green }
 
 # ── Go и Node: PATH или переносимые каталоги ────────────────────────────────
-$go = (Get-Command go -ErrorAction SilentlyContinue).Source
+$go = $null
+$goCmd = Get-Command go -ErrorAction SilentlyContinue
+if ($goCmd) { $go = $goCmd.Source }
 if (-not $go) {
     $go = Get-ChildItem "$env:LOCALAPPDATA\Programs\go*\go\bin\go.exe" -ErrorAction SilentlyContinue |
         Select-Object -First 1 -ExpandProperty FullName
@@ -43,7 +45,9 @@ if (-not $go) {
 if (-not $go) { throw 'Go не найден (нужен для сборки backend)' }
 $env:Path = (Split-Path $go) + ';' + $env:Path
 
-$nodeDir = (Get-Command node -ErrorAction SilentlyContinue).Source
+$nodeDir = $null
+$nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+if ($nodeCmd) { $nodeDir = Split-Path $nodeCmd.Source }
 if ($nodeDir) { $nodeDir = Split-Path $nodeDir }
 if (-not $nodeDir) {
     $nodeDir = Get-ChildItem "$env:LOCALAPPDATA\Programs\node-*" -Directory -ErrorAction SilentlyContinue |
@@ -51,7 +55,9 @@ if (-not $nodeDir) {
 }
 if ($nodeDir) { $env:Path = $nodeDir + ';' + $env:Path }
 
-$npm = (Get-Command npm -ErrorAction SilentlyContinue).Source
+$npm = $null
+$npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+if ($npmCmd) { $npm = $npmCmd.Source }
 if (-not $npm) { $npm = Join-Path $nodeDir 'npm.cmd' }
 if (-not $SkipPwa -and -not (Test-Path $npm)) { throw 'npm не найден (нужен для сборки PWA)' }
 

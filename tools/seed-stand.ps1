@@ -64,7 +64,9 @@ if (-not $SkipReseed) {
 
     # ── Схема (миграции текущего коммита) ───────────────────────────────────
     Write-Step 'Миграции: go run ./cmd/migrator schema-up...'
-    $go = (Get-Command go -ErrorAction SilentlyContinue).Source
+    $go = $null
+    $goCmd = Get-Command go -ErrorAction SilentlyContinue
+    if ($goCmd) { $go = $goCmd.Source }
     if (-not $go) {
         $go = Get-ChildItem "$env:LOCALAPPDATA\Programs\go*\go\bin\go.exe" -ErrorAction SilentlyContinue |
             Select-Object -First 1 -ExpandProperty FullName
