@@ -33,6 +33,14 @@ const view = computed(() => route.params.view);
 const userName = computed(() => session.user && session.user.userName);
 const layout = computed(() => ui.effectiveLayout);
 const pref = computed(() => columnsPref.pref(session.role, view.value));
+// «Срочно» — только метка (К1): подсветка строки в обоих списках, порядок закупки не меняется.
+const canUrgent = computed(() => session.role === 'admin');
+const isUrgent = l => !!(l && l.urgency && String(l.urgency).trim());
+const urgencyColumn = computed(() => matrix.columns.find(c => c.field === 'СрочностьКлиента')
+  || { id: 'urgency_fact', field: 'СрочностьКлиента', title: 'Срочность (ФАКТ) / комментарий заказчика' });
+async function setUrgent(line, on) {
+  await save(line, urgencyColumn.value, on ? 'срочно' : null);
+}
 
 // ---------- поля
 const settings = ref(null); // вкладка настройки полей или null
@@ -686,7 +694,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
                 </div>
               </td>
             </tr>
-            <tr v-else :class="{ marked: r.line.marked, current: r.line.id === lines.current, deleted: r.line.deleted }" @click="lines.current = r.line.id">
+            <tr v-else :class="{ marked: r.line.marked, current: r.line.id === lines.current, deleted: r.line.deleted, urgent: isUrgent(r.line) }" @click="lines.current = r.line.id">
               <td class="sticky-1" :title="r.line.markedBy ? 'Отметил: ' + r.line.markedBy : ''">
                 <input type="checkbox" :checked="r.line.marked" :disabled="!!markDenied(r.line)" @click.prevent="toggleMark(r.line)" />
               </td>
@@ -700,6 +708,14 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
                 <template v-if="editing && editing.line.id === r.line.id && editing.column.id === c.id">
                   <input ref="editInput" v-model="editing.value" :type="editing.kind === 'date' ? 'date' : 'text'"
                          @keydown.enter.stop="commitEdit" @keydown.esc="editing = null" @blur="commitEdit" style="width: 150px" />
+                </template>
+                <!-- К1 «Срочность (ФАКТ) / комментарий заказчика»: для админа — чекбокс-метка прямо в строке -->
+                <template v-else-if="canUrgent && c.field === 'СрочностьКлиента'">
+                  <label class="urgent-cell" @click.stop :title="'Срочно: только метка, порядок закупки не меняется'">
+                    <input type="checkbox" :checked="isUrgent(r.line)" :disabled="!!deny(r.line, c)"
+                           :aria-label="'Срочно: ' + (r.line.factName || '')" @change="setUrgent(r.line, $event.target.checked)" />
+                    <span v-if="r.line.urgency" class="small">{{ r.line.urgency }}</span>
+                  </label>
                 </template>
                 <template v-else><span v-if="!display(r.line, c.field)" class="faint">—</span>{{ display(r.line, c.field) }}</template>
               </td>
@@ -832,7 +848,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
     <!-- диалоги -->
     <LineSheet v-if="sheetLine" :line="sheetLine" :columns="matrix.columns" :deny="deny" :mark-denied="markDenied(sheetLine)"
                :editable-first="pref.detailEditableFirst" :hide-empty="pref.detailHideEmpty" :actions="sheetActions" :busy="busy"
+               :can-urgent="canUrgent"
                @close="sheetId = null" @save="(c, v) => save(sheetLine, c, v)" @pick="c => openPicker(sheetLine, c)"
+               @urgent="v => setUrgent(sheetLine, v)"
                @mark="toggleMark" @action="sheetAction" @document="openDocument" />
 
     <RefPicker v-if="picker" :dir="picker.dir" :query="picker.query" :title="picker.column.title" allow-clear
@@ -910,6 +928,12 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 
 <style scoped>
 .lines { display: flex; flex-direction: column; gap: 10px; }
+/* «Срочно» (К1) — только метка: подсветка строки в продажах и снабжении */
+tr.urgent td { background: color-mix(in srgb, var(--err-2) 70%, transparent); }
+tr.urgent td.sticky-1 { box-shadow: inset 3px 0 0 var(--err); }
+.urgent-cell { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.urgent-cell input { width: 18px; height: 18px; }
+.urgent-cell .small { font-size: 11px; color: var(--err); }
 .lines.has-sel { padding-bottom: 84px; }
 .lines-head { display: flex; flex-direction: column; gap: 8px; }
 .lines-count { padding: 0 4px; }

@@ -1,4 +1,4 @@
-# full-seed.ps1 -- Full seed DB vitauto_app
+﻿# full-seed.ps1 -- Full seed DB vitauto_app
 # Usage: .\seed\full-seed.ps1
 
 param(
@@ -57,6 +57,9 @@ Run-Sql "seed\demo-data.sql" "Scenarios"
 
 # STEP 3: Stages (reference customer orders: FK arm.line.customer_order_id)
 Run-Sql "seed\demo-stages.sql" "Stages"
+
+# STEP 4: Urgency marks (К1, только метка)
+Run-Sql "seed\demo-urgency.sql" "Urgency"
 
 # Summary
 Write-Host ""
