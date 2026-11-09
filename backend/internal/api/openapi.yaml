@@ -173,6 +173,30 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: clientOrderNumber
+          in: query
+          schema:
+            type: string
+          description: Отбор по «№ заказа клиента» (В5)
+        - name: factArticle
+          in: query
+          schema:
+            type: string
+          description: Отбор по артикулу «как написал клиент» (К5)
+        - name: warehouseId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Отбор по складу строки (Н6 — ячейка/склад)
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: |
+            Отбор по статусу API (код матрицы: new, in_work, partially_ordered, ordered, paid,
+            in_transit, awaiting_receipt, acceptance, to_stock, reserve, assembly, ready_to_ship,
+            shipped, return, closed). Несколько — через запятую.
         - name: cursor
           in: query
           schema:

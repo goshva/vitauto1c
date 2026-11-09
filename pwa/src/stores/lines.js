@@ -3,7 +3,7 @@ import { api, get } from '../api';
 import { load, save } from '../storage';
 
 const DEFAULT_FILTERS = {
-  periodFrom: '', periodTo: '', customerOrderId: '',
+  periodFrom: '', periodTo: '', customerOrderId: '', clientOrderNumber: '', factArticle: '', status: '',
   hideShipped: false, hideDeleted: true, onlyWithPurchases: false, groupByCustomerOrder: true
 };
 
@@ -26,6 +26,7 @@ export const useLinesStore = defineStore('lines', {
       const f = this.filters;
       return {
         view: this.view, periodFrom: f.periodFrom, periodTo: f.periodTo, customerOrderId: f.customerOrderId,
+        clientOrderNumber: f.clientOrderNumber, factArticle: f.factArticle, status: f.status,
         hideShipped: f.hideShipped, hideDeleted: f.hideDeleted, onlyWithPurchases: f.onlyWithPurchases,
         groupByCustomerOrder: f.groupByCustomerOrder, limit: 100, cursor
       };

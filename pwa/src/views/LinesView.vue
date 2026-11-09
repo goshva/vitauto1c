@@ -127,7 +127,8 @@ const tableRows = computed(() => rows.value.filter(r => !r.line || !r.groupKey |
 const filtersOpen = ref(false);
 const activeFilters = computed(() => {
   const f = lines.filters;
-  return [f.periodFrom, f.periodTo, f.hideShipped, !f.hideDeleted, f.onlyWithPurchases].filter(Boolean).length;
+  return [f.periodFrom, f.periodTo, f.hideShipped, !f.hideDeleted, f.onlyWithPurchases,
+    f.clientOrderNumber, f.factArticle, f.status].filter(Boolean).length;
 });
 function toggleFilter(k) {
   lines.filters[k] = !lines.filters[k];
@@ -415,6 +416,7 @@ async function createOrder() {
 }
 
 // добавить строки (подбор номенклатуры)
+// TODO(ФТ v2, п. 4 «Вставка заявки»): нет построчной вставки из буфера (Ctrl+V) и поля «База» в шапке заказа.
 const addFor = ref(null);
 function openAdd() {
   if (view.value === 'sales') addFor.value = { customerOrderId: currentOrder.value.id, title: `Строки в заказ ${currentOrder.value.number}` };
@@ -819,6 +821,14 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         <label class="field grow">С <input type="date" v-model="lines.filters.periodFrom" /></label>
         <label class="field grow">По <input type="date" v-model="lines.filters.periodTo" /></label>
       </div>
+      <label class="field">№ заказа клиента <input type="text" v-model="lines.filters.clientOrderNumber" placeholder="В5" /></label>
+      <label class="field">Артикул (факт) <input type="text" v-model="lines.filters.factArticle" placeholder="К5" /></label>
+      <label class="field">Статус
+        <select v-model="lines.filters.status">
+          <option value="">любой</option>
+          <option v-for="(title, code) in STATUS_TITLES" :key="code" :value="code">{{ title }}</option>
+        </select>
+      </label>
       <label class="row sw">Скрыть отгруженные <span class="switch"><input type="checkbox" v-model="lines.filters.hideShipped" /><span></span></span></label>
       <label class="row sw">Скрыть удалённые <span class="switch"><input type="checkbox" v-model="lines.filters.hideDeleted" /><span></span></span></label>
       <label v-if="view === 'sales'" class="row sw">Только с закупками <span class="switch"><input type="checkbox" v-model="lines.filters.onlyWithPurchases" /><span></span></span></label>

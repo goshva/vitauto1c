@@ -52,6 +52,7 @@ const (
 	NomenclatureFilter = "77777777-7777-7777-7777-777777777702"
 	Customer           = "66666666-6666-6666-6666-666666666601"
 	CustomerContract   = "ee000000-0000-0000-0000-000000000003"
+	MainWarehouse      = "44444444-4444-4444-4444-444444444401"
 
 	SupplierA = "66666666-6666-6666-6666-666666666604"
 	SupplierB = "66666666-6666-6666-6666-666666666605"
@@ -106,6 +107,31 @@ func PreparePostableSales(ctx context.Context, pool *pgxpool.Pool, userID string
 		nomenclature_id = $3, quantity = 3, sale_price = 1200, customer_id = $4, contract_id = $5,
 		supplier_order_id = null, supplier_order_date = null, deleted = false
 		where id = $1`, SaleLinked, userID, NomenclatureFilter, Customer, CustomerContract)
+	return err
+}
+
+// PrepareFilterFixture расставляет атрибуты строк стенда для проверки отборов GET /lines (ФТ п. 7):
+// разные даты заказа, артикул/№ заказа клиента, склад, удалённая строка, отгруженная строка.
+func PrepareFilterFixture(ctx context.Context, pool *pgxpool.Pool) error {
+	const q = `update arm.line set
+		order_date = case id
+			when $1 then '2026-11-01'::timestamp when $2 then '2026-11-05'::timestamp when $3 then '2026-12-01'::timestamp
+			when $4 then '2026-11-02'::timestamp when $5 then '2026-11-20'::timestamp when $6 then '2026-11-03'::timestamp
+			else order_date end,
+		fact_article = case id when $1 then 'ART-1' when $2 then 'ART-2' when $4 then 'ART-S1' else fact_article end,
+		client_order_number = case id when $1 then 'ЗК-К-1' when $4 then 'ЗК-К-1' else client_order_number end,
+		warehouse_id = case id when $1 then $7::uuid else warehouse_id end,
+		deleted = (id = $8)
+		where id = any(array[$1,$2,$3,$4,$5,$6,$8]::uuid[])`
+	_, err := pool.Exec(ctx, q, PurchaseA, PurchaseB, PurchaseC, SaleLinked, SaleQtyDiff, SaleLinkedC, MainWarehouse, PurchaseForeign)
+	if err != nil {
+		return err
+	}
+	// отгруженная продажа S3 и «черновик» закупки L1 — для hideShipped и status
+	if _, err := pool.Exec(ctx, `update arm.line set status = 'Отгружено' where id = $1`, SaleLinkedC); err != nil {
+		return err
+	}
+	_, err = pool.Exec(ctx, `update arm.line set status = 'Черновик' where id = $1`, PurchaseA)
 	return err
 }
 

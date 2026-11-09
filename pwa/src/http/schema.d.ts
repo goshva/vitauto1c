@@ -1851,6 +1851,17 @@ export interface operations {
                 hideDeleted?: boolean;
                 onlyWithPurchases?: boolean;
                 groupByCustomerOrder?: boolean;
+                /** @description Отбор по «№ заказа клиента» (В5) */
+                clientOrderNumber?: string;
+                /** @description Отбор по артикулу «как написал клиент» (К5) */
+                factArticle?: string;
+                /** @description Отбор по складу строки (Н6 — ячейка/склад) */
+                warehouseId?: string;
+                /** @description Отбор по статусу API (код матрицы: new, in_work, partially_ordered, ordered, paid,
+                 *     in_transit, awaiting_receipt, acceptance, to_stock, reserve, assembly, ready_to_ship,
+                 *     shipped, return, closed). Несколько — через запятую.
+                 *      */
+                status?: string;
                 cursor?: string;
                 limit?: number;
             };

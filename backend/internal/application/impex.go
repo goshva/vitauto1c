@@ -51,6 +51,8 @@ func headerField(h string) string {
 }
 
 // ParseImportSheet — разбор содержимого файла (.xlsx/.xlsm/.csv) в строки листа.
+// TODO(ФТ v2, п. 4 «Вставка заявки»): серверный разбор файла есть, но в PWA нет построчной вставки из буфера
+// (Ctrl+V) и нет поля «База» — нужны UI и реквизит (см. LinesView.vue, лист заказа).
 func ParseImportSheet(name string, data []byte) (*ImportRows, error) {
 	var grid [][]string
 	var err error

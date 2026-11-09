@@ -43,6 +43,7 @@ export const FIELDS = {
   РРЦ: { prop: 'rrc', kind: 'number' },
   Оплачено: { prop: 'paid', kind: 'text' },   // в регистре — строка («Оплачено», «Счёт», «Постоплата»)
   КоличествоНормаЧас: { prop: 'normHours', kind: 'number' },
+  // TODO(ФТ v2, п. 1): согласовать «коэффициент» (множитель) или «наценка, %»; сейчас в матрице «Наценка, %».
   Коэффициент: { prop: 'coefficient', kind: 'number' },
   Цена: { prop: 'salePrice', kind: 'number' },
   Сумма: { prop: 'saleSum', kind: 'number' },
@@ -59,6 +60,8 @@ export const FIELDS = {
   ДатаСчета: { prop: 'invoiceDate', kind: 'date' },
   ДатаЗаказаПоставщику: { prop: 'supplierOrderDate', kind: 'date' },
   СрокПоставки: { prop: 'deliveryTerm', kind: 'date' },
+  // TODO(ФТ v2, п. 6 «Комментарий и доп. признак»): текстовый комментарий есть, а флажка-признака AD нет —
+  // в каноне extra_field_1/2 заняты ценой и суммой продажи, нужен отдельный реквизит (поле + миграция + матрица).
   КомментарийКСтроке2: { prop: 'comment2', kind: 'text' }
 };
 

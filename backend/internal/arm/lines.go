@@ -167,6 +167,18 @@ func (s *Service) Lines(ctx context.Context, a Actor, q map[string]string) (*Lin
 	if v := q["warehouseId"]; v != "" {
 		add("l.warehouse_id = ?::uuid", v)
 	}
+	if v := q["status"]; v != "" {
+		codes := []string{}
+		for _, c := range strings.Split(v, ",") {
+			if c = strings.TrimSpace(c); c != "" {
+				codes = append(codes, c)
+			}
+		}
+		if len(codes) > 0 {
+			args = append(args, codes)
+			where = append(where, fmt.Sprintf("coalesce(st.api_status, l.status) = any($%d::text[])", len(args)))
+		}
+	}
 	if truthy(q["onlyWithPurchases"]) && view == "sales" {
 		where = append(where, "exists (select 1 from arm.line p join doc.supplier_order so on so.id = p.supplier_order_id where so.customer_order_id = l.customer_order_id and p.operation = 'Закупка' and not coalesce(p.deleted, false))")
 	}
@@ -179,8 +191,12 @@ func (s *Service) Lines(ctx context.Context, a Actor, q map[string]string) (*Lin
 	if q["groupByCustomerOrder"] == "false" {
 		order = "l.order_date desc nulls last, l.sort_order"
 	}
-	rows, err := s.DB.Query(ctx, fmt.Sprintf(`select a.api from arm.line l join arm.line_api a on a.id = l.id where %s order by %s limit %d offset %d`,
-		strings.Join(where, " and "), order, limit+1, skip), args...)
+	join := ""
+	if q["status"] != "" {
+		join = " left join arm.line_status st on st.name = l.status"
+	}
+	rows, err := s.DB.Query(ctx, fmt.Sprintf(`select a.api from arm.line l join arm.line_api a on a.id = l.id%s where %s order by %s limit %d offset %d`,
+		join, strings.Join(where, " and "), order, limit+1, skip), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +349,9 @@ func (s *Service) PatchLine(ctx context.Context, a Actor, idText, field string, 
 			}
 			set["cost_sum"] = round2(qty * price)
 		}
-		// формулы матрицы: цена продажи = себестоимость × (1 + коэффициент/100), коэффициент в процентах; ручная цена пересчитывает коэффициент
+		// TODO(ФТ v2, п. 1 «Ценообразование»): согласовать с заказчиком — коэффициент (множитель) или наценка
+		// в процентах, и что значит «разный расчёт розничной цены по способу приобретения». Сейчас: себестоимость × (1 + наценка/100).
+		// формулы матрицы: цена продажи = себестоимость × (1 + наценка/100); ручная цена пересчитывает наценку
 		if l.Operation == opSale {
 			cost, coeff, price := l.CostPrice, l.Coeff, l.SalePrice
 			switch field {
