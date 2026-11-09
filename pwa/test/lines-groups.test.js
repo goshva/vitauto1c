@@ -100,9 +100,25 @@ describe('строки деталей в заказе (таблица)', () => {
     expect(wrapper.text()).toContain('Заказчик: АвтоДеталь Сервис');
 
     // «×» на чипе снимает фильтр — бейдж исчезает
-    const chip = wrapper.findAll('button.chip').find(b => b.text().startsWith('Заказчик:'));
-    await chip.trigger('click');
+  it('двойной клик по статусу фильтрует, ярлык карточки — отдельно от чекбокса', async () => {
+    const wrapper = mount(LinesView, { global: { stubs } });
     await flushPromises();
-    expect(document.querySelector('#appbar-actions .icon-badge')).toBeNull();
+
+    const lineRow = wrapper.findAll('tbody tr')[1];
+    const firstCell = lineRow.findAll('td')[0];
+    // ярлык редактирования стоит перед чекбоксом выбора
+    expect(firstCell.find('button[aria-label="Открыть карточку строки"]').exists()).toBe(true);
+    expect(firstCell.find('input[type="checkbox"]').exists()).toBe(true);
+    const cells = firstCell.element.children[0].children;
+    expect(cells[0].tagName).toBe('BUTTON');
+    expect(cells[1].tagName).toBe('INPUT');
+
+    // статус — не кнопка: одиночный клик карточку не открывает, двойной фильтрует
+    const statusCell = lineRow.findAll('td')[1];
+    expect(statusCell.find('button').exists()).toBe(false);
+    await statusCell.find('span.chip').trigger('dblclick');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Статус: prepared');
+    expect(wrapper.findAll('tbody tr').length).toBe(2);
   });
 });

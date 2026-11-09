@@ -753,10 +753,15 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             </tr>
             <tr v-else :class="{ marked: r.line.marked, current: r.line.id === lines.current, deleted: r.line.deleted, urgent: isUrgent(r.line) }" @click="lines.current = r.line.id">
               <td class="sticky-1" :title="r.line.markedBy ? 'Отметил: ' + r.line.markedBy : ''">
-                <input type="checkbox" :checked="r.line.marked" :disabled="!!markDenied(r.line)" @click.prevent="toggleMark(r.line)" />
+                <div class="row-start">
+                  <button class="icon sm-icon" aria-label="Открыть карточку строки" title="Открыть карточку строки (редактирование)"
+                          @click.stop="openLine(r.line)"><AppIcon name="edit" :size="16" /></button>
+                  <input type="checkbox" :checked="r.line.marked" :disabled="!!markDenied(r.line)" @click.prevent="toggleMark(r.line)" />
+                </div>
               </td>
               <td>
-                <button class="link" :title="'Подробно (двойной клик по статусу — фильтр по нему)'" @click.stop="openLine(r.line)" @dblclick.stop="quickFilterStatus(r.line)"><span :class="['chip', statusTone(r.line.status)]">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span></button>
+                <span :class="['chip', statusTone(r.line.status)]" title="Двойной клик — фильтр по этому статусу"
+                      @dblclick.stop="quickFilterStatus(r.line)">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span>
               </td>
               <td v-for="c in visibleColumns" :key="c.id"
                   :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind), 'band-start': bandStarts.has(c.id) }"
@@ -1012,6 +1017,10 @@ tr.urgent td.sticky-1 { box-shadow: inset 3px 0 0 var(--err); }
 .urgent-cell { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .urgent-cell input { width: 18px; height: 18px; }
 .urgent-cell .small { font-size: 11px; color: var(--err); }
+/* отметка выбора + ярлык карточки строки в первой колонке */
+.row-start { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.row-start .icon { width: 28px; height: 28px; min-height: 28px; color: var(--fg-3); }
+.row-start .icon:hover { color: var(--accent); }
 .lines.has-sel { padding-bottom: 84px; }
 .lines-head { display: flex; flex-direction: column; gap: 8px; }
 .lines-count { padding: 0 4px; }
