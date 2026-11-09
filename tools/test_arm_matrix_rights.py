@@ -176,17 +176,32 @@ class TestGeneration(MatrixCase):
 
     def test_matrix_canon_is_manager_order(self):
         self.assertEqual((G.MATRIX_TAB, G.MATRIX_LEVEL), ('manager', 'order'))
-        self.assertEqual(self.raw['roles'], ['manager', 'storekeeper', 'chief_mechanic', 'admin', 'supplier', 'client'])
-        for i, r in enumerate(self.raw['roles']):
+        # ACL-модуль 1С знает 6 ролей; supply («Снабжение») — только Pages/PWA (в BSL Снабжение = storekeeper, D1d).
+        self.assertEqual(self.raw['roles'],
+                         ['manager', 'storekeeper', 'chief_mechanic', 'admin', 'supplier', 'client', 'supply'])
+        for i, r in enumerate([r for r in self.raw['roles'] if r in G.ROLE_BITS]):
             self.assertEqual(G.ROLE_BITS[r], 1 << i, 'бит роли %s расходится с make_default_matrix.py' % r)
+        self.assertEqual([r for r in self.raw['roles'] if r not in G.ROLE_BITS], ['supply'])
 
     def test_bit_layout_matches_make_default_matrix(self):
         src = read(os.path.join(HERE, 'make_default_matrix.py'))
-        self.assertIn("ROLES = ['manager', 'storekeeper', 'chief_mechanic', 'admin', 'supplier', 'client']", src)
+        self.assertIn("ROLES = ['manager', 'storekeeper', 'chief_mechanic', 'admin', 'supplier', 'client', 'supply']", src)
+        self.assertIn("'supply': 512", src)              # бит роли supply (Pages/PWA)
+        self.assertIn('code |= ROLE_BITS.get(r, 0)', src)
         self.assertIn('code = 64 if cell.get', src)       # required = 64
         self.assertIn('code |= 128', src)                 # creator = 128
         self.assertIn('code |= 256', src)                 # admin-only = 256
         self.assertIn('code |= 63', src)                  # all = 63
+
+    def test_creator_symbol_in_pwa_matrix(self):
+        """«Только автор» (c): отметка/удаление строки и контроль документов — админ не сужается."""
+        m = json.loads(read(os.path.join(ROOT, 'pwa', 'src', 'odata', 'matrix.json')))
+        by = {r: {c['id']: c['rights'] for c in cols} for r, cols in m['roles'].items()}
+        for r in ('manager', 'storekeeper', 'chief_mechanic', 'supply'):
+            self.assertIn('c', by[r]['cell_select'], 'cell_select/%s: нет «только автор»' % r)
+            self.assertIn('c', by[r]['doc_signed_original'], 'doc_signed_original/%s: нет «только автор»' % r)
+        self.assertNotIn('c', by['admin']['cell_select'], 'админ не сужается (ФТ п. 20)')
+        self.assertNotIn('c', ''.join(by['admin'][cid] for cid in by['admin']), 'админ не сужается (ФТ п. 20)')
 
     def test_no_platform_global_names(self):
         """v2.13: процедуры и функции расширения не называются как глобальные функции платформы 8.3.

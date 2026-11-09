@@ -9,7 +9,7 @@ tools/generate_arm_matrix_rights.py (default-matrix.js, вкладка manager, 
     python tools/gen_pwa_matrix.py
 
 Формат как у GET /matrix: на роль — statuses (15) и columns [{id, field, code, title, dataType, writable, rights}],
-rights — символ на статус: «+» можно, «.» нельзя.
+rights — символ на статус: «+» можно, «c» только автор строки, «.» нельзя.
 """
 import io
 import json
@@ -69,7 +69,9 @@ def main():
                 rights = '+' * len(statuses)
             else:
                 granted = EDITABLE_BY_ROLE.get(mrole, {})
-                rights = ''.join('+' if (model['masks'][s].get(cid, 0) & bit or cid in granted.get(s, ())) else '.'
+                def can(s):  # право роли на поле в статусе (роль-редактор из вкладки manager или явное исключение)
+                    return bool(model['masks'][s].get(cid, 0) & bit) or cid in granted.get(s, ())
+                rights = ''.join('c' if (model['creator'][s].get(cid) and can(s)) else ('+' if can(s) else '.')
                                  for s in statuses)
             writable = field not in NOT_WRITABLE or cid in EDITABLE_BY_ROLE_IDS
             cols.append({'id': cid, 'field': field, 'code': codes.get(cid, ''), 'title': titles.get(cid, cid),

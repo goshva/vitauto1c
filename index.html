@@ -295,7 +295,8 @@
     {id:'chief_mechanic', title:'Главный механик'},
     {id:'admin', title:'Администратор'},
     {id:'supplier', title:'Поставщик'},
-    {id:'client', title:'Клиент'}
+    {id:'client', title:'Клиент'},
+    {id:'supply', title:'Снабжение'}
   ];
 
   var STATUSES = [
@@ -626,7 +627,17 @@
       margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
       extra:{visible:false, editable:'none'}, receipt:{visible:false, editable:'none'},
       comment:{visible:true, editable:'none'}
-    }
+    },
+    supply: {
+      system:{visible:true, editable:'none'}, doc_flag:{visible:true, editable:'role'}, auto:{visible:true, editable:'none'},
+      order_header:{visible:true, editable:'none'}, fact:{visible:true, editable:'none'},
+      fact_editable:{visible:true, editable:'role'}, nomenclature:{visible:true, editable:'role'},
+      stock:{visible:true, editable:'role'}, status:{visible:true, editable:'none'},
+      pricing:{visible:true, editable:'none'}, payment:{visible:false, editable:'none'},
+      margin_locked:{visible:false, editable:'none'}, margin_open:{visible:false, editable:'none'},
+      extra:{visible:false, editable:'none'}, receipt:{visible:true, editable:'role'},
+      comment:{visible:true, editable:'role'}
+    },
   };
   ROLE_PROFILES.chief_mechanic = ROLE_PROFILES.manager;
 
@@ -693,7 +704,9 @@
     return enforceConstraints(cell, roleId);
   }
 
-  // Ячейка из default-matrix.js: число = биты ролей (0..5) + 64 required + 128 creator + 256 admin
+  // Ячейка из default-matrix.js: биты ролей (manager 1, storekeeper 2, chief_mechanic 4, admin 8,
+  // supplier 16, client 32, supply 512) + 64 required + 128 creator («только автор») + 256 admin.
+  var ROLE_BITS = {manager:1, storekeeper:2, chief_mechanic:4, admin:8, supplier:16, client:32, supply:512};
   function decodeDefaultCell(level, roleId, statusId, colId){
     if (!DEFAULTS) return null;
     var row = DEFAULTS.cells[level] && DEFAULTS.cells[level][roleId] && DEFAULTS.cells[level][roleId][statusId];
@@ -703,9 +716,9 @@
     var cell = {visible:true, required: !!(v & 64), editable:'none', editableRoles:[]};
     if (v & 128) cell.editable = 'creator';
     else if (v & 256) cell.editable = 'admin';
-    else if (v & 63){
+    else if (v & 575){
       cell.editable = 'role';
-      cell.editableRoles = DEFAULTS.roles.filter(function(r, i){ return v & (1 << i); });
+      cell.editableRoles = DEFAULTS.roles.filter(function(r){ return v & (ROLE_BITS[r] || 0); });
     }
     return enforceConstraints(cell, roleId);
   }

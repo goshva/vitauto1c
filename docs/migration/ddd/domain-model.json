@@ -1,13 +1,13 @@
 {
  "schema": 1,
  "sources": {
-  "index.html": "7ae3cde29b20024c",
-  "process.html": "0269c7c00555f425",
-  "pwa/src/odata/matrix.json": "6c0f8ce0aee568f3",
-  "pwa/src/odata/backend.js": "4dce63c461b44f6d",
-  "pwa/src/views/LinesView.vue": "e726d2a1ff527908",
-  "column-codes.js": "58f6a532aa32fa99",
-  "pwa/src/odata/mapping.js": "b89c050289743430"
+  "index.html": "aecd2eb97bdca8d8",
+  "process.html": "f94280e06023bafa",
+  "pwa/src/odata/matrix.json": "a5a207e17c867669",
+  "pwa/src/odata/backend.js": "59234bbdb3adf718",
+  "pwa/src/views/LinesView.vue": "012f068406e097d6",
+  "column-codes.js": "ec061114387c8406",
+  "pwa/src/odata/mapping.js": "cf5d7413afc19131"
  },
  "roles": [
   {
@@ -1395,6 +1395,72 @@
     "editable": "none"
    }
   },
+  "supply": {
+   "system": {
+    "visible": true,
+    "editable": "none"
+   },
+   "doc_flag": {
+    "visible": true,
+    "editable": "role"
+   },
+   "auto": {
+    "visible": true,
+    "editable": "none"
+   },
+   "order_header": {
+    "visible": true,
+    "editable": "none"
+   },
+   "fact": {
+    "visible": true,
+    "editable": "none"
+   },
+   "fact_editable": {
+    "visible": true,
+    "editable": "role"
+   },
+   "nomenclature": {
+    "visible": true,
+    "editable": "role"
+   },
+   "stock": {
+    "visible": true,
+    "editable": "role"
+   },
+   "status": {
+    "visible": true,
+    "editable": "none"
+   },
+   "pricing": {
+    "visible": true,
+    "editable": "none"
+   },
+   "payment": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_locked": {
+    "visible": false,
+    "editable": "none"
+   },
+   "margin_open": {
+    "visible": false,
+    "editable": "none"
+   },
+   "extra": {
+    "visible": false,
+    "editable": "none"
+   },
+   "receipt": {
+    "visible": true,
+    "editable": "role"
+   },
+   "comment": {
+    "visible": true,
+    "editable": "role"
+   }
+  },
   "chief_mechanic": {
    "system": {
     "visible": true,
@@ -1470,9 +1536,9 @@
   },
   "rights": {
    "manager": {
-    "cell_select": "+++++++..+...++",
+    "cell_select": "ccccccc..c...cc",
     "row_number": "...............",
-    "doc_signed_original": "............++.",
+    "doc_signed_original": "............cc.",
     "shipment_date": "...........+...",
     "shipment_number": "...............",
     "order_date": "++.............",
@@ -1529,9 +1595,9 @@
     "comment_2": "+++++++++++++++"
    },
    "storekeeper": {
-    "cell_select": "++.....++++++++",
+    "cell_select": "cc.....cccccccc",
     "row_number": "...............",
-    "doc_signed_original": "............++.",
+    "doc_signed_original": "............cc.",
     "shipment_date": "...........+...",
     "shipment_number": "...............",
     "order_date": "...............",
@@ -1588,9 +1654,9 @@
     "comment_2": "+++++++++++++++"
    },
    "chief_mechanic": {
-    "cell_select": "+++++++..+...++",
+    "cell_select": "ccccccc..c...cc",
     "row_number": "...............",
-    "doc_signed_original": "............++.",
+    "doc_signed_original": "............cc.",
     "shipment_date": "...........+...",
     "shipment_number": "...............",
     "order_date": "++.............",
@@ -1706,7 +1772,7 @@
     "comment_2": "+++++++++++++++"
    },
    "supplier": {
-    "cell_select": "++..++.........",
+    "cell_select": "cc..cc.........",
     "row_number": "...............",
     "doc_signed_original": "...............",
     "shipment_date": "...............",
@@ -1765,7 +1831,7 @@
     "comment_2": "+++++++++++++++"
    },
    "client": {
-    "cell_select": "++.............",
+    "cell_select": "cc.............",
     "row_number": "...............",
     "doc_signed_original": "...............",
     "shipment_date": "...............",
@@ -1824,9 +1890,9 @@
     "comment_2": "+++++++++++++++"
    },
    "supply": {
-    "cell_select": "++.....++++++++",
+    "cell_select": "cc.....cccccccc",
     "row_number": "...............",
-    "doc_signed_original": "............++.",
+    "doc_signed_original": "............cc.",
     "shipment_date": "...........+...",
     "shipment_number": "...............",
     "order_date": "...............",

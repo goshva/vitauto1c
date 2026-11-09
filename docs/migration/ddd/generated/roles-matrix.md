@@ -32,9 +32,9 @@
 
 | Код | Колонка | Маска | Меняет в статусах | Только автор |
 |---|---|---|---|---|
-| А1 | поле выбора ячеек | `+++++++..+...++` | new, in_work, partially_ordered, ordered, paid, in_transit, awaiting_receipt, reserve, return, closed |  |
+| А1 | поле выбора ячеек | `ccccccc..c...cc` |  | new, in_work, partially_ordered, ordered, paid, in_transit, awaiting_receipt, reserve, return, closed |
 | А2 | № п/п | `...............` |  |  |
-| А3 | Документ подписан оригинал | `............++.` | shipped, return |  |
+| А3 | Документ подписан оригинал | `............cc.` |  | shipped, return |
 | В1 | Дата отгрузки | `...........+...` | ready_to_ship |  |
 | В2 | Номер отгрузки | `...............` |  |  |
 | В3 | Дата заказа | `++.............` | new, in_work |  |
@@ -111,9 +111,9 @@
 
 | Код | Колонка | Маска | Меняет в статусах | Только автор |
 |---|---|---|---|---|
-| А1 | поле выбора ячеек | `++.....++++++++` | new, in_work, acceptance, to_stock, reserve, assembly, ready_to_ship, shipped, return, closed |  |
+| А1 | поле выбора ячеек | `cc.....cccccccc` |  | new, in_work, acceptance, to_stock, reserve, assembly, ready_to_ship, shipped, return, closed |
 | А2 | № п/п | `...............` |  |  |
-| А3 | Документ подписан оригинал | `............++.` | shipped, return |  |
+| А3 | Документ подписан оригинал | `............cc.` |  | shipped, return |
 | В1 | Дата отгрузки | `...........+...` | ready_to_ship |  |
 | В2 | Номер отгрузки | `...............` |  |  |
 | В3 | Дата заказа | `...............` |  |  |
@@ -184,9 +184,9 @@
 
 | Код | Колонка | Маска | Меняет в статусах | Только автор |
 |---|---|---|---|---|
-| А1 | поле выбора ячеек | `+++++++..+...++` | new, in_work, partially_ordered, ordered, paid, in_transit, awaiting_receipt, reserve, return, closed |  |
+| А1 | поле выбора ячеек | `ccccccc..c...cc` |  | new, in_work, partially_ordered, ordered, paid, in_transit, awaiting_receipt, reserve, return, closed |
 | А2 | № п/п | `...............` |  |  |
-| А3 | Документ подписан оригинал | `............++.` | shipped, return |  |
+| А3 | Документ подписан оригинал | `............cc.` |  | shipped, return |
 | В1 | Дата отгрузки | `...........+...` | ready_to_ship |  |
 | В2 | Номер отгрузки | `...............` |  |  |
 | В3 | Дата заказа | `++.............` | new, in_work |  |
@@ -346,7 +346,7 @@
 
 | Код | Колонка | Маска | Меняет в статусах | Только автор |
 |---|---|---|---|---|
-| А1 | поле выбора ячеек | `++..++.........` | new, in_work, paid, in_transit |  |
+| А1 | поле выбора ячеек | `cc..cc.........` |  | new, in_work, paid, in_transit |
 | А2 | № п/п | `...............` |  |  |
 | А3 | Документ подписан оригинал | `...............` |  |  |
 | В1 | Дата отгрузки | `...............` |  |  |
@@ -416,7 +416,7 @@
 
 | Код | Колонка | Маска | Меняет в статусах | Только автор |
 |---|---|---|---|---|
-| А1 | поле выбора ячеек | `++.............` | new, in_work |  |
+| А1 | поле выбора ячеек | `cc.............` |  | new, in_work |
 | А2 | № п/п | `...............` |  |  |
 | А3 | Документ подписан оригинал | `...............` |  |  |
 | В1 | Дата отгрузки | `...............` |  |  |
@@ -487,11 +487,13 @@
 | in_transit, paid | acceptance | POST /supply/status {status: acceptance} / POST /lines/transition {to: acceptance} | K1 |
 | acceptance | to_stock | POST /stock/placements (размещение в ячейку, раздел 13) / POST /supply/status {status: to_stock} | K2 |
 
+**Профиль групп колонок (index.html):** system: видит; doc_flag: видит, правит; auto: видит; order_header: видит; fact: видит; fact_editable: видит, правит; nomenclature: видит, правит; stock: видит, правит; status: видит; pricing: видит; payment: скрыто; margin_locked: скрыто; margin_open: скрыто; extra: скрыто; receipt: видит, правит; comment: видит, правит.
+
 | Код | Колонка | Маска | Меняет в статусах | Только автор |
 |---|---|---|---|---|
-| А1 | поле выбора ячеек | `++.....++++++++` | new, in_work, acceptance, to_stock, reserve, assembly, ready_to_ship, shipped, return, closed |  |
+| А1 | поле выбора ячеек | `cc.....cccccccc` |  | new, in_work, acceptance, to_stock, reserve, assembly, ready_to_ship, shipped, return, closed |
 | А2 | № п/п | `...............` |  |  |
-| А3 | Документ подписан оригинал | `............++.` | shipped, return |  |
+| А3 | Документ подписан оригинал | `............cc.` |  | shipped, return |
 | В1 | Дата отгрузки | `...........+...` | ready_to_ship |  |
 | В2 | Номер отгрузки | `...............` |  |  |
 | В3 | Дата заказа | `...............` |  |  |

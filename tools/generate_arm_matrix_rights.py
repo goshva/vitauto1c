@@ -11,7 +11,7 @@
 
 Битовая модель ячейки (tools/make_default_matrix.py):
   manager=1, storekeeper=2, chief_mechanic=4, admin=8, supplier=16, client=32,
-  required=64, creator=128 (отложен, D1c), admin-only=256.
+  required=64, creator=128 («только автор»; уходит в matrix.json, в BSL отбрасывается), admin-only=256.
 
 Запуск:  python tools/generate_arm_matrix_rights.py
 """
@@ -220,6 +220,8 @@ def build_model(matrix=None):
     statuses, columns = matrix['statuses'], matrix['columns']
     tab = matrix['cells'][MATRIX_LEVEL][MATRIX_TAB]
     masks = {s: {c: tab[s][i] & EDITOR_MASK for i, c in enumerate(columns)} for s in statuses}
+    # «только автор»: целевое правило, отдаётся дальше в gen_pwa_matrix.py (в BSL не хранится)
+    creator = {s: {c: bool(tab[s][i] & BIT_CREATOR) for i, c in enumerate(columns)} for s in statuses}
 
     divergences = {}
     for role in matrix['roles']:
@@ -244,6 +246,7 @@ def build_model(matrix=None):
         'statuses': statuses,
         'columns': columns,
         'masks': masks,
+        'creator': creator,
         'ignored_creator': ignored_creator,
         'tab_divergences_vs_manager': divergences,
     }
@@ -551,7 +554,7 @@ def main():
     model = build_model()
     write_text(JSON_OUT, json.dumps({
         'source': model['source'], 'canon': [MATRIX_TAB, MATRIX_LEVEL], 'role_bits': ROLE_BITS,
-        'status_map': STATUS_MAP, 'field_map': FIELD_MAP, 'masks': model['masks'],
+        'status_map': STATUS_MAP, 'field_map': FIELD_MAP, 'masks': model['masks'], 'creator': model['creator'],
         'ignored_creator': model['ignored_creator'],
         'tab_divergences_vs_manager': model['tab_divergences_vs_manager'],
         'admin_fields': sorted(admin_fields()),
@@ -567,7 +570,7 @@ def main():
     print('uuid:   %s (в ConfigurationExtension.json %s)' % (module_uuid, 'добавлен' if changed else 'уже есть'))
     for role, d in model['tab_divergences_vs_manager'].items():
         print('расхождение вкладки %-14s с manager: %d ячеек' % (role, d['cells']))
-    print('creator-ячеек (игнор, D1c): %d' % len(model['ignored_creator']))
+    print('creator-ячеек («только автор»): %d' % len(model['ignored_creator']))
     return 0
 
 

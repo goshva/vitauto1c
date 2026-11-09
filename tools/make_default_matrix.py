@@ -16,7 +16,9 @@ import json
 import os
 import sys
 
-ROLES = ['manager', 'storekeeper', 'chief_mechanic', 'admin', 'supplier', 'client']
+ROLES = ['manager', 'storekeeper', 'chief_mechanic', 'admin', 'supplier', 'client', 'supply']
+ROLE_BITS = {'manager': 1, 'storekeeper': 2, 'chief_mechanic': 4, 'admin': 8,
+             'supplier': 16, 'client': 32, 'supply': 512}
 LEVELS = ['order', 'line']
 
 # Новые колонки, которых нет в экспорте: id -> (вставить после, скопировать права с, тип)
@@ -50,9 +52,8 @@ def encode(cell):
     code = 64 if cell.get('required') else 0
     if ed == 'role':
         roles = cell.get('editableRoles') or ([cell['editableRole']] if cell.get('editableRole') else [])
-        for i, r in enumerate(ROLES):
-            if r in roles:
-                code |= 1 << i
+        for r in roles:
+            code |= ROLE_BITS.get(r, 0)
     elif ed == 'all':
         code |= 63
     elif ed == 'creator':
