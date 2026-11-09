@@ -15,15 +15,18 @@ const props = defineProps({
   editableFirst: { type: Boolean, default: true },
   hideEmpty: { type: Boolean, default: true },
   actions: { type: Array, default: () => [] },      // [{ key, title, icon, danger }]
-  busy: Boolean
+  busy: Boolean,
+  canUrgent: Boolean                                 // админ: чекбокс «Срочно» (К1, только метка)
 });
-const emit = defineEmits(['close', 'save', 'pick', 'mark', 'action', 'document']);
+const emit = defineEmits(['close', 'save', 'pick', 'mark', 'action', 'document', 'urgent']);
 const l = computed(() => props.line);
 const title = computed(() => l.value.factName || (l.value.nomenclature && l.value.nomenclature.name) || 'Строка');
 const DOCS = [['customerOrder', 'Заказ покупателя'], ['supplierOrder', 'Заказ поставщику'], ['receipt', 'Приходная'], ['shipmentDoc', 'Расходная']];
 const docs = computed(() => DOCS.filter(([k]) => l.value[k]).map(([k, t]) => ({ ...l.value[k], label: t })));
 
 const isEmpty = c => { const v = valueOf(l.value, c.field); return v === undefined || v === null || v === '' || v === 0 || v === false; };
+// «Срочно» — только метка (К1): не влияет на порядок формирования заказа поставщику.
+const urgent = computed(() => !!(l.value.urgency && String(l.value.urgency).trim()));
 const fields = computed(() => props.columns.filter(c => !ALWAYS.includes(c.id)).map(c => ({ c, why: props.deny(c, l.value), kind: fieldInfo(c.field).kind })));
 const editable = computed(() => fields.value.filter(f => !f.why));
 const readonly = computed(() => fields.value.filter(f => f.why));
@@ -82,6 +85,12 @@ function commit() {
       <span v-if="l.nomenclature && l.nomenclature.article" class="faint">арт. {{ l.nomenclature.article }}</span>
       <span class="faint">{{ l.operation === 'purchase' ? 'закупка' : 'продажа' }}</span>
     </div>
+    <!-- К1 «Срочность (ФАКТ) / комментарий заказчика»: для админа — чекбокс-метка -->
+    <label v-if="canUrgent" :class="['ls-urgent', { on: urgent }]" title="Метка строки в списке и рабочем месте снабжения; порядок заказа поставщику не меняет">
+      <input type="checkbox" :checked="urgent" :disabled="busy" @change="emit('urgent', $event.target.checked)" />
+      <span><b>Срочно</b> <span class="faint small">— метка строки, закупка идёт в общем порядке</span></span>
+    </label>
+    <div v-if="urgent" class="ls-urgent-value">К1: {{ l.urgency }}</div>
     <div v-if="docs.length" class="chips" aria-label="Документы">
       <button v-for="d in docs" :key="d.label" class="chip" @click="emit('document', d)">
         <AppIcon name="file" :size="15" />{{ d.label }} {{ d.number }}
@@ -141,6 +150,13 @@ function commit() {
 
 <style scoped>
 .ls-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); margin-top: -6px; }
+.ls-urgent {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: var(--r-m); background: var(--surface-2); cursor: pointer; font-size: 14px;
+}
+.ls-urgent input { width: 20px; height: 20px; flex: none; }
+.ls-urgent.on { border-color: var(--err); background: var(--err-2); color: var(--err); }
+.ls-urgent-value { font-size: 12px; color: var(--err); margin-top: -6px; }
 .ls-actions { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .ls-actions button { flex: none; }
 .ls-group .menu-title { padding-left: 2px; }

@@ -12,6 +12,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['open', 'mark']);
 const l = computed(() => props.line);
+const urgent = computed(() => !!(l.value.urgency && String(l.value.urgency).trim()));
 const title = computed(() => l.value.factName || (l.value.nomenclature && l.value.nomenclature.name) || 'Без наименования');
 const sub = computed(() => {
   const n = l.value.nomenclature;
@@ -26,13 +27,14 @@ const kv = computed(() => props.fields.map(c => ({ c, v: display(l.value, c.fiel
 </script>
 
 <template>
-  <article :class="['line-card', { marked: l.marked, current, deleted: l.deleted, locked: l.locked }]" @click="emit('open', l)">
+  <article :class="['line-card', { marked: l.marked, current, deleted: l.deleted, locked: l.locked, urgent }]" @click="emit('open', l)">
     <label class="lc-mark" @click.stop :title="markDenied || (l.markedBy ? 'Отметил: ' + l.markedBy : 'Отметить')">
       <input type="checkbox" :checked="l.marked" :disabled="!!markDenied" :aria-label="'Отметить: ' + title" @click.prevent="emit('mark', l)" />
     </label>
     <div class="lc-body">
       <div class="lc-head">
         <div class="lc-title">{{ title }}</div>
+        <span v-if="urgent" class="chip err" title="Метка «Срочно»: только подсветка, порядок закупки не меняется">СРОЧНО</span>
         <span :class="['chip', statusTone(l.status)]">{{ STATUS_TITLES[l.status] || l.status }}</span>
       </div>
       <div v-if="sub" class="lc-sub">{{ sub }}</div>
@@ -56,6 +58,8 @@ const kv = computed(() => props.fields.map(c => ({ c, v: display(l.value, c.fiel
 }
 .line-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .line-card.marked { background: var(--marked); border-color: color-mix(in srgb, var(--warn) 40%, var(--line)); }
+.line-card.urgent { border-left: 4px solid var(--err); }
+.line-card.urgent .lc-title { color: var(--err); }
 .line-card.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .line-card.deleted { opacity: .55; }
 .line-card.deleted .lc-title { text-decoration: line-through; }

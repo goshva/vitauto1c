@@ -12,7 +12,9 @@ const DIRS = {
   nomenclature: { title: 'Номенклатура', search: true, required: true },
   batches: { title: 'Партии', nomenclature: true },
   'service-types': { title: 'Виды услуг' },
-  'payment-forms': { title: 'Формы оплаты' }
+  'payment-forms': { title: 'Формы оплаты' },
+  warehouses: { title: 'Склады' },
+  zones: { title: 'Зоны склада' }
 };
 const name = computed(() => (DIRS[route.params.name] ? route.params.name : 'counterparties'));
 const q = ref('');

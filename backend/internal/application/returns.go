@@ -81,10 +81,19 @@ func (s *Service) ReturnCreate(ctx context.Context, a domain.Actor, op domain.Op
 			if err != nil {
 				return err
 			}
+			// sourceLineId необязателен: пустая строка — это NULL, а не uuid "".
+			var src *uuid.UUID
+			if l.SourceLineID != "" {
+				sid, err := parseID(l.SourceLineID)
+				if err != nil {
+					return err
+				}
+				src = &sid
+			}
 			_, err = tx.Exec(ctx, `insert into doc.return_line
 				(id, return_order_id, sort_order, nomenclature_id, quantity, cost_price, cost_sum, source_line_id, reason)
 				values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-				lid, returnID, i+1, nomID, qty, cost, sum, l.SourceLineID, l.Reason)
+				lid, returnID, i+1, nomID, qty, cost, sum, src, l.Reason)
 			if err != nil {
 				return err
 			}
@@ -120,29 +129,46 @@ func (s *Service) ReturnPost(ctx context.Context, a domain.Actor, returnID strin
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
-
-		var moved, lines int
+		// Сначала вычитываем строки полностью: pgx не даёт выполнять запросы
+		// на том же соединении, пока открыт курсор rows (иначе — "conn busy").
+		type moveRow struct {
+			nomID   uuid.UUID
+			batchID *uuid.UUID
+			whID    *uuid.UUID
+			qty     float64
+			amount  float64
+			reason  string
+			op      string
+		}
+		var buffered []moveRow
 		for rows.Next() {
-			var lineID, nomID, batchID, whID uuid.UUID
-			var qty, amount float64
-			var reason string
-			var op string
-			if err := rows.Scan(&lineID, &nomID, &qty, &amount, &batchID, &reason, &op, &whID); err != nil {
+			var r moveRow
+			var lineID uuid.UUID
+			if err := rows.Scan(&lineID, &r.nomID, &r.qty, &r.amount, &r.batchID, &r.reason, &r.op, &r.whID); err != nil {
+				rows.Close()
 				return err
 			}
+			buffered = append(buffered, r)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		var moved, lines int
+		for _, r := range buffered {
 			// movement: stock.move — 0 = приход, 1 = расход
 			// Возврат от клиента (Продажа) = приход на склад; возврат поставщику (Закупка) = расход со склада
 			movement := 0 // приход
-			if op == string(domain.OpPurchase) {
+			if r.op == string(domain.OpPurchase) {
 				movement = 1 // расход
 			}
-			content := fmt.Sprintf("Возврат: %s", reason)
+			content := fmt.Sprintf("Возврат: %s", r.reason)
 			_, err := tx.Exec(ctx, `insert into stock.move
 				(id, period, recorder_type, recorder_id, line_no, active, movement, warehouse_id, nomenclature_id, batch_id,
 				 qty, amount, is_return, content, onec_key)
 				values ($1, $2, 'return_order', $3, 0, true, $4, $5, $6, $7, $8, $9, true, $10, 'app:' || gen_random_uuid()::text)`,
-				uuid.Must(uuid.NewV7()), s.now(), id, movement, whID, nomID, batchID, qty, amount, content)
+				uuid.Must(uuid.NewV7()), s.now(), id, movement, r.whID, r.nomID, r.batchID, r.qty, r.amount, content)
 			if err != nil {
 				return err
 			}
@@ -162,10 +188,10 @@ func (s *Service) ReturnPost(ctx context.Context, a domain.Actor, returnID strin
 
 		// 3. Перевести связанные строки arm.line в статус «Возврат»
 		_, err = tx.Exec(ctx, `update arm.line set status = 'Возврат', version = version + 1, updated_at = now()
-			where id = any((select array_agg(source_line_id) from doc.return_line where return_order_id = $1 and source_line_id is not null))`,
+			where id in (select source_line_id from doc.return_line where return_order_id = $1 and source_line_id is not null)`,
 			id)
 		if err != nil {
-			// не критично — строки могут быть уже удалены
+			return err
 		}
 
 		result = map[string]any{"moved": moved, "lines": lines, "posted": true}

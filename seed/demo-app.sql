@@ -58,12 +58,16 @@ insert into ref.warehouse (id, code, name, unit_type, is_warehouse, is_main) val
 on conflict (id) do update set name = excluded.name, is_warehouse = true, is_main = true;
 
 -- Ячейки склада
-insert into ref.storage_cell (id, warehouse_id, code, zone) values
-  ('88888888-8888-8888-8888-888888888801', '44444444-4444-4444-4444-444444444401', 'A-01', 'Z3'),
-  ('88888888-8888-8888-8888-888888888802', '44444444-4444-4444-4444-444444444401', 'A-02', 'Z3'),
-  ('88888888-8888-8888-8888-888888888803', '44444444-4444-4444-4444-444444444401', 'B-01', 'Z8'),
-  ('88888888-8888-8888-8888-888888888804', '44444444-4444-4444-4444-444444444401', 'B-02', 'Z8')
-on conflict (id) do nothing;
+insert into ref.storage_cell (id, warehouse_id, code, zone, zone_id) values
+  ('88888888-8888-8888-8888-888888888801', '44444444-4444-4444-4444-444444444401', 'P-01', 'Z1', (select id from ref.warehouse_zone where code = 'Z1')),
+  ('88888888-8888-8888-8888-888888888802', '44444444-4444-4444-4444-444444444401', 'A-01', 'Z3', (select id from ref.warehouse_zone where code = 'Z3')),
+  ('88888888-8888-8888-8888-888888888803', '44444444-4444-4444-4444-444444444401', 'A-02', 'Z3', (select id from ref.warehouse_zone where code = 'Z3')),
+  ('88888888-8888-8888-8888-888888888804', '44444444-4444-4444-4444-444444444401', 'B-01', 'Z4', (select id from ref.warehouse_zone where code = 'Z4')),
+  ('88888888-8888-8888-8888-888888888805', '44444444-4444-4444-4444-444444444401', 'B-02', 'Z4', (select id from ref.warehouse_zone where code = 'Z4')),
+  ('88888888-8888-8888-8888-888888888806', '44444444-4444-4444-4444-444444444401', 'R-01', 'Z5', (select id from ref.warehouse_zone where code = 'Z5')),
+  ('88888888-8888-8888-8888-888888888807', '44444444-4444-4444-4444-444444444401', 'M-01', 'Z7', (select id from ref.warehouse_zone where code = 'Z7')),
+  ('88888888-8888-8888-8888-888888888808', '44444444-4444-4444-4444-444444444401', 'S-01', 'Z9', (select id from ref.warehouse_zone where code = 'Z9'))
+on conflict (id) do update set code = excluded.code, zone = excluded.zone, zone_id = excluded.zone_id, deleted = false;
 
 -- Организация
 insert into ref.organization (id, code, name, inn) values
@@ -178,3 +182,63 @@ insert into ref.contract (id, code, name, counterparty_type, counterparty_id, co
   ('ee000000-0000-0000-0000-000000000003', '003', 'Договор купли ИП Иванов', 'Покупатель', '66666666-6666-6666-6666-666666666601', '2026-02-01 00:00:00', '55555555-5555-5555-5555-555555555501', 'ДК-001', 'СК'),
   ('ee000000-0000-0000-0000-000000000004', '004', 'Договор купли АвтоЛюкс', 'Покупатель', '66666666-6666-6666-6666-666666666602', '2026-02-05 00:00:00', '55555555-5555-5555-5555-555555555501', 'ДК-002', 'СК')
 on conflict (id) do update set name = excluded.name, deleted = false;
+
+-- ============================================================
+-- Карточка номенклатуры по ТЗ 2.1/2.2: бренды, статус поиска, принадлежность, кросс-коды
+-- ============================================================
+
+-- Бренды (ТЗ 2.2)
+insert into ref.brand (id, code, name, country) values
+  ('b1000000-0000-0000-0000-000000000001', 'MANN', 'MANN', 'Германия'),
+  ('b1000000-0000-0000-0000-000000000002', 'BOSCH', 'BOSCH', 'Германия'),
+  ('b1000000-0000-0000-0000-000000000003', 'KAMAZ', 'KAMAZ', 'Россия'),
+  ('b1000000-0000-0000-0000-000000000004', 'CUMMINS', 'CUMMINS', 'США'),
+  ('b1000000-0000-0000-0000-000000000005', 'MOVELEX', 'MOVELEX', 'Китай')
+on conflict (id) do update set name = excluded.name, country = excluded.country, deleted = false;
+
+-- Бренд и происхождение карточек
+update ref.nomenclature set brand_id = 'b1000000-0000-0000-0000-000000000001'
+ where id in ('77777777-7777-7777-7777-777777777702', '77777777-7777-7777-7777-777777777706', '77777777-7777-7777-7777-777777777707');
+update ref.nomenclature set brand_id = 'b1000000-0000-0000-0000-000000000002'
+ where id in ('77777777-7777-7777-7777-777777777701', '77777777-7777-7777-7777-777777777705');
+update ref.nomenclature set brand_id = 'b1000000-0000-0000-0000-000000000003'
+ where id in ('77777777-7777-7777-7777-777777777703', '77777777-7777-7777-7777-777777777711', '77777777-7777-7777-7777-777777777712');
+update ref.nomenclature set brand_id = 'b1000000-0000-0000-0000-000000000004'
+ where id in ('77777777-7777-7777-7777-777777777704', '77777777-7777-7777-7777-777777777713');
+
+-- Статус поиска и принадлежность (ТЗ 2.1)
+update ref.nomenclature set search_status = 'Найден', ownership = 'Закупочная'
+ where id in ('77777777-7777-7777-7777-777777777701', '77777777-7777-7777-7777-777777777702', '77777777-7777-7777-7777-777777777703',
+              '77777777-7777-7777-7777-777777777704', '77777777-7777-7777-7777-777777777705');
+update ref.nomenclature set search_status = 'Найден', ownership = 'Заказная'
+ where id in ('77777777-7777-7777-7777-777777777708', '77777777-7777-7777-7777-777777777709', '77777777-7777-7777-7777-777777777710');
+update ref.nomenclature set search_status = 'В работе', ownership = 'Тендерная'
+ where id in ('77777777-7777-7777-7777-777777777706', '77777777-7777-7777-7777-777777777707',
+              '77777777-7777-7777-7777-777777777711', '77777777-7777-7777-7777-777777777712', '77777777-7777-7777-7777-777777777713');
+
+-- Карточки-аналоги (кросс-коды): у каждой карточки один аналог, связь парная
+insert into ref.nomenclature (id, code, name, article, unit_id, ext_code, kind, brand_id, search_status, ownership) values
+  ('77777777-7777-7777-7777-777777777714', '014', 'Фильтр масляный (аналог BOSCH)', 'FLT-OIL-BOSCH', '11111111-1111-1111-1111-111111111201', 'B-014',
+   'Запас', 'b1000000-0000-0000-0000-000000000002', 'Найден', 'Заказная'),
+  ('77777777-7777-7777-7777-777777777715', '015', 'Ремень ГРМ (аналог CONTITECH)', 'BLT-GRM-CONT', '11111111-1111-1111-1111-111111111201', 'B-015',
+   'Запас', 'b1000000-0000-0000-0000-000000000005', 'В работе', 'Тендерная')
+on conflict (id) do update set name = excluded.name, article = excluded.article, brand_id = excluded.brand_id,
+  search_status = excluded.search_status, ownership = excluded.ownership, deleted = false;
+
+update ref.nomenclature set analog_id = '77777777-7777-7777-7777-777777777714' where id = '77777777-7777-7777-7777-777777777702';
+update ref.nomenclature set analog_id = '77777777-7777-7777-7777-777777777702' where id = '77777777-7777-7777-7777-777777777714';
+update ref.nomenclature set analog_id = '77777777-7777-7777-7777-777777777715' where id = '77777777-7777-7777-7777-777777777711';
+update ref.nomenclature set analog_id = '77777777-7777-7777-7777-777777777711' where id = '77777777-7777-7777-7777-777777777715';
+
+-- Цены на карточки-аналоги
+insert into ref.price (id, period, price_type_id, nomenclature_id, price, actual, currency_id, onec_key) values
+  (uuidv7(), '2026-01-01 00:00:00', 'cc000000-0000-0000-0000-000000000003', '77777777-7777-7777-7777-777777777714', 480.00, true, null, 'demo:price:014'),
+  (uuidv7(), '2026-01-01 00:00:00', 'cc000000-0000-0000-0000-000000000003', '77777777-7777-7777-7777-777777777715', 3400.00, true, null, 'demo:price:015')
+on conflict (onec_key) do update set price = excluded.price, actual = true, deleted = false;
+
+-- Неопознанная карточка (ТЗ 2.1: статус «Не опознан», фотофиксация)
+insert into ref.nomenclature (id, code, name, article, unit_id, ext_code, kind, brand_id, search_status, ownership) values
+  ('77777777-7777-7777-7777-777777777716', '016', 'Неопознанная деталь (пример)', 'UNKNOWN-1', '11111111-1111-1111-1111-111111111201', 'U-016',
+   'Запас', null, 'Не опознан', 'Заказная')
+on conflict (id) do update set name = excluded.name, article = excluded.article, search_status = excluded.search_status,
+  ownership = excluded.ownership, deleted = false;

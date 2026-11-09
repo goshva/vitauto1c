@@ -493,6 +493,10 @@ paths:
                   format: date
                 shipmentNumber:
                   type: string
+                zoneId:
+                  type: string
+                  format: uuid
+                  description: Зона отгрузки (ref.warehouse_zone, ТЗ 2.4)
       responses:
         '200':
           description: Сколько строк обновлено
@@ -659,6 +663,36 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/NamedRef'
+  /directories/brands:
+    get:
+      tags: [directories]
+      summary: Бренды номенклатуры (ТЗ 2.2)
+      operationId: listBrands
+      parameters:
+        - $ref: '#/components/parameters/Query'
+      responses:
+        '200':
+          description: Бренды
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+  /directories/zones:
+    get:
+      tags: [directories]
+      summary: Зоны склада (ТЗ 2.4) — шесть предопределённых зон
+      operationId: listZones
+      responses:
+        '200':
+          description: Зоны с числом ячеек
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Zone'
   /directories/contracts:
     get:
       tags: [directories]
@@ -791,6 +825,10 @@ paths:
                 to:
                   type: string
                   enum: [reserve, assembly, ready_to_ship, shipped, acceptance, return, closed]
+                zoneId:
+                  type: string
+                  format: uuid
+                  description: Зона склада для перехода «В резерв» (ref.warehouse_zone, ТЗ 2.4)
       responses:
         '200':
           description: Переход применён хотя бы к одной строке
@@ -1028,6 +1066,28 @@ paths:
         - name: groupId
           in: query
           description: Только для cars — группа
+          schema:
+            type: string
+            format: uuid
+        - name: brandId
+          in: query
+          description: Только для goods/services — фильтр по бренду (ТЗ 2.1)
+          schema:
+            type: string
+            format: uuid
+        - name: searchStatus
+          in: query
+          description: 'Только для goods/services — «В работе», «Найден», «Не опознан»'
+          schema:
+            type: string
+        - name: ownership
+          in: query
+          description: 'Только для goods/services — «Заказная», «Закупочная», «Тендерная»'
+          schema:
+            type: string
+        - name: analogId
+          in: query
+          description: Только для goods/services — карточки с аналогом (кросс-код)
           schema:
             type: string
             format: uuid
@@ -1471,6 +1531,165 @@ paths:
           description: Выдан
         '404':
           $ref: '#/components/responses/NotFound'
+  /brands:
+    post:
+      tags: [catalog]
+      summary: Новый бренд (ТЗ 2.2, только администратор)
+      operationId: createBrand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandInput'
+      responses:
+        '201':
+          description: Бренд создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /brands/{brandId}:
+    parameters:
+      - $ref: '#/components/parameters/BrandId'
+    patch:
+      tags: [catalog]
+      summary: Изменить бренд (только администратор)
+      operationId: updateBrand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandInput'
+      responses:
+        '200':
+          description: Бренд
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [catalog]
+      summary: Пометить бренд на удаление (только администратор, без привязанных карточек)
+      operationId: deleteBrand
+      responses:
+        '200':
+          description: Бренд
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /brands/{brandId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/BrandId'
+    post:
+      tags: [catalog]
+      summary: Снять пометку удаления бренда (только администратор)
+      operationId: restoreBrand
+      responses:
+        '200':
+          description: Бренд
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+  /attachments:
+    get:
+      tags: [catalog]
+      summary: Вложения карточки (фото, ТЗ 2.1)
+      operationId: listAttachments
+      parameters:
+        - name: ownerType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [nomenclature, unidentified, car]
+        - name: ownerId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Вложения
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attachment'
+    post:
+      tags: [catalog]
+      summary: Загрузить фото карточки (multipart, до 5 МБ, только изображения)
+      operationId: uploadAttachment
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [ownerType, ownerId, file]
+              properties:
+                ownerType:
+                  type: string
+                  enum: [nomenclature, unidentified, car]
+                ownerId:
+                  type: string
+                  format: uuid
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Файл загружен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /attachments/{attachmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    get:
+      tags: [catalog]
+      summary: Файл вложения (для <img>; токен можно передать ?token=)
+      operationId: getAttachment
+      parameters:
+        - name: token
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Байты файла
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+    delete:
+      tags: [catalog]
+      summary: Пометить вложение на удаление
+      operationId: deleteAttachment
+      responses:
+        '204':
+          description: Удалено
   /cells:
     get:
       tags: [directories]
@@ -1590,6 +1809,20 @@ components:
         enum: [goods, services, cars]
     ItemId:
       name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BrandId:
+      name: brandId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AttachmentId:
+      name: attachmentId
       in: path
       required: true
       schema:
@@ -2103,6 +2336,68 @@ components:
               $ref: '#/components/schemas/NamedRef'
             comment:
               type: string
+    Brand:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        country:
+          type: string
+        comment:
+          type: string
+        deleted:
+          type: boolean
+    BrandInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        country:
+          type: string
+        comment:
+          type: string
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerType:
+          type: string
+          enum: [nomenclature, unidentified, car]
+        ownerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+    Zone:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        purpose:
+          type: string
+        cells:
+          type: integer
     NamedRef:
       type: object
       properties:
@@ -2215,6 +2510,18 @@ components:
           type: boolean
         comment:
           type: string
+        brand:
+          $ref: '#/components/schemas/NamedRef'
+        searchStatus:
+          type: string
+        ownership:
+          type: string
+        analog:
+          $ref: '#/components/schemas/NamedRef'
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
         vin:
           type: string
         plate:
@@ -2252,6 +2559,20 @@ components:
           type: string
         price:
           type: number
+        brandId:
+          type: string
+          format: uuid
+          description: Бренд (ТЗ 2.1/2.2)
+        searchStatus:
+          type: string
+          enum: ['В работе', 'Найден', 'Не опознан']
+        ownership:
+          type: string
+          enum: ['Заказная', 'Закупочная', 'Тендерная']
+        analogId:
+          type: string
+          format: uuid
+          description: Кросс-код, прямая парная связь; пустая строка снимает связь
         vin:
           type: string
         modelId:

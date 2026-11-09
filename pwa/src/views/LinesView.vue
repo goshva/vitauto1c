@@ -10,6 +10,7 @@ import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
 import { api, post } from '../api';
 import { fieldInfo, valueOf, display, STATUS_TITLES, statusTone } from '../lib/columns';
+import { cellText, matchesQuick, filtersAria, filtersBadge } from '../lib/quickFilter';
 import { useColumnsStore, STAGES } from '../stores/columns';
 import RefPicker from '../components/RefPicker.vue';
 import FieldSettings from '../components/FieldSettings.vue';
@@ -33,6 +34,28 @@ const view = computed(() => route.params.view);
 const userName = computed(() => session.user && session.user.userName);
 const layout = computed(() => ui.effectiveLayout);
 const pref = computed(() => columnsPref.pref(session.role, view.value));
+// «Срочно» — только метка (К1): подсветка строки в обоих списках, порядок закупки не меняется.
+const canUrgent = computed(() => session.role === 'admin');
+const isUrgent = l => !!(l && l.urgency && String(l.urgency).trim());
+const urgencyColumn = computed(() => matrix.columns.find(c => c.field === 'СрочностьКлиента')
+  || { id: 'urgency_fact', field: 'СрочностьКлиента', title: 'Срочность (ФАКТ) / комментарий заказчика' });
+async function setUrgent(line, on) {
+  await save(line, urgencyColumn.value, on ? 'срочно' : null);
+}
+
+// ---------- быстрый фильтр по значению (двойной клик по ячейке таблицы)
+const quick = ref(null); // { field, title, value }
+const quickText = (line, field) => cellText(line, field, display);
+function quickFilter(line, column) {
+  const v = quickText(line, column.field);
+  if (!v || v === '—') return;
+  quick.value = { field: column.field, title: column.title, value: v };
+  lines.current = line.id;
+}
+function quickFilterStatus(line) {
+  quick.value = { field: 'status', title: 'Статус', value: line.status };
+}
+function matchQuick(l) { return matchesQuick(l, quick.value, display); }
 
 // ---------- поля
 const settings = ref(null); // вкладка настройки полей или null
@@ -74,14 +97,15 @@ async function reload() {
 }
 // ---------- поиск (по загруженным строкам) и группировка по заказам
 const q = ref('');
-watch(view, () => { q.value = ''; reload(); }, { immediate: true });
+watch(view, () => { q.value = ''; quick.value = null; reload(); }, { immediate: true });
 
 const searchText = l => [l.factName, l.factArticle, l.nomenclature && l.nomenclature.name, l.nomenclature && l.nomenclature.article,
   l.customerOrder && l.customerOrder.number, l.clientOrderNumber, l.customer && l.customer.name, l.supplier && l.supplier.name, l.comment]
   .filter(Boolean).join(' ').toLowerCase();
 const shown = computed(() => {
+  const base = quick.value ? lines.items.filter(matchQuick) : lines.items;
   const s = q.value.trim().toLowerCase();
-  return s ? lines.items.filter(l => searchText(l).includes(s)) : lines.items;
+  return s ? base.filter(l => searchText(l).includes(s)) : base;
 });
 const rows = computed(() => {
   if (!lines.filters.groupByCustomerOrder) return shown.value.map(l => ({ line: l }));
@@ -107,19 +131,20 @@ const rows = computed(() => {
   return out;
 });
 
-// ---------- заказы-аккордеон (таблица): свёрнуты по умолчанию; поиск и отбор по заказу раскрывают
-const expanded = ref(new Set());
-const autoOpen = computed(() => !!q.value.trim() || !!lines.filters.customerOrderId);
-const isOpen = key => autoOpen.value || expanded.value.has(key);
+// ---------- заказы-аккордеон (таблица): строки деталей видны по умолчанию, сворачиваются вручную
+const collapsed = ref(new Set()); // ключи заказов, которые пользователь свернул
+const isOpen = key => !collapsed.value.has(key);
+// Поиск и фильтры раскрывают группы: иначе найденные строки спрятаны под свёрнутой шапкой.
+watch([q, quick, () => lines.filters.customerOrderId], () => { collapsed.value = new Set(); });
 function toggleGroup(key) {
-  const s = new Set(expanded.value);
+  const s = new Set(collapsed.value);
   s.has(key) ? s.delete(key) : s.add(key);
-  expanded.value = s;
+  collapsed.value = s;
 }
 const groupKeys = computed(() => rows.value.filter(r => !r.line).map(r => r.key));
-const allOpen = computed(() => groupKeys.value.length > 0 && groupKeys.value.every(isOpen));
+const allOpen = computed(() => groupKeys.value.length > 0 && groupKeys.value.every(k => !collapsed.value.has(k)));
 function toggleAll() {
-  expanded.value = allOpen.value ? new Set() : new Set(groupKeys.value);
+  collapsed.value = allOpen.value ? new Set(groupKeys.value) : new Set();
 }
 const tableRows = computed(() => rows.value.filter(r => !r.line || !r.groupKey || isOpen(r.groupKey)));
 
@@ -129,6 +154,16 @@ const activeFilters = computed(() => {
   const f = lines.filters;
   return [f.periodFrom, f.periodTo, f.hideShipped, !f.hideDeleted, f.onlyWithPurchases].filter(Boolean).length;
 });
+// Счётчик для кнопки «Фильтры»: сколько фильтров активно и сколько строк осталось.
+const filterCount = computed(() => activeFilters.value + (quick.value ? 1 : 0));
+const filterAria = computed(() => filtersAria(filterCount.value, shown.value.length, lines.items.length));
+// Бейдж показывает не число фильтров, а сколько строк найдено (как ждёт пользователь).
+const filterBadge = computed(() => filtersBadge(filterCount.value, shown.value.length));
+function resetFilters() {
+  quick.value = null;
+  lines.resetFilters();
+  applyFilters();
+}
 function toggleFilter(k) {
   lines.filters[k] = !lines.filters[k];
   reload();
@@ -388,13 +423,20 @@ async function strikeLine() {
 
 // отгрузка
 const shipment = ref(null);
+const zones = ref([]);
+async function loadZones() {
+  if (zones.value.length) return;
+  try { zones.value = await get('/directories/zones'); } catch (e) { toast.error(e); }
+}
 function openShipment() {
-  shipment.value = { shipmentDate: new Date().toISOString().slice(0, 10), shipmentNumber: '' };
+  loadZones();
+  shipment.value = { shipmentDate: new Date().toISOString().slice(0, 10), shipmentNumber: '', zoneId: '' };
 }
 async function saveShipment() {
   const s = shipment.value;
   shipment.value = null;
-  await run(() => post('/sales/shipments', { customerOrderId: currentOrder.value.id, ...s }), result);
+  await run(() => post('/sales/shipments', { customerOrderId: currentOrder.value.id, shipmentDate: s.shipmentDate,
+    shipmentNumber: s.shipmentNumber, ...(s.zoneId ? { zoneId: s.zoneId } : {}) }), result);
 }
 
 // новый заказ
@@ -466,7 +508,27 @@ function canRun(t) {
   return lines.marked.some(l => l.markedBy === userName.value && allowed.includes(l.status));
 }
 const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value) && canRun(t)));
-const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
+// резерв: зона склада выбирается в форме (M3, ТЗ 2.4)
+const reserveOpen = ref(false);
+const reserveZone = ref('');
+async function openReserve() {
+  actionsOpen.value = false;
+  await loadZones();
+  reserveZone.value = '';
+  reserveOpen.value = true;
+}
+async function saveReserve() {
+  const zoneId = reserveZone.value;
+  reserveOpen.value = false;
+  closeSheets();
+  await run(() => post('/lines/transition', { view: view.value, to: 'reserve', ...(zoneId ? { zoneId } : {}) }),
+    r => `Зарезервировать: ${result(r)}`);
+}
+const transition = t => {
+  if (t.to === 'reserve') return openReserve();
+  closeSheets();
+  return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`);
+};
 // печать (АРМ v2.23, блок 3): формы 1С по заказам отмеченных строк, без отметок — по заказу открытой строки
 const PRINTS = [
   { kind: 'shipment_sheet', title: 'Отгрузочная ведомость', node: 'M12' },
@@ -588,8 +650,8 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 <template>
   <section :class="['lines', { dense: ui.density === 'compact', 'has-sel': selCount > 0 }]">
     <Teleport to="#appbar-actions" defer>
-      <button class="icon" :class="{ on: activeFilters }" aria-label="Фильтры" title="Фильтры" @click="filtersOpen = true">
-        <AppIcon name="filter" /><span v-if="activeFilters" class="icon-badge">{{ activeFilters }}</span>
+      <button class="icon" :class="{ on: filterCount }" :aria-label="filterAria" :title="filterAria" @click="filtersOpen = true">
+        <AppIcon name="filter" /><span v-if="filterCount" class="icon-badge">{{ filterBadge }}</span>
       </button>
       <button class="icon" :aria-label="layout === 'cards' ? 'Таблицей' : 'Карточками'" :title="layout === 'cards' ? 'Показать таблицей' : 'Показать карточками'"
               @click="ui.setLayout(layout === 'cards' ? 'table' : 'cards')"><AppIcon :name="layout === 'cards' ? 'table' : 'cards'" /></button>
@@ -607,6 +669,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         <button v-if="lines.filters.customerOrderId" class="chip on" @click="clearOrder" title="Показать все заказы">
           Заказ {{ (lines.items[0] && lines.items[0].customerOrder && lines.items[0].customerOrder.number) || lines.filters.customerOrderId.slice(0, 8) }} <AppIcon name="x" :size="14" />
         </button>
+        <button v-if="quick" class="chip on" @click="quick = null" :title="`Снять фильтр по значению «${quick.value}»`">
+          {{ quick.title }}: {{ quick.value }} <AppIcon name="x" :size="14" />
+        </button>
         <button class="chip" :class="{ on: lines.filters.groupByCustomerOrder }" @click="toggleFilter('groupByCustomerOrder')">По заказам</button>
         <button v-if="layout === 'table' && lines.filters.groupByCustomerOrder && groupKeys.length" class="chip" data-expand-all @click="toggleAll">
           <AppIcon :name="allOpen ? 'up' : 'down'" :size="14" /> {{ allOpen ? 'Свернуть все' : 'Развернуть все' }}
@@ -622,7 +687,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       </div>
       <div class="muted small lines-count">
         <span v-if="lines.loading">Загрузка…</span>
-        <span v-else>Строк: {{ shown.length }}<template v-if="q"> из {{ lines.items.length }}</template><template v-if="groupKeys.length"> · заказов {{ groupKeys.length }}</template></span>
+        <span v-else>Строк: {{ shown.length }}<template v-if="q || quick"> из {{ lines.items.length }}</template><template v-if="groupKeys.length"> · заказов {{ groupKeys.length }}</template></span>
       </div>
     </div>
 
@@ -686,20 +751,33 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
                 </div>
               </td>
             </tr>
-            <tr v-else :class="{ marked: r.line.marked, current: r.line.id === lines.current, deleted: r.line.deleted }" @click="lines.current = r.line.id">
+            <tr v-else :class="{ marked: r.line.marked, current: r.line.id === lines.current, deleted: r.line.deleted, urgent: isUrgent(r.line) }" @click="lines.current = r.line.id">
               <td class="sticky-1" :title="r.line.markedBy ? 'Отметил: ' + r.line.markedBy : ''">
-                <input type="checkbox" :checked="r.line.marked" :disabled="!!markDenied(r.line)" @click.prevent="toggleMark(r.line)" />
+                <div class="row-start">
+                  <button class="icon sm-icon" aria-label="Открыть карточку строки" title="Открыть карточку строки (редактирование)"
+                          @click.stop="openLine(r.line)"><AppIcon name="edit" :size="16" /></button>
+                  <input type="checkbox" :checked="r.line.marked" :disabled="!!markDenied(r.line)" @click.prevent="toggleMark(r.line)" />
+                </div>
               </td>
               <td>
-                <button class="link" :title="'Подробно'" @click.stop="openLine(r.line)"><span :class="['chip', statusTone(r.line.status)]">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span></button>
+                <span :class="['chip', statusTone(r.line.status)]" title="Двойной клик — фильтр по этому статусу"
+                      @dblclick.stop="quickFilterStatus(r.line)">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span>
               </td>
               <td v-for="c in visibleColumns" :key="c.id"
                   :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind), 'band-start': bandStarts.has(c.id) }"
-                  :title="deny(r.line, c) || 'Изменить'"
-                  @dblclick="startEdit(r.line, c)" @keydown.enter="startEdit(r.line, c)" :tabindex="deny(r.line, c) ? -1 : 0">
+                  :title="deny(r.line, c) || 'Двойной клик — фильтр по значению, Enter — правка'"
+                  @dblclick.stop="quickFilter(r.line, c)" @keydown.enter="startEdit(r.line, c)" :tabindex="deny(r.line, c) ? -1 : 0">
                 <template v-if="editing && editing.line.id === r.line.id && editing.column.id === c.id">
                   <input ref="editInput" v-model="editing.value" :type="editing.kind === 'date' ? 'date' : 'text'"
                          @keydown.enter.stop="commitEdit" @keydown.esc="editing = null" @blur="commitEdit" style="width: 150px" />
+                </template>
+                <!-- К1 «Срочность (ФАКТ) / комментарий заказчика»: для админа — чекбокс-метка прямо в строке -->
+                <template v-else-if="canUrgent && c.field === 'СрочностьКлиента'">
+                  <label class="urgent-cell" @click.stop :title="'Срочно: только метка, порядок закупки не меняется'">
+                    <input type="checkbox" :checked="isUrgent(r.line)" :disabled="!!deny(r.line, c)"
+                           :aria-label="'Срочно: ' + (r.line.factName || '')" @change="setUrgent(r.line, $event.target.checked)" />
+                    <span v-if="r.line.urgency" class="small">{{ r.line.urgency }}</span>
+                  </label>
                 </template>
                 <template v-else><span v-if="!display(r.line, c.field)" class="faint">—</span>{{ display(r.line, c.field) }}</template>
               </td>
@@ -717,7 +795,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
     <div v-if="lines.nextCursor" class="row" style="justify-content: center; padding: 12px">
       <button :disabled="lines.loading" @click="lines.loadMore()">Загрузить ещё</button>
     </div>
-    <p v-if="layout === 'table'" class="muted small">Двойной клик по голубой ячейке — правка, по статусу — карточка строки. Права — по матрице роли.</p>
+    <p v-if="layout === 'table'" class="muted small">Двойной клик по значению — фильтр по нему, Enter по ячейке — правка, по статусу — карточка строки. Права — по матрице роли.</p>
 
     <!-- новый заказ -->
     <button v-if="view === 'sales' && !selCount" class="fab primary" aria-label="Новый заказ" title="Новый заказ" :disabled="busy" @click="openNewOrder">
@@ -824,7 +902,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <label v-if="view === 'sales'" class="row sw">Только с закупками <span class="switch"><input type="checkbox" v-model="lines.filters.onlyWithPurchases" /><span></span></span></label>
       <label class="row sw">Группировать по заказам <span class="switch"><input type="checkbox" v-model="lines.filters.groupByCustomerOrder" /><span></span></span></label>
       <template #actions>
-        <button @click="lines.resetFilters(); applyFilters()">Сбросить</button>
+        <button @click="resetFilters">Сбросить</button>
         <button class="primary" @click="applyFilters">Показать</button>
       </template>
     </AppModal>
@@ -832,7 +910,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
     <!-- диалоги -->
     <LineSheet v-if="sheetLine" :line="sheetLine" :columns="matrix.columns" :deny="deny" :mark-denied="markDenied(sheetLine)"
                :editable-first="pref.detailEditableFirst" :hide-empty="pref.detailHideEmpty" :actions="sheetActions" :busy="busy"
+               :can-urgent="canUrgent"
                @close="sheetId = null" @save="(c, v) => save(sheetLine, c, v)" @pick="c => openPicker(sheetLine, c)"
+               @urgent="v => setUrgent(sheetLine, v)"
                @mark="toggleMark" @action="sheetAction" @document="openDocument" />
 
     <RefPicker v-if="picker" :dir="picker.dir" :query="picker.query" :title="picker.column.title" allow-clear
@@ -846,9 +926,30 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <p class="muted small" style="margin: 0">Заказ {{ currentOrder && currentOrder.number }}: строки «Готово к отгрузке» и «Возврат», а также строки с партией в «Новый» / «В работе».</p>
       <label class="field">Дата <input type="date" v-model="shipment.shipmentDate" /></label>
       <label class="field">Номер <input v-model="shipment.shipmentNumber" autofocus /></label>
+      <label class="field">Зона отгрузки
+        <select v-model="shipment.zoneId">
+          <option value="">— не указывать —</option>
+          <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.code }} · {{ z.name }}</option>
+        </select>
+      </label>
       <template #actions>
         <button @click="shipment = null">Отмена</button>
         <button class="primary" :disabled="!shipment.shipmentDate || !shipment.shipmentNumber" @click="saveShipment">Записать</button>
+      </template>
+    </AppModal>
+
+    <!-- резерв: зона склада (M3, ТЗ 2.4: шесть зон по схеме) -->
+    <AppModal v-if="reserveOpen" title="Резерв: зона склада" @close="reserveOpen = false">
+      <p class="muted small" style="margin: 0">Зона склада по схеме: приёмка, малый и большой склад, неопознанные и возвраты, ремонтная зона, укомплектованные.</p>
+      <label class="field">Зона склада
+        <select v-model="reserveZone">
+          <option value="">— не указывать —</option>
+          <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.code }} · {{ z.name }}</option>
+        </select>
+      </label>
+      <template #actions>
+        <button @click="reserveOpen = false">Отмена</button>
+        <button class="primary" :disabled="busy" @click="saveReserve">Зарезервировать</button>
       </template>
     </AppModal>
 
@@ -910,6 +1011,16 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 
 <style scoped>
 .lines { display: flex; flex-direction: column; gap: 10px; }
+/* «Срочно» (К1) — только метка: подсветка строки в продажах и снабжении */
+tr.urgent td { background: color-mix(in srgb, var(--err-2) 70%, transparent); }
+tr.urgent td.sticky-1 { box-shadow: inset 3px 0 0 var(--err); }
+.urgent-cell { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.urgent-cell input { width: 18px; height: 18px; }
+.urgent-cell .small { font-size: 11px; color: var(--err); }
+/* отметка выбора + ярлык карточки строки в первой колонке */
+.row-start { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.row-start .icon { width: 28px; height: 28px; min-height: 28px; color: var(--fg-3); }
+.row-start .icon:hover { color: var(--accent); }
 .lines.has-sel { padding-bottom: 84px; }
 .lines-head { display: flex; flex-direction: column; gap: 8px; }
 .lines-count { padding: 0 4px; }
