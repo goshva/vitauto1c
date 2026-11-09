@@ -4,6 +4,28 @@
 -- Кладовщик/storekeeper123, ГлавныйМеханик/chief123.
 
 -- Пользователи (пароль bcrypt; must_change = false — на демо-стенде смены не требуется)
+-- Коды статусов АРМ: коды API (arm.line_api.status) — как в docs/migration/ddd/domain-model.json.
+-- Без него arm.line_api.status возвращает значение 1С вместо кода API, и матрица/PWA не распознают статусы.
+insert into arm.line_status (name, api_status, title, ord) values
+  ('Черновик', 'new', 'Новый', 0),
+  ('ВРаботе', 'in_work', 'В работе', 1),
+  ('ЧастичноЗаказано', 'partially_ordered', 'Частично заказано', 2),
+  ('Заказано', 'ordered', 'Заказано у поставщика', 3),
+  ('Оплачено', 'paid', 'Оплачено', 4),
+  ('ТоварВПути', 'in_transit', 'В пути', 5),
+  ('ОжидаемПоступление', 'awaiting_receipt', 'Ожидаем поступление', 6),
+  ('Приходуется', 'acceptance', 'Приемка', 7),
+  ('НаСкладе', 'to_stock', 'На склад', 8),
+  ('Резервирование', 'reserve', 'Резервирование', 9),
+  ('Комплектуется', 'assembly', 'Комплектация', 10),
+  ('Подготовлено', 'ready_to_ship', 'Готово к отгрузке', 11),
+  ('Собран', 'ready_to_ship', 'Готово к отгрузке', 11),
+  ('Отгружено', 'shipped', 'Отгружено', 12),
+  ('Возврат', 'return', 'Возврат', 13),
+  ('Выполнено', 'closed', 'Закрыт', 14),
+  ('Завершено', 'closed', 'Закрыт', 14)
+on conflict (name) do update set api_status = excluded.api_status, title = excluded.title, ord = excluded.ord;
+
 insert into auth."user" (id, name, deleted, inactive) values
   ('00000000-0000-0000-0000-000000000001', 'Администратор', false, false),
   ('00000000-0000-0000-0000-000000000002', 'Менеджер', false, false),

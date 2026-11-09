@@ -48,3 +48,6 @@ backend/cmd/vitauto-desktop/webroot/*
 # зависимости PWA (npm ci)
 node_modules/
 pwa/dev-dist/
+
+# вывод автогенератора seed (node seed/gen-stages.js)
+seed/stages-output.log
