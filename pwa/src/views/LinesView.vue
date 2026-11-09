@@ -10,7 +10,7 @@ import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
 import { api, post } from '../api';
 import { fieldInfo, valueOf, display, STATUS_TITLES, statusTone } from '../lib/columns';
-import { cellText, matchesQuick, filtersAria } from '../lib/quickFilter';
+import { cellText, matchesQuick, filtersAria, filtersBadge } from '../lib/quickFilter';
 import { useColumnsStore, STAGES } from '../stores/columns';
 import RefPicker from '../components/RefPicker.vue';
 import FieldSettings from '../components/FieldSettings.vue';
@@ -157,6 +157,8 @@ const activeFilters = computed(() => {
 // Счётчик для кнопки «Фильтры»: сколько фильтров активно и сколько строк осталось.
 const filterCount = computed(() => activeFilters.value + (quick.value ? 1 : 0));
 const filterAria = computed(() => filtersAria(filterCount.value, shown.value.length, lines.items.length));
+// Бейдж показывает не число фильтров, а сколько строк найдено (как ждёт пользователь).
+const filterBadge = computed(() => filtersBadge(filterCount.value, shown.value.length));
 function resetFilters() {
   quick.value = null;
   lines.resetFilters();
@@ -622,7 +624,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   <section :class="['lines', { dense: ui.density === 'compact', 'has-sel': selCount > 0 }]">
     <Teleport to="#appbar-actions" defer>
       <button class="icon" :class="{ on: filterCount }" :aria-label="filterAria" :title="filterAria" @click="filtersOpen = true">
-        <AppIcon name="filter" /><span v-if="filterCount" class="icon-badge">{{ filterCount }}</span>
+        <AppIcon name="filter" /><span v-if="filterCount" class="icon-badge">{{ filterBadge }}</span>
       </button>
       <button class="icon" :aria-label="layout === 'cards' ? 'Таблицей' : 'Карточками'" :title="layout === 'cards' ? 'Показать таблицей' : 'Показать карточками'"
               @click="ui.setLayout(layout === 'cards' ? 'table' : 'cards')"><AppIcon :name="layout === 'cards' ? 'table' : 'cards'" /></button>

@@ -15,6 +15,12 @@ export function matchesQuick(line, filter, display) {
   return cellText(line, filter.field, display) === filter.value;
 }
 
+// Число на бейдже кнопки «Фильтры»: сколько строк найдено при активных фильтрах.
+// Когда фильтров нет — 0 (бейдж не показываем), чтобы не путать с количеством фильтров.
+export function filtersBadge(activeCount, shown) {
+  return activeCount ? shown : 0;
+}
+
 // Подпись кнопки «Фильтры»: активные фильтры + счётчик отфильтрованных строк.
 // Счётчик показываем всегда — в том числе когда фильтров нет (сколько строк загружено).
 export function filtersAria(activeCount, shown, total) {

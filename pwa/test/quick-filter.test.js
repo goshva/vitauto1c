@@ -1,6 +1,6 @@
 // Быстрый фильтр по значению (двойной клик по ячейке таблицы): чистая логика без DOM.
 import { describe, it, expect } from 'vitest';
-import { cellText, matchesQuick, filtersAria } from '../src/lib/quickFilter';
+import { cellText, matchesQuick, filtersAria, filtersBadge } from '../src/lib/quickFilter';
 
 // Подставной display как в lib/columns: для теста достаточно prop-доступа.
 const display = (line, field) => {
@@ -37,5 +37,11 @@ describe('быстрый фильтр по значению', () => {
     expect(filtersAria(0, 166, 166)).toBe('Фильтры, строк 166');
     expect(filtersAria(1, 12, 166)).toBe('Фильтры, отфильтровано 12 из 166 строк');
     expect(filtersAria(2, 0, 166)).toBe('Фильтры, отфильтровано 0 из 166 строк');
+  });
+
+  it('бейдж кнопки «Фильтры» — количество найденных строк, а не число фильтров', () => {
+    expect(filtersBadge(0, 166)).toBe(0);       // фильтров нет — бейджа нет
+    expect(filtersBadge(1, 32)).toBe(32);       // один фильтр, нашлось 32
+    expect(filtersBadge(2, 0)).toBe(0);         // фильтры есть, но ничего не найдено
   });
 });

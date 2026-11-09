@@ -15,7 +15,17 @@ const { mockLines } = vi.hoisted(() => {
 
 vi.mock('../src/api', () => ({
   api: vi.fn(async (method, path) => {
-    if (path === '/matrix') return { status: 200, data: { role: 'admin', statuses: [], columns: [] }, headers: new Headers({ ETag: 'w/"t"' }) };
+    if (path === '/matrix') {
+      return {
+        status: 200,
+        data: {
+          role: 'admin',
+          statuses: ['draft', 'prepared'],
+          columns: [{ id: 'customer', field: 'Покупатель', code: 'В6', title: 'Заказчик', writable: true, rights: '++' }]
+        },
+        headers: new Headers({ ETag: 'w/"t"' })
+      };
+    }
     return { data: {}, status: 200, headers: new Headers() };
   }),
   get: vi.fn(async path => {
@@ -69,5 +79,30 @@ describe('строки деталей в заказе (таблица)', () => {
     await wrapper.find('tbody tr').trigger('click');
     await flushPromises();
     expect(wrapper.findAll('tbody tr').length).toBe(3);
+  });
+
+  it('фильтр по значению ячейки показывает в бейдже число найденных строк', async () => {
+    const wrapper = mount(LinesView, { global: { stubs } });
+    await flushPromises();
+
+    // колонка «Заказчик» — третья ячейка строки деталей (после отметки и статуса)
+    const lineRow = wrapper.findAll('tbody tr')[1];
+    const customerCell = lineRow.findAll('td')[2];
+    expect(customerCell.text()).toContain('АвтоДеталь Сервис');
+    await customerCell.trigger('dblclick');
+    await flushPromises();
+
+    const filterBtn = document.querySelector('#appbar-actions button[aria-label^="Фильтры"]');
+    expect(filterBtn).toBeTruthy();
+    expect(filterBtn.getAttribute('aria-label')).toBe('Фильтры, отфильтровано 2 из 2 строк');
+    const badge = document.querySelector('#appbar-actions .icon-badge');
+    expect(badge && badge.textContent).toBe('2');
+    expect(wrapper.text()).toContain('Заказчик: АвтоДеталь Сервис');
+
+    // «×» на чипе снимает фильтр — бейдж исчезает
+    const chip = wrapper.findAll('button.chip').find(b => b.text().startsWith('Заказчик:'));
+    await chip.trigger('click');
+    await flushPromises();
+    expect(document.querySelector('#appbar-actions .icon-badge')).toBeNull();
   });
 });
