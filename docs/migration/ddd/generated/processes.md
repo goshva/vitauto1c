@@ -515,7 +515,7 @@ sequenceDiagram
 | 4 | M4 Заказ поставщику | manager | OrderFromSupplier | POST /sales/jobs; POST /sales/supplier-orders | ordered | С1, О1, Н5, Т1 | LinesSplit, SupplierOrderPlaced, LineStatusChanged | T-M4, S-happy |
 | 5 | P1 Обработка заказа | supplier | ConfirmSupplierOrder | POST /supplier/orders/{id}/confirm (портал поставщика) | ordered | только чтение | SupplierOrderConfirmed | T-P1, S-happy |
 | 6 | M7 Контроль оплаты | manager | ConfirmPayment | POST /supply/status {status: paid} | paid | О5 | SupplierOrderPaid, LineStatusChanged | T-M7, S-happy |
-| 7 | M15 Контроль документов | manager | ControlDocuments | PATCH /lines/{id} {field: ДокументПодписанОригинал}; POST /lines/transition {to: closed} | return | А3, Т1 | DocumentsControlled, LineStatusChanged | T-M15, S-happy |
+| 7 | M15 Контроль документов | manager | ControlDocuments | PATCH /lines/{id} {field: ДокументПодписанОригинал}; POST /lines/transition {to: closed} | return | Т1; автор: А3 | DocumentsControlled, LineStatusChanged | T-M15, S-happy |
 | 8 | M16 Заявка на возврат поставщику | manager | RequestSupplierReturn | POST /returns {direction: supplier} | return | Т1 | SupplierReturnRequested | T-M16, S-return_mgr, S-cancel_supplier |
 | 9 | P3 Приём возврата | supplier | AcceptSupplierReturn | POST /returns/{id}/supplier-accepted | return | только чтение | SupplierReturnAccepted | T-P3, S-return |
 

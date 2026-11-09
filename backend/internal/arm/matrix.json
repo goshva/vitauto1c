@@ -75,7 +75,7 @@
     "title": "поле выбора ячеек",
     "dataType": "checkbox",
     "writable": false,
-    "rights": "+++++++..+...++"
+    "rights": "ccccccc..c...cc"
    },
    {
     "id": "row_number",
@@ -93,7 +93,7 @@
     "title": "Документ подписан оригинал",
     "dataType": "checkbox",
     "writable": true,
-    "rights": "............++."
+    "rights": "............cc."
    },
    {
     "id": "shipment_date",
@@ -590,7 +590,7 @@
     "title": "поле выбора ячеек",
     "dataType": "checkbox",
     "writable": false,
-    "rights": "++.....++++++++"
+    "rights": "cc.....cccccccc"
    },
    {
     "id": "row_number",
@@ -608,7 +608,7 @@
     "title": "Документ подписан оригинал",
     "dataType": "checkbox",
     "writable": true,
-    "rights": "............++."
+    "rights": "............cc."
    },
    {
     "id": "shipment_date",
@@ -1105,7 +1105,7 @@
     "title": "поле выбора ячеек",
     "dataType": "checkbox",
     "writable": false,
-    "rights": "+++++++..+...++"
+    "rights": "ccccccc..c...cc"
    },
    {
     "id": "row_number",
@@ -1123,7 +1123,7 @@
     "title": "Документ подписан оригинал",
     "dataType": "checkbox",
     "writable": true,
-    "rights": "............++."
+    "rights": "............cc."
    },
    {
     "id": "shipment_date",
@@ -2135,7 +2135,7 @@
     "title": "поле выбора ячеек",
     "dataType": "checkbox",
     "writable": false,
-    "rights": "++..++........."
+    "rights": "cc..cc........."
    },
    {
     "id": "row_number",
@@ -2650,7 +2650,7 @@
     "title": "поле выбора ячеек",
     "dataType": "checkbox",
     "writable": false,
-    "rights": "++............."
+    "rights": "cc............."
    },
    {
     "id": "row_number",
@@ -3165,7 +3165,7 @@
     "title": "поле выбора ячеек",
     "dataType": "checkbox",
     "writable": false,
-    "rights": "++.....++++++++"
+    "rights": "cc.....cccccccc"
    },
    {
     "id": "row_number",
@@ -3183,7 +3183,7 @@
     "title": "Документ подписан оригинал",
     "dataType": "checkbox",
     "writable": true,
-    "rights": "............++."
+    "rights": "............cc."
    },
    {
     "id": "shipment_date",
