@@ -740,3 +740,34 @@ on conflict (onec_key) do update set status = excluded.status, quantity = exclud
 -- Договоры: продажа — договор покупателя, закупки — договор поставщика АвтооптТорг
 update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000003' where onec_key = 'demo:partial:1';
 update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000001' where onec_key in ('demo:partial:2', 'demo:partial:3');
+
+-- ============================================================
+-- ДОПОЛНИТЕЛЬНЫЕ СТАТУСЫ МАТРИЦЫ (15 статусов, решение 09.11.2026)
+-- ВРаботе — строка без закупок (триггер partial_ordered_sync не переключит)
+-- ОжидаемПоступление — статус из 1С (триггер его не затрагивает)
+-- ============================================================
+
+-- in_work: «ВРаботе» — менеджер начал обработку, закупок ещё нет
+insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,
+  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, cell_id, manual_edit, onec_key, sort_order)
+values
+  (uuidv7(), 'lk:inwork:1', 'Продажа', 'ВРаботе',
+   '66666666-6666-6666-6666-666666666603', null, '77777777-7777-7777-7777-777777777706', 2, 0, 900.00, 1350.00, 1.0,
+   'Фильтр воздушный', 'FLT-AIR-001', '2', 'K789MH750', 'Заявка-014', 'Менеджер начал обработку, закупки не создавал', '2026-11-06 09:00:00',
+   '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888801', false,
+   'demo:inwork:1', 1)
+on conflict (onec_key) do update set status = excluded.status, quantity = excluded.quantity,
+  customer_order_id = excluded.customer_order_id, comment = excluded.comment, updated_at = now();
+
+-- awaiting_receipt: «ОжидаемПоступление» — только из данных 1С, приложение не выставляет
+-- Создаём строку напрямую (без триггеров — нет связанных закупок, link_key не совпадает)
+insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,
+  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, cell_id, manual_edit, onec_key, sort_order)
+values
+  (uuidv7(), 'lk:awaiting:1', 'Продажа', 'ОжидаемПоступление',
+   '66666666-6666-6666-6666-666666666602', null, '77777777-7777-7777-7777-777777777707', 3, 0, 700.00, 1050.00, 1.0,
+   'Фильтр салонный', 'FLT-CAB-001', '3', 'E456OP777', 'Заявка-015', 'Ожидается поступление от поставщика (данные 1С)', '2026-11-06 10:00:00',
+   '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888803', false,
+   'demo:awaiting:1', 1)
+on conflict (onec_key) do update set status = excluded.status, quantity = excluded.quantity,
+  customer_order_id = excluded.customer_order_id, comment = excluded.comment, updated_at = now();
