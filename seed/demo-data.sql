@@ -1,8 +1,6 @@
 -- Демо-данные для всех стадий всех сценариев (process.html).
 -- Создаёт arm.line строки с правильными статусами, операциями и ссылками на документы.
 -- Идемпотентен по onec_key.
--- TODO (docs/TODO.md, п. 23): нет продаж с частичным покрытием закупками (статус «Частично заказано»
--- ставит триггер arm.line_partial_ordered) и нет строк АРМ в зонах Z5/Z7/Z9 — ячейки в них есть, данных нет.
 
 -- Сначала соберём все ID через uuidv7() — они будут использоваться в ссылках.
 -- Для идемпотентности onec_key уникален, а id генерируется каждый раз новый.
@@ -688,3 +686,57 @@ update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-00000
 update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000004' where id = 'b0000000-0000-0000-0000-000000000002';
 update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000005' where id = 'b0000000-0000-0000-0000-000000000003';
 update doc.supplier_order set customer_order_id = 'a0000000-0000-0000-0000-000000000003' where id = 'b0000000-0000-0000-0000-000000000004';
+
+-- ============================================================
+-- ФИЗИЧЕСКИЙ КОНТУР (process.html, стр. 2 «Складские зоны»): строки в зонах Z5/Z7.
+-- Остальные стадии раскладываются по зонам в seed/demo-stages.sql (генератор seed/gen-stages.js).
+-- ============================================================
+
+-- Z5 «Неопознанные и возвраты» — возвраты клиента и поставщику
+update arm.line set cell_id = '88888888-8888-8888-8888-888888888806'
+ where onec_key in ('demo:return:1', 'demo:return_mgr:1', 'demo:return_int:1');
+
+-- Z7 «Ремонтная зона» — запчасти по заказ-наряду ЗН-001
+update arm.line set cell_id = '88888888-8888-8888-8888-888888888807'
+ where onec_key in ('demo:repair:1', 'demo:repair:2', 'demo:repair:3');
+
+-- ============================================================
+-- СЦЕНАРИЙ 14: partial_order — частичное покрытие закупками («ЧастичноЗаказано»)
+-- Продажа 4 шт: закупка 1 шт уже «Заказано», остальные 3 шт — черновик.
+-- Статус продаже выставляет триггер arm.line_partial_ordered (миграция 0015): покрытие неполное →
+-- «ЧастичноЗаказано», после заказа всех 4 шт → «Заказано».
+-- ============================================================
+
+insert into doc.customer_order (id, date, number, operation, posted, author_id, ship_date,
+  counterparty_id, organization_id, responsible_id, amount_includes_vat, total, client_order_number) values
+  ('a0000000-0000-0000-0000-000000000008', '2026-11-05 09:00:00', 'ЗК-008', 'Продажа', true,
+   '00000000-0000-0000-0000-000000000002', '2026-11-07',
+   '66666666-6666-6666-6666-666666666601', '55555555-5555-5555-5555-555555555501', '00000000-0000-0000-0000-000000000002', true, 8000.00, 'Заявка-013')
+on conflict (id) do update set total = excluded.total, number = excluded.number, deleted = false, updated_at = now();
+
+insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,
+  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, manual_edit, onec_key, sort_order, customer_order_id)
+values
+  (uuidv7(), 'lk:partial:1', 'Продажа', 'ВРаботе',
+   '66666666-6666-6666-6666-666666666601', null, '77777777-7777-7777-7777-777777777701', 4, 0, 2000.00, 2400.00, 1.0,
+   'Масло моторное 5W-30 (5л)', 'MOT5W30-5L', '4', 'А777АА777', 'Заявка-013', 'Частичное покрытие: заказана 1 шт из 4', '2026-11-05 09:00:00',
+   '44444444-4444-4444-4444-444444444401', false, 'demo:partial:1', 1, 'a0000000-0000-0000-0000-000000000008')
+on conflict (onec_key) do update set status = excluded.status, quantity = excluded.quantity,
+  customer_order_id = excluded.customer_order_id, comment = excluded.comment, updated_at = now();
+
+insert into arm.line (id, link_key, operation, status, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,
+  fact_name, fact_article, fact_qty, client_order_number, comment, order_date, warehouse_id, manual_edit, onec_key, sort_order)
+values
+  (uuidv7(), 'lk:partial:1', 'Закупка', 'Заказано',
+   '66666666-6666-6666-6666-666666666604', '77777777-7777-7777-7777-777777777701', 1, 1200.00, 1800.00, 2000.00, 1.0,
+   'Масло моторное 5W-30 (5л)', 'MOT5W30-5L', '1', 'Заявка-013', 'Заказано 1 шт из 4 — продажа «Частично заказано»', '2026-11-05 10:00:00',
+   '44444444-4444-4444-4444-444444444401', true, 'demo:partial:2', 2),
+  (uuidv7(), 'lk:partial:1', 'Закупка', 'Черновик',
+   '66666666-6666-6666-6666-666666666604', '77777777-7777-7777-7777-777777777701', 3, 1200.00, 1800.00, 2000.00, 1.0,
+   'Масло моторное 5W-30 (5л)', 'MOT5W30-5L', '3', 'Заявка-013', 'Остаток 3 шт ещё не заказан', '2026-11-05 10:00:00',
+   '44444444-4444-4444-4444-444444444401', false, 'demo:partial:3', 3)
+on conflict (onec_key) do update set status = excluded.status, quantity = excluded.quantity, updated_at = now();
+
+-- Договоры: продажа — договор покупателя, закупки — договор поставщика АвтооптТорг
+update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000003' where onec_key = 'demo:partial:1';
+update arm.line set contract_id = 'ee000000-0000-0000-0000-000000000001' where onec_key in ('demo:partial:2', 'demo:partial:3');
