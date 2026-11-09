@@ -1,5 +1,3 @@
-// TODO (docs/TODO.md, п. 24): файл не парсится — второй it(...) не закрыт, третий вложен в него,
-// поэтому vitest падает с «invalid JS syntax». Закрыть блок и вернуть проверку снятия фильтра по «×».
 // Вложенные строки заказа в таблице: по умолчанию раскрыты и сворачиваются кликом по шапке заказа.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
@@ -102,6 +100,13 @@ describe('строки деталей в заказе (таблица)', () => {
     expect(wrapper.text()).toContain('Заказчик: АвтоДеталь Сервис');
 
     // «×» на чипе снимает фильтр — бейдж исчезает
+    const chip = [...wrapper.findAll('.lines-head .chip.on')].find(c => c.text().includes('Заказчик:'));
+    expect(chip).toBeTruthy();
+    await chip.trigger('click');
+    await flushPromises();
+    expect(document.querySelector('#appbar-actions .icon-badge')).toBeNull();
+  });
+
   it('двойной клик по статусу фильтрует, ярлык карточки — отдельно от чекбокса', async () => {
     const wrapper = mount(LinesView, { global: { stubs } });
     await flushPromises();
