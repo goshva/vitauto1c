@@ -1,4 +1,4 @@
-﻿# --- артефакты установщиков 1С (install-1c.ps1, install-1c-pgsql.ps1) ---
+# --- артефакты установщиков 1С (install-1c.ps1, install-1c-pgsql.ps1) ---
 
 # большие дистрибутивы и установщики (скачиваются/ставятся отдельно)
 *.rar
@@ -51,3 +51,6 @@ pwa/dev-dist/
 
 # вывод автогенератора seed (node seed/gen-stages.js)
 seed/stages-output.log
+
+# выгрузки настроек и резервные копии импорта
+settings/backup-*/
