@@ -14,14 +14,19 @@
     Пароль postgres (спрашивается, если не задан).
 .PARAMETER NoSeed
     Не загружать демо-данные.
+.PARAMETER Reset
+    Удалить базу vitauto_app целиком перед инициализацией (DROP DATABASE)
+    и залить схему и демо-данные заново.
 .EXAMPLE
     .\init-db.ps1
     .\init-db.ps1 -PgPort 5432 -PgPassword 'mypassword' -NoSeed
+    .\init-db.ps1 -Reset
 #>
 param(
     [int]$PgPort = 5432,
     [string]$PgPassword = '',
-    [switch]$NoSeed
+    [switch]$NoSeed,
+    [switch]$Reset
 )
 
 Set-StrictMode -Version Latest
@@ -36,6 +41,7 @@ if (-not $isAdmin) {
     $argsList = @()
     if ($PgPassword) { $argsList += "-PgPassword '$PgPassword'" }
     if ($NoSeed) { $argsList += '-NoSeed' }
+    if ($Reset) { $argsList += '-Reset' }
     Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" $($argsList -join ' ')"
     exit 0
 }
@@ -70,7 +76,7 @@ $pgData = 'D:\PostgreSQL 1C\18\data'
 # Проверяем, запущен ли
 try {
     $tcp = New-Object System.Net.Sockets.TcpClient
-    $tcp.Connect('localhost', $PgPort)
+    $tcp.Connect('127.0.0.1', $PgPort)
     $tcp.Close()
     Write-Ok "PostgreSQL на порту $PgPort запущен"
 } catch {
@@ -99,10 +105,20 @@ Write-Header "База vitauto_app"
 $dbName = 'vitauto_app'
 $env:PGPASSWORD = $PgPassword
 
-$dbExists = & $psql -h localhost -p $PgPort -U postgres -d postgres -t -c "SELECT 1 FROM pg_database WHERE datname='$dbName';" 2>&1
+if ($Reset) {
+    Write-Step "Сброс: остановка API и удаление базы $dbName..."
+    # API держит соединения с базой, без их закрытия DROP DATABASE не выполнится
+    Get-Process -Name vitauto-api -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    & $psql -h 127.0.0.1 -p $PgPort -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$dbName' AND pid <> pg_backend_pid();" 2>&1 | Out-Null
+    & $psql -h 127.0.0.1 -p $PgPort -U postgres -d postgres -c "DROP DATABASE IF EXISTS $dbName;" 2>&1
+    if ($LASTEXITCODE -ne 0) { Write-Err "Не удалось удалить базу $dbName"; exit 1 }
+    Write-Ok "База $dbName удалена, будет создана заново"
+}
+
+$dbExists = & $psql -h 127.0.0.1 -p $PgPort -U postgres -d postgres -t -c "SELECT 1 FROM pg_database WHERE datname='$dbName';" 2>&1
 if ($dbExists.Trim() -ne '1') {
     Write-Step "Создание базы $dbName..."
-    & $psql -h localhost -p $PgPort -U postgres -d postgres -c "CREATE DATABASE $dbName TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'ru-RU' LOCALE 'C';" 2>&1
+    & $psql -h 127.0.0.1 -p $PgPort -U postgres -d postgres -c "CREATE DATABASE $dbName TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'ru-RU' LOCALE 'C';" 2>&1
     if ($LASTEXITCODE -ne 0) { Write-Err "Не удалось создать базу $dbName"; exit 1 }
     Write-Ok "База $dbName создана"
 } else {
@@ -112,22 +128,31 @@ if ($dbExists.Trim() -ne '1') {
 # ── Миграции схемы (через Go-migrator) ──────────────────────────────────────
 Write-Header "Миграции схемы"
 $goDir = Join-Path $Root 'backend'
-$env:VITAUTO_DB = "postgres://postgres:${PgPassword}@localhost:${PgPort}/$dbName"
+$env:VITAUTO_DB = "postgres://postgres:${PgPassword}@127.0.0.1:${PgPort}/$dbName"
 
 Write-Step "go run ./cmd/migrator schema-up..."
 Push-Location $goDir
-& go run ./cmd/migrator schema-up 2>&1
-if ($LASTEXITCODE -ne 0) { Write-Err "schema-up завершился с ошибкой"; exit 1 }
+# Go-логгер пишет информационные строки в stderr; при 'Stop' они стали бы исключением
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+& go run ./cmd/migrator schema-up 2>&1 | ForEach-Object { "$_" }
+$migrateExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+if ($migrateExit -ne 0) { Pop-Location; Write-Err "schema-up завершился с ошибкой"; exit 1 }
 Write-Ok "Схема обновлена"
 Pop-Location
 
 # ── Демо-данные ─────────────────────────────────────────────────────────────
-if (-not $NoSeed) {
+$userCount = & $psql -h 127.0.0.1 -p $PgPort -U postgres -d $dbName -w -At -c 'SELECT count(*) FROM auth."user";' 2>$null
+if (-not $NoSeed -and "$userCount".Trim() -ne '0') {
+    Write-Step "В базе уже есть пользователи ($("$userCount".Trim())), демо-данные не загружаются"
+} elseif (-not $NoSeed) {
     Write-Header "Демо-данные"
     $demoSql = Join-Path $Root 'seed\demo-app.sql'
     if (Test-Path $demoSql) {
         Write-Step "Загрузка demo-app.sql..."
-        & $psql -h localhost -p $PgPort -U postgres -d $dbName -f $demoSql 2>&1
+        $env:PGCLIENTENCODING = 'UTF8'
+        & $psql -h 127.0.0.1 -p $PgPort -U postgres -d $dbName -f $demoSql 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Ok "Демо-данные загружены"
             Write-Host "      Пользователи / пароли:" -ForegroundColor Gray

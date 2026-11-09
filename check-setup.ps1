@@ -1,4 +1,4 @@
-﻿<#
+﻿﻿<#
 .SYNOPSIS
     Проверка наличия и готовности компонентов для запуска vitauto без 1С.
 .DESCRIPTION
@@ -108,9 +108,9 @@ if (-not $pgFound) {
     # Проверяем порт
     try {
         $tcp = New-Object System.Net.Sockets.TcpClient
-        $tcp.Connect('localhost', $pgPort)
+        $tcp.Connect('127.0.0.1', $pgPort)
         $tcp.Close()
-        Write-Ok "Порт $pgPort: PostgreSQL запущен и принимает соединения"
+        Write-Ok "Порт ${pgPort}: PostgreSQL запущен и принимает соединения"
         $pgRunning = $true
     } catch {
         Write-Warn "Порт $pgPort не отвечает — PostgreSQL запущен, но не принимает на этом порту"
