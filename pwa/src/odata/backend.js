@@ -244,6 +244,8 @@ export function createBackend({ baseUrl, session, log }) {
   }
 
   async function strikeLine(id) {
+    // ФТ п. 8: удаление — только администратор (как requireAdmin в arm/arm.go)
+    if (role() !== 'admin') fail(403, 'matrix_denied', 'Удаление доступно только администратору');
     const rec = await record(id);
     const ln = toLine(rec, units);
     if (!['new', 'in_work'].includes(ln.status)) fail(409, 'row_locked', 'Вычеркнуть можно только строку в статусе «Черновик» или «В работе»');
@@ -398,6 +400,8 @@ export function createBackend({ baseUrl, session, log }) {
   }
 
   async function deleteOrder(id) {
+    // ФТ п. 8: удаление — только администратор (как requireAdmin в arm/arm.go)
+    if (role() !== 'admin') fail(403, 'matrix_denied', 'Удаление доступно только администратору');
     const supplierOrders = await od.list('Document_ЗаказПоставщику', { $filter: `ЗаказПокупателя_Key eq ${guid(id)} and DeletionMark eq false`, $top: 1, $select: 'Ref_Key' })
       .catch(() => []);
     if (supplierOrders.length) fail(409, 'unfinished_purchase', 'По заказу есть заказ поставщику — удалить нельзя');

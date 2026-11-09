@@ -82,6 +82,14 @@ func AsProblem(err error) *Problem {
 	return &Problem{Status: 500, Code: "server_error", Message: err.Error()}
 }
 
+// requireAdmin — удаление (вычеркивание строки, пометка удаления заказа) доступно только администратору (ФТ v2, п. 8).
+func requireAdmin(a Actor) error {
+	if a.Role != "admin" {
+		return fail(403, "matrix_denied", "Удаление доступно только администратору")
+	}
+	return nil
+}
+
 // Actor — пользователь сессии.
 type Actor struct {
 	UserID   uuid.UUID

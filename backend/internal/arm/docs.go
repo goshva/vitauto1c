@@ -228,6 +228,9 @@ func rebuildOrderItems(ctx context.Context, tx pgx.Tx, order uuid.UUID, ls []lin
 
 // DeleteOrder — DELETE /sales/customer-orders/{id}: только без заказов поставщику и строк дальше «В работе».
 func (s *Service) DeleteOrder(ctx context.Context, a Actor, orderID string) error {
+	if err := requireAdmin(a); err != nil {
+		return err
+	}
 	oid, err := uuid.Parse(orderID)
 	if err != nil {
 		return fail(404, "not_found", "Заказ покупателя не найден")

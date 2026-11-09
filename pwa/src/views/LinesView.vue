@@ -264,15 +264,15 @@ const sheetActions = computed(() => {
   if (view.value === 'sales' && l.customerOrder && canDeleteOrder(l)) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
   return a;
 });
-// совпадает с StrikeLine (arm/lines.go): статус «Черновик»/«В работе» и не чужая отметка
+// совпадает с StrikeLine (arm/lines.go + requireAdmin): только администратор, статус «Черновик»/«В работе», не чужая отметка
 const OPEN_STATUSES = ['new', 'in_work'];
 function canStrikeLine(l) {
-  return OPEN_STATUSES.includes(l.status) && (!l.markedBy || l.markedBy === userName.value);
+  return session.role === 'admin' && OPEN_STATUSES.includes(l.status) && (!l.markedBy || l.markedBy === userName.value);
 }
-// совпадает с DeleteOrder (arm/docs.go): все активные строки заказа в статусе «Черновик»/«В работе»
+// совпадает с DeleteOrder (arm/docs.go + requireAdmin): только администратор; все активные строки заказа в «Черновик»/«В работе»
 // (заказы поставщику на клиенте не видны — их сервер проверит сам)
 function canDeleteOrder(l) {
-  return lines.items
+  return session.role === 'admin' && lines.items
     .filter(x => x.customerOrder && x.customerOrder.id === l.customerOrder.id && !x.deleted)
     .every(x => OPEN_STATUSES.includes(x.status));
 }

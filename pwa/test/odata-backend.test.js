@@ -110,7 +110,10 @@ describe('OData: пишущие операции PWA', () => {
       const page = await m.call('GET', '/lines', { query: { view: 'sales', customerOrderId: doc.id } });
       expect(page.items).toHaveLength(1);
     } finally {
-      await m.call('DELETE', `/sales/customer-orders/${doc.id}`);
+      // ФТ п. 8: удаление — только администратор
+      await expect(m.call('DELETE', `/sales/customer-orders/${doc.id}`)).rejects.toMatchObject({ status: 403, code: 'matrix_denied' });
+      const adm = await session('arm.admin');
+      await adm.call('DELETE', `/sales/customer-orders/${doc.id}`);
     }
     expect((await admin.get(`Document_ЗаказПокупателя(${guid(doc.id)})`, { $select: 'DeletionMark' })).DeletionMark).toBe(true);
     expect(await admin.list(ARM, { $filter: `ДокументЗаказПокупателя_Key eq ${guid(doc.id)}` })).toHaveLength(0);

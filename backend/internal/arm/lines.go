@@ -783,6 +783,9 @@ func (s *Service) Shipments(ctx context.Context, a Actor, orderID, date, number 
 
 // StrikeLine — DELETE /lines/{id} (F-1): продажа и незаказанные закупки ключа вычеркиваются, строка уходит из заказа.
 func (s *Service) StrikeLine(ctx context.Context, a Actor, idText string) error {
+	if err := requireAdmin(a); err != nil {
+		return err
+	}
 	id, err := parseID(idText)
 	if err != nil {
 		return err
