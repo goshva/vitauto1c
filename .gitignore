@@ -1,4 +1,4 @@
-# --- артефакты установщиков 1С (install-1c.ps1, install-1c-pgsql.ps1) ---
+﻿# --- артефакты установщиков 1С (install-1c.ps1, install-1c-pgsql.ps1) ---
 
 # большие дистрибутивы и установщики (скачиваются/ставятся отдельно)
 *.rar
@@ -34,7 +34,7 @@ __pycache__/
 # выгрузки tools/arm-log-report.ps1
 logs/
 
-# ������ vitauto-api / vitauto-migrator
+# ������ vitauto-api / vitauto-migrator
 deploy/bin/
 docs/migration/last-reconcile.md
 
@@ -44,3 +44,7 @@ backend/cmd/vitauto-desktop/webroot/*
 !backend/cmd/vitauto-desktop/webroot/README.txt
 .gocache/
 .gotmp/
+
+# зависимости PWA (npm ci)
+node_modules/
+pwa/dev-dist/
