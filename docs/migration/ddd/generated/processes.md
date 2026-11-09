@@ -90,7 +90,7 @@ sequenceDiagram
 | 8 | K1 Приёмка (УПД) | storekeeper | AcceptByUPD | POST /lines/transition {to: acceptance}; PATCH /lines/{id} {ДатаУПД, НомерУПД} | acceptance | С1, С2, С3, С4, С5, С7 | GoodsReceived, LineStatusChanged | T-K1, S-happy |
 | 9 | K2 Размещение по складам | storekeeper | PlaceToCell | POST /stock/placements {warehouseId, cellId, lineIds} | acceptance | только чтение | GoodsPlaced, LineStatusChanged | T-K2, S-happy |
 | 10 | M8 Уведомление о приходе | manager | NotifyArrival | policy: GoodsPlaced → Notice; GET /notifications | acceptance | Н5 | NoticeCreated | T-M8, S-happy |
-| 11 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 11 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 12 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 13 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
 | 14 | M12 Отгрузочная ведомость | manager | PrintShipmentSheet | POST /print {kind: shipment_sheet} | ready_to_ship | В1 | PrintFormRendered | T-M12, S-happy |
@@ -155,8 +155,8 @@ sequenceDiagram
 | 1 | N1 Заявка: Excel / фото | client | SubmitClientRequest | POST /imports (kind=customer_sheet); сейчас POST /sales/imports | new | Т1 | ClientRequestReceived | T-N1, S-happy |
 | 2 | M1 Загрузка заявки в 1С | manager | ImportCustomerSheet | POST /sales/imports; POST /lines | new | В5, В6, В7, В8, Е2, Е3, Е4, Е5, Е6, Е7, К1, К2, К3, К6, К7 | CustomerOrderCreated, LinesCreated | T-M1, S-happy |
 | 3 | M2 Поиск + подбор номенклатуры | manager | MatchNomenclature | GET /catalog/goods; PATCH /lines/{id} {field: Номенклатура} | new | М1, Н0, Р0, Т1 | NomenclatureMatched, LineChanged | T-M2, S-happy |
-| 4 | M3 Резервирование на складе | manager | ReserveStock | POST /lines/transition {to: reserve} | reserve | Н4 | StockReserved, LineStatusChanged | T-M3, S-stock, S-mixed_order |
-| 5 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 4 | M3 Резервирование на складе | manager | ReserveStock | POST /lines/transition {to: reserve} | reserve | Н4; автор: Н2 | StockReserved, LineStatusChanged | T-M3, S-stock, S-mixed_order |
+| 5 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 6 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 7 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
 | 8 | M12 Отгрузочная ведомость | manager | PrintShipmentSheet | POST /print {kind: shipment_sheet} | ready_to_ship | В1 | PrintFormRendered | T-M12, S-happy |
@@ -245,7 +245,7 @@ sequenceDiagram
 | 1 | N1 Заявка: Excel / фото | client | SubmitClientRequest | POST /imports (kind=customer_sheet); сейчас POST /sales/imports | new | Т1 | ClientRequestReceived | T-N1, S-happy |
 | 2 | M1 Загрузка заявки в 1С | manager | ImportCustomerSheet | POST /sales/imports; POST /lines | new | В5, В6, В7, В8, Е2, Е3, Е4, Е5, Е6, Е7, К1, К2, К3, К6, К7 | CustomerOrderCreated, LinesCreated | T-M1, S-happy |
 | 3 | M2 Поиск + подбор номенклатуры | manager | MatchNomenclature | GET /catalog/goods; PATCH /lines/{id} {field: Номенклатура} | new | М1, Н0, Р0, Т1 | NomenclatureMatched, LineChanged | T-M2, S-happy |
-| 4 | M3 Резервирование на складе | manager | ReserveStock | POST /lines/transition {to: reserve} | reserve | Н4 | StockReserved, LineStatusChanged | T-M3, S-stock, S-mixed_order |
+| 4 | M3 Резервирование на складе | manager | ReserveStock | POST /lines/transition {to: reserve} | reserve | Н4; автор: Н2 | StockReserved, LineStatusChanged | T-M3, S-stock, S-mixed_order |
 | 5 | M4 Заказ поставщику | manager | OrderFromSupplier | POST /sales/jobs; POST /sales/supplier-orders | ordered | С1, О1, Н5, Т1 | LinesSplit, SupplierOrderPlaced, LineStatusChanged | T-M4, S-happy |
 | 6 | P1 Обработка заказа | supplier | ConfirmSupplierOrder | POST /supplier/orders/{id}/confirm (портал поставщика) | ordered | только чтение | SupplierOrderConfirmed | T-P1, S-happy |
 | 7 | M7 Контроль оплаты | manager | ConfirmPayment | POST /supply/status {status: paid} | paid | О5 | SupplierOrderPaid, LineStatusChanged | T-M7, S-happy |
@@ -253,7 +253,7 @@ sequenceDiagram
 | 9 | K1 Приёмка (УПД) | storekeeper | AcceptByUPD | POST /lines/transition {to: acceptance}; PATCH /lines/{id} {ДатаУПД, НомерУПД} | acceptance | С1, С2, С3, С4, С5, С7 | GoodsReceived, LineStatusChanged | T-K1, S-happy |
 | 10 | K2 Размещение по складам | storekeeper | PlaceToCell | POST /stock/placements {warehouseId, cellId, lineIds} | acceptance | только чтение | GoodsPlaced, LineStatusChanged | T-K2, S-happy |
 | 11 | M8 Уведомление о приходе | manager | NotifyArrival | policy: GoodsPlaced → Notice; GET /notifications | acceptance | Н5 | NoticeCreated | T-M8, S-happy |
-| 12 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 12 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 13 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 14 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
 | 15 | M12 Отгрузочная ведомость | manager | PrintShipmentSheet | POST /print {kind: shipment_sheet} | ready_to_ship | В1 | PrintFormRendered | T-M12, S-happy |
@@ -353,7 +353,7 @@ sequenceDiagram
 | 9 | K1 Приёмка (УПД) | storekeeper | AcceptByUPD | POST /lines/transition {to: acceptance}; PATCH /lines/{id} {ДатаУПД, НомерУПД} | acceptance | С1, С2, С3, С4, С5, С7 | GoodsReceived, LineStatusChanged | T-K1, S-happy |
 | 10 | K2 Размещение по складам | storekeeper | PlaceToCell | POST /stock/placements {warehouseId, cellId, lineIds} | acceptance | только чтение | GoodsPlaced, LineStatusChanged | T-K2, S-happy |
 | 11 | M8 Уведомление о приходе | manager | NotifyArrival | policy: GoodsPlaced → Notice; GET /notifications | acceptance | Н5 | NoticeCreated | T-M8, S-happy |
-| 12 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 12 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 13 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 14 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
 | 15 | M12 Отгрузочная ведомость | manager | PrintShipmentSheet | POST /print {kind: shipment_sheet} | ready_to_ship | В1 | PrintFormRendered | T-M12, S-happy |
@@ -456,7 +456,7 @@ sequenceDiagram
 |---|---|---|---|---|---|---|---|---|
 | 1 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 2 | M10 Контроль комплектации | manager | RejectAssembly | POST /lines/reject-assembly {reason} | assembly | Н5, Т1 | AssemblyRejected, LineStatusChanged | T-M10, S-defect |
-| 3 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 3 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 3 | K8 Розыск позиции | storekeeper | SearchItem | POST /stock/searches {lineId} | assembly | Т1 | ItemFound, ItemUnidentified | T-K8, S-defect |
 | 4 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 5 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
@@ -660,7 +660,7 @@ sequenceDiagram
 | 2 | N3 Возврат товара | client | RequestCustomerReturn | POST /lines/transition {to: return} | return | Т1 | ReturnRequested, LineStatusChanged | T-N3, S-return, S-return_internal |
 | 3 | K6 Приёмка / подготовка возврата | storekeeper | AcceptReturnToWarehouse | POST /lines/transition {to: return} | return | Т1 | ReturnAccepted, LineStatusChanged | T-K6, S-return |
 | 4 | M10 Контроль комплектации | manager | RejectAssembly | POST /lines/reject-assembly {reason} | assembly | Н5, Т1 | AssemblyRejected, LineStatusChanged | T-M10, S-defect |
-| 5 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 5 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 6 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 7 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
 | 8 | M12 Отгрузочная ведомость | manager | PrintShipmentSheet | POST /print {kind: shipment_sheet} | ready_to_ship | В1 | PrintFormRendered | T-M12, S-happy |
@@ -748,7 +748,7 @@ sequenceDiagram
 | 1 | N1 Заявка: Excel / фото | client | SubmitClientRequest | POST /imports (kind=customer_sheet); сейчас POST /sales/imports | new | Т1 | ClientRequestReceived | T-N1, S-happy |
 | 2 | G1 Открытие заказ-наряда | chief_mechanic | OpenWorkOrder | POST /work-orders | new | В5, В6, В7, В8, Е1, Е2, Е3, Е4, Е6, Е7, К1, К2, К3, К6, К7 | WorkOrderOpened | T-G1, S-car_repair_in |
 | 3 | M2 Поиск + подбор номенклатуры | manager | MatchNomenclature | GET /catalog/goods; PATCH /lines/{id} {field: Номенклатура} | new | М1, Н0, Р0, Т1 | NomenclatureMatched, LineChanged | T-M2, S-happy |
-| 4 | M3 Резервирование на складе | manager | ReserveStock | POST /lines/transition {to: reserve} | reserve | Н4 | StockReserved, LineStatusChanged | T-M3, S-stock, S-mixed_order |
+| 4 | M3 Резервирование на складе | manager | ReserveStock | POST /lines/transition {to: reserve} | reserve | Н4; автор: Н2 | StockReserved, LineStatusChanged | T-M3, S-stock, S-mixed_order |
 | 5 | M4 Заказ поставщику | manager | OrderFromSupplier | POST /sales/jobs; POST /sales/supplier-orders | ordered | С1, О1, Н5, Т1 | LinesSplit, SupplierOrderPlaced, LineStatusChanged | T-M4, S-happy |
 | 6 | P1 Обработка заказа | supplier | ConfirmSupplierOrder | POST /supplier/orders/{id}/confirm (портал поставщика) | ordered | только чтение | SupplierOrderConfirmed | T-P1, S-happy |
 | 7 | M7 Контроль оплаты | manager | ConfirmPayment | POST /supply/status {status: paid} | paid | О5 | SupplierOrderPaid, LineStatusChanged | T-M7, S-happy |
@@ -756,7 +756,7 @@ sequenceDiagram
 | 9 | K1 Приёмка (УПД) | storekeeper | AcceptByUPD | POST /lines/transition {to: acceptance}; PATCH /lines/{id} {ДатаУПД, НомерУПД} | acceptance | С1, С2, С3, С4, С5, С7 | GoodsReceived, LineStatusChanged | T-K1, S-happy |
 | 10 | K2 Размещение по складам | storekeeper | PlaceToCell | POST /stock/placements {warehouseId, cellId, lineIds} | acceptance | только чтение | GoodsPlaced, LineStatusChanged | T-K2, S-happy |
 | 11 | M8 Уведомление о приходе | manager | NotifyArrival | policy: GoodsPlaced → Notice; GET /notifications | acceptance | Н5 | NoticeCreated | T-M8, S-happy |
-| 12 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
+| 12 | M9 Задание на комплектацию | manager | RequestAssembly | POST /lines/transition {to: assembly} | assembly | Н5, Н4; автор: Н2 | AssemblyRequested, LineStatusChanged | T-M9, S-stock |
 | 13 | K3 Комплектация + сборочный лист | storekeeper | CompleteAssembly | POST /lines/transition {to: ready_to_ship}; POST /print {kind: assembly_sheet} | assembly | только чтение | LineAssembled, PrintFormRendered, LineStatusChanged | T-K3, S-stock |
 | 14 | M11 Уведомление о готовности | manager | NotifyReady | policy: LineAssembled → Notice; GET /notifications | ready_to_ship | Н5 | NoticeCreated | T-M11, S-happy |
 | 15 | G3 Выдача в ремонтную зону | chief_mechanic | IssueToRepairZone | POST /lines/transition {to: assembly} | assembly | Н4 | PartsIssuedToRepair, LineStatusChanged | T-G3, S-car_repair_in |

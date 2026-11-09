@@ -371,8 +371,8 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": ".........cc...."
    },
    {
     "id": "ordered_in_transit_qty",
@@ -886,8 +886,8 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": ".........cc...."
    },
    {
     "id": "ordered_in_transit_qty",
@@ -1401,7 +1401,7 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -1916,7 +1916,7 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
+    "writable": true,
     "rights": "+++++++++++++++"
    },
    {
@@ -2431,7 +2431,7 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -2946,7 +2946,7 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -3461,8 +3461,8 @@
     "code": "Н2",
     "title": "Кол-во в резерве",
     "dataType": "number",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": ".........cc...."
    },
    {
     "id": "ordered_in_transit_qty",

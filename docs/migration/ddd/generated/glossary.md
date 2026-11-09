@@ -72,7 +72,7 @@
 | М4 | `unit` | Ед. изм. | nomenclature | НоменклатураЕдиницаИзмерения | `nomenclature.unit` | `nomenclature_id` → ref.nomenclature | select | да |
 | Н0 | `qty` | Кол-во | nomenclature | Количество | `quantity` | `quantity` | number | да |
 | Н1 | `stock_qty` | Кол-во в наличии на складе | stock | ОстатокДляСтроки | `stockQty` | `stock_qty` | number | нет |
-| Н2 | `reserve_qty` | Кол-во в резерве | stock | КоличествоВРезерве | `reserveQty` | `reserve_qty` | number | нет |
+| Н2 | `reserve_qty` | Кол-во в резерве | stock | КоличествоВРезерве | `reserveQty` | `reserve_qty` | number | да |
 | Н3 | `ordered_in_transit_qty` | Кол-во заказанного в пути / свободное | stock | КоличествоВПути | `inTransitQty` | `in_transit_qty` | number | нет |
 | Н4 | `batch_fifo` | № партии ФИФО / выбор партии | stock | Партия | `batch` | `batch_id` | select | да |
 | Н5 | `line_status` | Статус заявки | status | СтатусСтроки | `status` | `status` | select | нет |

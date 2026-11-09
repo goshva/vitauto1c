@@ -902,7 +902,7 @@
    "qty": 0,
    "qty_norm_hours_client": 13,
    "stock_qty": 0,
-   "reserve_qty": 0,
+   "reserve_qty": 3,
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
@@ -961,7 +961,7 @@
    "qty": 0,
    "qty_norm_hours_client": 13,
    "stock_qty": 0,
-   "reserve_qty": 0,
+   "reserve_qty": 3,
    "ordered_in_transit_qty": 0,
    "batch_fifo": 15,
    "line_status": 1,
@@ -1789,7 +1789,7 @@
    "qty": false,
    "qty_norm_hours_client": false,
    "stock_qty": false,
-   "reserve_qty": false,
+   "reserve_qty": true,
    "ordered_in_transit_qty": false,
    "batch_fifo": false,
    "line_status": false,
@@ -1848,7 +1848,7 @@
    "qty": false,
    "qty_norm_hours_client": false,
    "stock_qty": false,
-   "reserve_qty": false,
+   "reserve_qty": true,
    "ordered_in_transit_qty": false,
    "batch_fifo": false,
    "line_status": false,
@@ -2184,12 +2184,20 @@
    "contract"
   ],
   [
+   "reserve",
+   "reserve_qty"
+  ],
+  [
    "assembly",
    "cell_select"
   ],
   [
    "assembly",
    "contract"
+  ],
+  [
+   "assembly",
+   "reserve_qty"
   ],
   [
    "ready_to_ship",
@@ -2222,7 +2230,7 @@
  ],
  "tab_divergences_vs_manager": {
   "storekeeper": {
-   "cells": 102,
+   "cells": 104,
    "examples": [
     "new/grz_fact: manager=1 storekeeper=0",
     "new/article: manager=0 storekeeper=15",
@@ -2232,7 +2240,7 @@
    ]
   },
   "chief_mechanic": {
-   "cells": 102,
+   "cells": 104,
    "examples": [
     "new/grz_fact: manager=1 chief_mechanic=0",
     "new/article: manager=0 chief_mechanic=15",
@@ -2242,7 +2250,7 @@
    ]
   },
   "admin": {
-   "cells": 102,
+   "cells": 104,
    "examples": [
     "new/grz_fact: manager=1 admin=0",
     "new/article: manager=0 admin=15",
@@ -2252,7 +2260,7 @@
    ]
   },
   "supplier": {
-   "cells": 102,
+   "cells": 104,
    "examples": [
     "new/grz_fact: manager=1 supplier=0",
     "new/article: manager=0 supplier=15",
@@ -2262,7 +2270,7 @@
    ]
   },
   "client": {
-   "cells": 102,
+   "cells": 104,
    "examples": [
     "new/grz_fact: manager=1 client=0",
     "new/article: manager=0 client=15",
@@ -2272,7 +2280,7 @@
    ]
   },
   "supply": {
-   "cells": 102,
+   "cells": 104,
    "examples": [
     "new/grz_fact: manager=1 supply=0",
     "new/article: manager=0 supply=15",

@@ -297,3 +297,30 @@ func TestSaleSum(t *testing.T) {
 		t.Errorf("SaleSum(0, 100) = %v, want 100", sum)
 	}
 }
+
+// ФТ п. 5: «Снять резерв» доступно только автору резерва — creator на «КоличествоВРезерве».
+func TestReserveAuthorOnly(t *testing.T) {
+	col, ok := ColumnFor("manager", "КоличествоВРезерве")
+	if !ok {
+		t.Fatal("матрица manager: нет колонки «КоличествоВРезерве»")
+	}
+	if !col.Writable {
+		t.Error("«КоличествоВРезерве» должно быть записываемым, иначе право «только автор» не сработает")
+	}
+	if deny := DenyReason("manager", col, StatusReserve, false); deny == "" {
+		t.Error("DenyReason(manager, «КоличествоВРезерве», Резервирование, чужой) пуст, ожидали отказ «только автор»")
+	}
+	if deny := DenyReason("manager", col, StatusReserve, true); deny != "" {
+		t.Errorf("DenyReason(manager, «КоличествоВРезерве», Резервирование, автор) = %q, ожидали пусто", deny)
+	}
+	if deny := DenyReason("manager", col, StatusDraft, true); deny == "" {
+		t.Error("в «Черновике» резерв не редактируется — ожидали отказ")
+	}
+	admin, ok := ColumnFor("admin", "КоличествоВРезерве")
+	if !ok {
+		t.Fatal("матрица admin: нет колонки «КоличествоВРезерве»")
+	}
+	if deny := DenyReason("admin", admin, StatusReserve, false); deny != "" {
+		t.Errorf("админ должен сохранять полный доступ к резерву: %q", deny)
+	}
+}

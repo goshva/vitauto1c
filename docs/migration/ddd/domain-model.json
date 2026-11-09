@@ -3,7 +3,7 @@
  "sources": {
   "index.html": "141b713c3da77a98",
   "process.html": "f94280e06023bafa",
-  "pwa/src/odata/matrix.json": "a3acaf43c3fa1458",
+  "pwa/src/odata/matrix.json": "ef543a4c82af145e",
   "pwa/src/odata/backend.js": "59234bbdb3adf718",
   "pwa/src/views/LinesView.vue": "012f068406e097d6",
   "column-codes.js": "ec061114387c8406",
@@ -734,7 +734,7 @@
    "field": "КоличествоВРезерве",
    "api": "reserveQty",
    "dataType": "number",
-   "writable": false
+   "writable": true
   },
   {
    "id": "ordered_in_transit_qty",
@@ -1569,7 +1569,7 @@
     "qty": "++.............",
     "qty_norm_hours_client": "+++++++++++++++",
     "stock_qty": "...............",
-    "reserve_qty": "...............",
+    "reserve_qty": ".........cc....",
     "ordered_in_transit_qty": "...............",
     "batch_fifo": "++++++++++++...",
     "line_status": "+++++++++++++++",
@@ -1628,7 +1628,7 @@
     "qty": "++.............",
     "qty_norm_hours_client": "...............",
     "stock_qty": "...............",
-    "reserve_qty": "...............",
+    "reserve_qty": ".........cc....",
     "ordered_in_transit_qty": "...............",
     "batch_fifo": "++++++++++++...",
     "line_status": "...............",
@@ -1923,7 +1923,7 @@
     "qty": "++.............",
     "qty_norm_hours_client": "...............",
     "stock_qty": "...............",
-    "reserve_qty": "...............",
+    "reserve_qty": ".........cc....",
     "ordered_in_transit_qty": "...............",
     "batch_fifo": "++++++++++++...",
     "line_status": "...............",
