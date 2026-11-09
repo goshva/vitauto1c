@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Сборка единого приложения демо-стенда: PWA + Go API -> bin\VITAUTO.exe.
 .DESCRIPTION
