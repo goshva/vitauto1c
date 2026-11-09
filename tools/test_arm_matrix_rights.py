@@ -903,6 +903,8 @@ class TestWiring(unittest.TestCase):
             self.assertIn('Арм_ОбщегоНазначенияАРМ.ОтказРолиСнабжения()', body, name)
             self.assertLess(body.index('ОтказРолиСнабжения'), body.index('Записать()'), name)
 
+    @unittest.skipUnless(os.path.isfile(os.path.join(ROOT, 'seed-1c.ps1')),
+                         'seed-1c.ps1 удалён веткой cleanup/remove-1c-scripts — проверять нечего')
     def test_seed_has_prod_guard(self):
         ps = read(os.path.join(ROOT, 'seed-1c.ps1'))
         self.assertIn('[switch]$AllowProd', ps)
