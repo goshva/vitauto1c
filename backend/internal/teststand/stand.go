@@ -49,6 +49,10 @@ const (
 	StorekeeperLogin    = "Кладовщик"
 	StorekeeperPassword = "storekeeper123"
 
+	NomenclatureFilter = "77777777-7777-7777-7777-777777777702"
+	Customer           = "66666666-6666-6666-6666-666666666601"
+	CustomerContract   = "ee000000-0000-0000-0000-000000000003"
+
 	SupplierA = "66666666-6666-6666-6666-666666666604"
 	SupplierB = "66666666-6666-6666-6666-666666666605"
 )
@@ -92,6 +96,17 @@ func Reset(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return nil
+}
+
+// PreparePostableSales готовит стенд к проведению «Заказа клиента»: продажа S1 — «Подготовлено»,
+// отмечена пользователем userID, с номенклатурой, количеством, ценой, покупателем и договором —
+// ровно то, что требует Service.PostOrder. Используется тестами «проведение не создаёт заказ поставщику» (ФТ п. 2).
+func PreparePostableSales(ctx context.Context, pool *pgxpool.Pool, userID string) error {
+	_, err := pool.Exec(ctx, `update arm.line set status = 'Подготовлено', marked = true, marked_by_id = $2,
+		nomenclature_id = $3, quantity = 3, sale_price = 1200, customer_id = $4, contract_id = $5,
+		supplier_order_id = null, supplier_order_date = null, deleted = false
+		where id = $1`, SaleLinked, userID, NomenclatureFilter, Customer, CustomerContract)
+	return err
 }
 
 // RepoRoot — корень репозитория по расположению этого файла (тесты запускаются из своих пакетов).
