@@ -37,3 +37,10 @@ logs/
 # сборки vitauto-api / vitauto-migrator
 deploy/bin/
 docs/migration/last-reconcile.md
+
+# demo app build (tools/build-seed-app.ps1)
+bin/
+backend/cmd/vitauto-desktop/webroot/*
+!backend/cmd/vitauto-desktop/webroot/README.txt
+.gocache/
+.gotmp/
