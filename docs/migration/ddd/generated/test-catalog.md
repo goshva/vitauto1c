@@ -88,7 +88,7 @@
 
 | Тест | Переход | Роли (разрешено) | Проверка |
 |---|---|---|---|
-| F-01 | new|in_work → reserve | manager, admin | разрешено этим ролям; остальным 403; из других статусов 409 |
+| F-01 | new|in_work|partially_ordered → reserve | manager, admin | разрешено этим ролям; остальным 403; из других статусов 409 |
 | F-02 | reserve|to_stock|acceptance → assembly | manager, admin | разрешено этим ролям; остальным 403; из других статусов 409 |
 | F-03 | ready_to_ship → assembly | manager, admin, chief_mechanic | разрешено этим ролям; остальным 403; из других статусов 409 |
 | F-04 | return → assembly | manager, admin | разрешено этим ролям; остальным 403; из других статусов 409 |

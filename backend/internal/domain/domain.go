@@ -31,7 +31,7 @@ type Transition struct {
 
 // Transitions — все допустимые переходы (copied from arm.Transitions).
 var Transitions = []Transition{
-	{To: "reserve", Status: StatusReserve, From: []Status{StatusDraft, StatusInWork}, Roles: []string{"manager", "admin"}},
+	{To: "reserve", Status: StatusReserve, From: []Status{StatusDraft, StatusInWork, StatusPartiallyOrdered}, Roles: []string{"manager", "admin"}},
 	{To: "assembly", Status: StatusAssembly, From: []Status{StatusReserve, StatusToStock, StatusAcceptance}, Roles: []string{"manager", "admin"}},
 	{To: "assembly", Status: StatusAssembly, From: []Status{StatusPrepared, StatusAssembled}, Roles: []string{"manager", "admin", "chief_mechanic"}},
 	{To: "assembly", Status: StatusAssembly, From: []Status{StatusReturn}, Roles: []string{"manager", "admin"}},

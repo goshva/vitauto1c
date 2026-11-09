@@ -1,11 +1,11 @@
 {
  "schema": 1,
  "sources": {
-  "index.html": "aecd2eb97bdca8d8",
+  "index.html": "141b713c3da77a98",
   "process.html": "f94280e06023bafa",
-  "pwa/src/odata/matrix.json": "a5a207e17c867669",
-  "pwa/src/odata/backend.js": "59234bbdb3adf718",
-  "pwa/src/views/LinesView.vue": "012f068406e097d6",
+  "pwa/src/odata/matrix.json": "4cee91c7fb2b5edf",
+  "pwa/src/odata/backend.js": "0ac8cead7888aba0",
+  "pwa/src/views/LinesView.vue": "b8dfbcec32a4ccb9",
   "column-codes.js": "ec061114387c8406",
   "pwa/src/odata/mapping.js": "cf5d7413afc19131"
  },
@@ -1956,7 +1956,8 @@
    "onecStatus": "Резервирование",
    "from": [
     "new",
-    "in_work"
+    "in_work",
+    "partially_ordered"
    ],
    "roles": [
     "manager",
@@ -2098,7 +2099,8 @@
      ],
      "from": [
       "new",
-      "in_work"
+      "in_work",
+      "partially_ordered"
      ]
     }
    ]

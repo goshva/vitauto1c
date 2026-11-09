@@ -13,7 +13,7 @@
 
 | Из | В | Как | Узлы |
 |---|---|---|---|
-| new, in_work | reserve | POST /lines/transition {to: reserve} → Резервирование | M3 |
+| new, in_work, partially_ordered | reserve | POST /lines/transition {to: reserve} → Резервирование | M3 |
 | reserve, to_stock, acceptance | assembly | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 |
 | ready_to_ship | assembly | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 |
 | return | assembly | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 |
@@ -250,7 +250,7 @@
 
 | Из | В | Как | Узлы |
 |---|---|---|---|
-| new, in_work | reserve | POST /lines/transition {to: reserve} → Резервирование | M3 |
+| new, in_work, partially_ordered | reserve | POST /lines/transition {to: reserve} → Резервирование | M3 |
 | reserve, to_stock, acceptance | assembly | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 |
 | ready_to_ship | assembly | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 |
 | return | assembly | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 |

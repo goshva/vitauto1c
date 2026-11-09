@@ -24,6 +24,7 @@ stateDiagram-v2
   [*] --> new
   new --> reserve: manager,admin
   in_work --> reserve: manager,admin
+  partially_ordered --> reserve: manager,admin
   reserve --> assembly: manager,admin
   to_stock --> assembly: manager,admin
   acceptance --> assembly: manager,admin
@@ -61,7 +62,7 @@ stateDiagram-v2
 
 | Из | В | Роли | Действующее лицо | Как | Узлы | Источник |
 |---|---|---|---|---|---|---|
-| new, in_work | reserve | manager, admin |  | POST /lines/transition {to: reserve} → Резервирование | M3 | код PWA (backend.js TRANSITIONS) |
+| new, in_work, partially_ordered | reserve | manager, admin |  | POST /lines/transition {to: reserve} → Резервирование | M3 | код PWA (backend.js TRANSITIONS) |
 | reserve, to_stock, acceptance | assembly | manager, admin |  | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 | код PWA (backend.js TRANSITIONS) |
 | ready_to_ship | assembly | manager, admin, chief_mechanic |  | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 | код PWA (backend.js TRANSITIONS) |
 | return | assembly | manager, admin |  | POST /lines/transition {to: assembly} → Комплектуется | M9, G3 | код PWA (backend.js TRANSITIONS) |

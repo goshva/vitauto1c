@@ -16,7 +16,7 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xx
 
 // Переходы процессов (Арм_API.ПереходыПроцессов): цель, статус АРМ, из каких статусов, каким ролям
 const TRANSITIONS = [
-  ['reserve', 'Резервирование', 'new,in_work', 'manager,admin'],
+  ['reserve', 'Резервирование', 'new,in_work,partially_ordered', 'manager,admin'],
   ['assembly', 'Комплектуется', 'reserve,to_stock,acceptance', 'manager,admin'],
   ['assembly', 'Комплектуется', 'ready_to_ship', 'manager,admin,chief_mechanic'],
   ['assembly', 'Комплектуется', 'return', 'manager,admin'],

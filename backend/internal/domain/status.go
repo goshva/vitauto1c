@@ -6,22 +6,27 @@ import "strings"
 type Status string
 
 const (
-	StatusDraft       Status = "Черновик"
-	StatusInWork      Status = "ВРаботе"
-	StatusOrdered     Status = "Заказано"
-	StatusPaid        Status = "Оплачено"
-	StatusInTransit   Status = "ТоварВПути"
-	StatusAcceptance  Status = "Приходуется"
-	StatusToStock     Status = "НаСкладе"
-	StatusReserve     Status = "Резервирование"
-	StatusAssembly    Status = "Комплектуется"
-	StatusPrepared    Status = "Подготовлено"
-	StatusAssembled   Status = "Собран"
-	StatusShipped     Status = "Отгружено"
-	StatusReturn      Status = "Возврат"
-	StatusDone        Status = "Выполнено"
-	StatusFinished    Status = "Завершено"
-	StatusLockedBgJob Status = "ЗаблокированоФоном"
+	StatusDraft  Status = "Черновик"
+	StatusInWork Status = "ВРаботе"
+	// StatusPartiallyOrdered ставится автоматически триггером arm.line_partial_ordered,
+	// пока потребность продажи покрыта размещёнными закупками неполностью.
+	StatusPartiallyOrdered Status = "ЧастичноЗаказано"
+	StatusOrdered          Status = "Заказано"
+	StatusPaid             Status = "Оплачено"
+	StatusInTransit        Status = "ТоварВПути"
+	// StatusAwaitingReceipt — вне объёма: приложение его не выставляет (значение только из данных 1С).
+	StatusAwaitingReceipt Status = "ОжидаемПоступление"
+	StatusAcceptance      Status = "Приходуется"
+	StatusToStock         Status = "НаСкладе"
+	StatusReserve         Status = "Резервирование"
+	StatusAssembly        Status = "Комплектуется"
+	StatusPrepared        Status = "Подготовлено"
+	StatusAssembled       Status = "Собран"
+	StatusShipped         Status = "Отгружено"
+	StatusReturn          Status = "Возврат"
+	StatusDone            Status = "Выполнено"
+	StatusFinished        Status = "Завершено"
+	StatusLockedBgJob     Status = "ЗаблокированоФоном"
 )
 
 // Operation — операция строки.
@@ -46,12 +51,16 @@ func (s Status) APICode() string {
 		return "new"
 	case StatusInWork:
 		return "in_work"
+	case StatusPartiallyOrdered:
+		return "partially_ordered"
 	case StatusOrdered:
 		return "ordered"
 	case StatusPaid:
 		return "paid"
 	case StatusInTransit:
 		return "in_transit"
+	case StatusAwaitingReceipt:
+		return "awaiting_receipt"
 	case StatusAcceptance:
 		return "acceptance"
 	case StatusToStock:
@@ -80,7 +89,7 @@ func StatusFromAPICode(code string) (Status, bool) {
 	case "in_work":
 		return StatusInWork, true
 	case "partially_ordered":
-		return "ЧастичноЗаказано", true
+		return StatusPartiallyOrdered, true
 	case "ordered":
 		return StatusOrdered, true
 	case "paid":
@@ -88,7 +97,7 @@ func StatusFromAPICode(code string) (Status, bool) {
 	case "in_transit":
 		return StatusInTransit, true
 	case "awaiting_receipt":
-		return "ОжидаемПоставки", true
+		return StatusAwaitingReceipt, true
 	case "acceptance":
 		return StatusAcceptance, true
 	case "to_stock":

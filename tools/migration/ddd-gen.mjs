@@ -68,7 +68,9 @@ function glossary({ model, map, storage }) {
   md.push('', '## Колонки строки (атрибуты агрегата Line)', '', '| Код | id | Колонка | Группа | Поле 1С | API (`Line`) | Столбец `arm.line` | Тип | Пишется |', '|---|---|---|---|---|---|---|---|---|');
   for (const c of model.columns) md.push(`| ${c.code || ''} | \`${c.id}\` | ${esc(c.title)} | ${c.group} | ${c.field || ''} | ${c.api ? '`' + c.api + '`' : ''} | ${colByField[c.field] ? '`' + colByField[c.field] + '`' : (c.field && c.field.startsWith('Номенклатура') ? '`nomenclature_id` → ref.nomenclature' : '')} | ${c.dataType || ''} | ${c.writable ? 'да' : 'нет'} |`);
   md.push('', '## Зоны склада (process.html)', '', '| id | Зона | Описание | Роль | В новой модели |', '|---|---|---|---|---|');
-  for (const z of model.zones) md.push(`| ${z.id} | ${esc(z.title)} | ${esc(z.desc)} | ${z.role} | ${['Z3', 'Z4'].includes(z.id) ? 'склад `ref.warehouse` (малый / большой)' : z.id === 'Z0' || z.id === 'Z14' ? 'внешний контрагент-поставщик' : 'зона ячеек `ref.storage_cell.zone`'} |`);
+  // Z3/Z4 (малый/большой склад) — тоже зоны: миграция 0014 заводит шесть зон в ref.warehouse_zone,
+  // отдельных складов ref.warehouse в модели нет (склад один — основной).
+  for (const z of model.zones) md.push(`| ${z.id} | ${esc(z.title)} | ${esc(z.desc)} | ${z.role} | ${z.id === 'Z0' || z.id === 'Z14' ? 'внешний контрагент-поставщик' : 'зона ячеек `ref.storage_cell.zone`'} |`);
   md.push('', '## Ограниченные контексты', '', '| id | Контекст | Тип | Агрегаты | Описание |', '|---|---|---|---|---|');
   for (const c of map.contexts) md.push(`| \`${c.id}\` | ${c.title} | ${c.type} | ${c.owns.join(', ')} | ${esc(c.description)} |`);
   md.push('', '## Доменные события', '', '| Событие | Смысл | Кто порождает (узлы) |', '|---|---|---|');

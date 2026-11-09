@@ -17,6 +17,7 @@ func TestAllowTransition(t *testing.T) {
 		// reserve
 		{"reserve", StatusDraft, "manager", StatusReserve, true},
 		{"reserve", StatusInWork, "manager", StatusReserve, true},
+		{"reserve", StatusPartiallyOrdered, "manager", StatusReserve, true},
 		{"reserve", StatusDraft, "storekeeper", "", false},
 		{"reserve", StatusShipped, "manager", "", false},
 		// assembly

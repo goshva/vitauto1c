@@ -105,8 +105,8 @@
 | Z0 | Поставщик (Авто-Альянс) | Внешний источник поставки | supplier | внешний контрагент-поставщик |
 | Z1 | Зона приёмки | Кладовщик, УПД, факт прихода | storekeeper | зона ячеек `ref.storage_cell.zone` |
 | Z2 | Позиция опознана? | Ветвление на склады / неопознанные | storekeeper | зона ячеек `ref.storage_cell.zone` |
-| Z3 | Малый склад | Мелкие детали | storekeeper | склад `ref.warehouse` (малый / большой) |
-| Z4 | Большой склад | Крупногабарит, жидкости | storekeeper | склад `ref.warehouse` (малый / большой) |
+| Z3 | Малый склад | Мелкие детали | storekeeper | зона ячеек `ref.storage_cell.zone` |
+| Z4 | Большой склад | Крупногабарит, жидкости | storekeeper | зона ячеек `ref.storage_cell.zone` |
 | Z8 | Резерв / Комплектация | Сборка под заказ | storekeeper | зона ячеек `ref.storage_cell.zone` |
 | Z9 | Зона укомплектованных | Готово к отгрузке | storekeeper | зона ячеек `ref.storage_cell.zone` |
 | Z10 | Отгрузка клиенту / ТК | Физический выход товара | manager | зона ячеек `ref.storage_cell.zone` |

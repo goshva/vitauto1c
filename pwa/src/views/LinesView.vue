@@ -481,7 +481,7 @@ async function addLines(items) {
 // переход показывается, только если хотя бы одна своя отмеченная строка может его выполнить
 const TRANSITIONS = [
   { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'],
-    rules: [{ roles: ['manager', 'admin'], from: ['new', 'in_work'] }] },
+    rules: [{ roles: ['manager', 'admin'], from: ['new', 'in_work', 'partially_ordered'] }] },
   { to: 'assembly', title: 'На комплектацию', node: 'M9 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'],
     rules: [
       { roles: ['manager', 'admin'], from: ['reserve', 'to_stock', 'acceptance'] },

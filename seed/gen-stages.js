@@ -43,7 +43,7 @@ const STATUS = {
   ordered: 'Заказано',
   paid: 'Оплачено',
   in_transit: 'ТоварВПути',
-  awaiting_receipt: 'ОжидаемПоставки',
+  awaiting_receipt: 'ОжидаемПоступление',
   acceptance: 'Приходуется',
   to_stock: 'НаСкладе',
   reserve: 'Резервирование',
