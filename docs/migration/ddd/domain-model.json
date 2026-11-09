@@ -1,13 +1,13 @@
 {
  "schema": 1,
  "sources": {
-  "index.html": "41b439f5c862f2f5",
-  "process.html": "c7cd994d770f9ce7",
-  "pwa/src/odata/matrix.json": "e18ac03b903a3359",
-  "pwa/src/odata/backend.js": "c44c209968f727f4",
-  "pwa/src/views/LinesView.vue": "7d22624f9cd09969",
-  "column-codes.js": "ec061114387c8406",
-  "pwa/src/odata/mapping.js": "cf5d7413afc19131"
+  "index.html": "7ae3cde29b20024c",
+  "process.html": "0269c7c00555f425",
+  "pwa/src/odata/matrix.json": "6c0f8ce0aee568f3",
+  "pwa/src/odata/backend.js": "4dce63c461b44f6d",
+  "pwa/src/views/LinesView.vue": "e726d2a1ff527908",
+  "column-codes.js": "58f6a532aa32fa99",
+  "pwa/src/odata/mapping.js": "b89c050289743430"
  },
  "roles": [
   {
@@ -694,7 +694,7 @@
    "field": "НоменклатураАС_КодАвтоАльянс",
    "api": "nomenclature.code",
    "dataType": "select",
-   "writable": false
+   "writable": true
   },
   {
    "id": "unit",
@@ -704,7 +704,7 @@
    "field": "НоменклатураЕдиницаИзмерения",
    "api": "nomenclature.unit",
    "dataType": "select",
-   "writable": false
+   "writable": true
   },
   {
    "id": "qty",
@@ -858,7 +858,7 @@
   },
   {
    "id": "coefficient",
-   "title": "Коэфф",
+   "title": "Наценка, %",
    "group": "margin_open",
    "code": "Р1",
    "field": "Коэффициент",
@@ -1055,7 +1055,7 @@
    "column": "extra_field_1",
    "expr": "(rrc > 0 ? rrc : price) * coefficient",
    "unless": "coefficient = 0",
-   "text": "Цена продажи = РРЦ × Коэфф, если РРЦ заполнена; иначе Цена (себес.) × Коэфф. Пока Коэфф не заполнен, цена продажи вводится вручную."
+   "text": "Цена продажи = Себестоимость × (1 + Наценка, % / 100). Пока наценка не заполнена, цена продажи вводится вручную."
   },
   {
    "type": "formula",
@@ -1557,8 +1557,8 @@
     "unit_fact": "...............",
     "name": ".......++++....",
     "article": "...............",
-    "code_aa": "...............",
-    "unit": "...............",
+    "code_aa": "+..............",
+    "unit": "+..............",
     "qty": "++.............",
     "qty_norm_hours_client": "...............",
     "stock_qty": "...............",
@@ -1616,8 +1616,8 @@
     "unit_fact": "++.............",
     "name": "+++++++..+.+...",
     "article": "...............",
-    "code_aa": "...............",
-    "unit": "...............",
+    "code_aa": "+..............",
+    "unit": "+..............",
     "qty": "++.............",
     "qty_norm_hours_client": "+++++++++++++++",
     "stock_qty": "...............",
@@ -1674,9 +1674,9 @@
     "qty_fact": "+++++++++++++++",
     "unit_fact": "+++++++++++++++",
     "name": "+++++++++++++++",
-    "article": "...............",
-    "code_aa": "...............",
-    "unit": "...............",
+    "article": "+++++++++++++++",
+    "code_aa": "+++++++++++++++",
+    "unit": "+++++++++++++++",
     "qty": "+++++++++++++++",
     "qty_norm_hours_client": "+++++++++++++++",
     "stock_qty": "+++++++++++++++",
@@ -1694,7 +1694,7 @@
     "invoice_date": "+++++++++++++++",
     "coefficient": "+++++++++++++++",
     "extra_field_1": "+++++++++++++++",
-    "extra_field_2": "...............",
+    "extra_field_2": "+++++++++++++++",
     "supplier": "+++++++++++++++",
     "receipt_date": "+++++++++++++++",
     "upd_date": "+++++++++++++++",
@@ -1852,8 +1852,8 @@
     "unit_fact": "...............",
     "name": ".......++++....",
     "article": "...............",
-    "code_aa": "...............",
-    "unit": "...............",
+    "code_aa": "+..............",
+    "unit": "+..............",
     "qty": "++.............",
     "qty_norm_hours_client": "...............",
     "stock_qty": "...............",
@@ -2023,6 +2023,18 @@
    ],
    "views": [
     "sales"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "manager",
+      "admin"
+     ],
+     "from": [
+      "new",
+      "in_work"
+     ]
+    }
    ]
   },
   {
@@ -2037,6 +2049,38 @@
    ],
    "views": [
     "sales"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "manager",
+      "admin"
+     ],
+     "from": [
+      "reserve",
+      "to_stock",
+      "acceptance"
+     ]
+    },
+    {
+     "roles": [
+      "manager",
+      "admin",
+      "chief_mechanic"
+     ],
+     "from": [
+      "ready_to_ship"
+     ]
+    },
+    {
+     "roles": [
+      "manager",
+      "admin"
+     ],
+     "from": [
+      "return"
+     ]
+    }
    ]
   },
   {
@@ -2051,6 +2095,18 @@
    ],
    "views": [
     "sales"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "storekeeper",
+      "manager",
+      "admin"
+     ],
+     "from": [
+      "assembly"
+     ]
+    }
    ]
   },
   {
@@ -2065,6 +2121,18 @@
    "views": [
     "sales",
     "purchases"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "manager",
+      "admin"
+     ],
+     "from": [
+      "paid",
+      "in_transit"
+     ]
+    }
    ]
   },
   {
@@ -2079,6 +2147,17 @@
    "views": [
     "sales",
     "purchases"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "storekeeper",
+      "admin"
+     ],
+     "from": [
+      "shipped"
+     ]
+    }
    ]
   },
   {
@@ -2094,6 +2173,23 @@
    "views": [
     "sales",
     "purchases"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "manager",
+      "storekeeper",
+      "admin"
+     ],
+     "from": [
+      "shipped",
+      "ordered",
+      "paid",
+      "in_transit",
+      "to_stock",
+      "closed"
+     ]
+    }
    ]
   },
   {
@@ -2110,6 +2206,29 @@
    "views": [
     "sales",
     "purchases"
+   ],
+   "rules": [
+    {
+     "roles": [
+      "manager",
+      "storekeeper",
+      "admin"
+     ],
+     "from": [
+      "shipped",
+      "ready_to_ship",
+      "return"
+     ]
+    },
+    {
+     "roles": [
+      "chief_mechanic",
+      "admin"
+     ],
+     "from": [
+      "assembly"
+     ]
+    }
    ]
   }
  ],
@@ -2838,7 +2957,7 @@
    ],
    "next": [],
    "tz": "§3.3 и note схемы.",
-   "code": "Цена = коэффициент × (РРЦ, иначе себестоимость); права роль×статус×поле — Арм_МатрицаПрав (57 колонок, v2.14), проверяются в форме и OData; матрица — PWA. НМЦК = РРЦ × 1,5 нет.",
+   "code": "Цена = себестоимость × (1 + наценка, % / 100); права роль×статус×поле — Арм_МатрицаПрав (57 колонок, v2.14), проверяются в форме и OData; матрица — PWA. НМЦК = РРЦ × 1,5 нет.",
    "conflict": "Схема/матрица vs ТЗ §3.3 vs код — три разные модели цены."
   },
   {
@@ -4413,6 +4532,6 @@
   "upd_number": "№ УПД",
   "comment": "Комментарий",
   "rrc": "РРЦ (рекомендованная розничная цена)",
-  "coefficient": "Коэффициент"
+  "coefficient": "Наценка, %"
  }
 }

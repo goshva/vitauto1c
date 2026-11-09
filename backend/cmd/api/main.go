@@ -1,6 +1,6 @@
 // vitauto-api — HTTP + WebSocket сервер нового стека (план, раздел 3).
 //
-//	VITAUTO_ADDR=127.0.0.1:18100 VITAUTO_DB=postgres://postgres:***@localhost:5434/vitauto_app vitauto-api
+//	VITAUTO_ADDR=127.0.0.1:18100 VITAUTO_DB=postgres://postgres:***@localhost:5432/vitauto_app vitauto-api
 package main
 
 import (

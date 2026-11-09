@@ -68,8 +68,8 @@
 | К7 | `unit_fact` | Ед. изм. (ФАКТ) | fact | ЕдиницаИзмеренияКлиента | `factUnit` | `fact_unit` | text | да |
 | М1 | `name` | Наименование | nomenclature | Номенклатура | `nomenclature` | `nomenclature_id` | select | да |
 | М2 | `article` | Артикул | nomenclature | НоменклатураАртикул | `nomenclature.article` | `nomenclature_id` → ref.nomenclature | select | нет |
-| М3 | `code_aa` | Код А-А / код поставщика | nomenclature | НоменклатураАС_КодАвтоАльянс | `nomenclature.code` | `nomenclature_id` → ref.nomenclature | select | нет |
-| М4 | `unit` | Ед. изм. | nomenclature | НоменклатураЕдиницаИзмерения | `nomenclature.unit` | `nomenclature_id` → ref.nomenclature | select | нет |
+| М3 | `code_aa` | Код А-А / код поставщика | nomenclature | НоменклатураАС_КодАвтоАльянс | `nomenclature.code` | `nomenclature_id` → ref.nomenclature | select | да |
+| М4 | `unit` | Ед. изм. | nomenclature | НоменклатураЕдиницаИзмерения | `nomenclature.unit` | `nomenclature_id` → ref.nomenclature | select | да |
 | Н0 | `qty` | Кол-во | nomenclature | Количество | `quantity` | `quantity` | number | да |
 | Н1 | `stock_qty` | Кол-во в наличии на складе | stock | ОстатокДляСтроки | `stockQty` | `stock_qty` | number | нет |
 | Н2 | `reserve_qty` | Кол-во в резерве | stock | КоличествоВРезерве | `reserveQty` | `reserve_qty` | number | нет |
@@ -85,7 +85,7 @@
 | О6 | `invoice_number` | Счёт № | payment | НомерСчета | `invoiceNumber` | `invoice_number` | text | да |
 | О7 | `invoice_date` | Дата счёта | payment | ДатаСчета | `invoiceDate` | `invoice_date` | date | да |
 | Р0 | `qty_norm_hours_client` | Кол-во норма час товар для клиента | nomenclature | КоличествоНормаЧас | `normHours` | `norm_hours` | number | да |
-| Р1 | `coefficient` | Коэфф | margin_open | Коэффициент | `coefficient` | `coefficient` | number | да |
+| Р1 | `coefficient` | Наценка, % | margin_open | Коэффициент | `coefficient` | `coefficient` | number | да |
 | Р2 | `extra_field_1` | Цена продажи | pricing | Цена | `salePrice` | `sale_price` | number | да |
 | Р3 | `extra_field_2` | Сумма продажи | pricing | Сумма | `saleSum` |  | number | нет |
 | С1 | `supplier` | Поставщик | receipt | Поставщик | `supplier` | `supplier_id` | select | да |

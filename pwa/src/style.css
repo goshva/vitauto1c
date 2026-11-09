@@ -136,11 +136,21 @@ code, pre, textarea { font-family: var(--mono); }
 .navbar .who { display: none; }
 
 @media (min-width: 900px) {
-  .app.logged-in { display: grid; grid-template-columns: 232px 1fr; }
+  .app.logged-in { --nav-w: 232px; display: grid; grid-template-columns: var(--nav-w) 1fr; transition: grid-template-columns .2s; }
+  .app.logged-in.nav-collapsed { --nav-w: 64px; }
   .navbar {
     position: sticky; top: 0; height: 100dvh; flex-direction: column; justify-content: flex-start; gap: 2px;
     padding: 12px 10px; border-top: 0; border-right: 1px solid var(--line); background: var(--surface); backdrop-filter: none;
+    overflow-x: hidden; overflow-y: auto;
   }
+  .navbar .nav-toggle { margin-bottom: 4px; color: var(--fg-2); }
+  .app.nav-collapsed .navbar { padding: 12px 8px; }
+  .app.nav-collapsed .navbar .label { display: none; }
+  .app.nav-collapsed .navbar a, .app.nav-collapsed .navbar button { justify-content: center; gap: 0; padding: 0; }
+  .app.nav-collapsed .navbar .brand { justify-content: center; padding: 8px 0 16px; }
+  .app.nav-collapsed .navbar .nav-badge { position: absolute; top: 2px; right: 2px; margin: 0; }
+  .app.nav-collapsed .navbar .who { align-items: center; padding: 10px 0; }
+  .app.nav-collapsed .navbar .who-text { display: none; }
   .navbar .brand { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; font-weight: 800; font-size: 17px; color: var(--fg); }
   .navbar .brand .logo { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; }
   .navbar a, .navbar button { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 12px; font-size: 14px; font-weight: 500;
@@ -152,8 +162,10 @@ code, pre, textarea { font-family: var(--mono); }
   .navbar .mob-only { display: none; }
   .navbar .nav-badge { position: static; margin-left: auto; }
   .navbar .spacer { flex: 1; }
-  .navbar .who { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-top: 1px solid var(--line); margin-top: 8px; font-size: 13px; }
-  .navbar .who b { font-size: 14px; }
+  .navbar .who { display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); margin-top: 8px; font-size: 13px; }
+  .navbar .who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .navbar .who-text b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .navbar .who-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); flex: none; }
   .main { padding: 16px 24px 48px; }
   .main.with-selection { padding-bottom: 120px; }
   .appbar { padding-left: 24px; padding-right: 16px; }
@@ -249,7 +261,10 @@ a.chip.on, .btn.chip.on { background: var(--accent-2); border-color: transparent
 table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
 th { position: sticky; top: 0; background: var(--surface-2); z-index: 2; font-weight: 600; font-size: 12px; color: var(--fg-2); }
-th .code { color: var(--accent); margin-right: 4px; font-weight: 700; }
+th .code { display: inline-block; min-width: 22px; margin-right: 6px; padding: 0 4px; border-radius: 4px; background: var(--accent-2); color: var(--accent); font-size: 11px; line-height: 18px; text-align: center; font-weight: 700; }
+th.band-start, td.band-start { border-left: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+tbody tr:not(.group):not(.marked):hover td { background: var(--surface-2); }
+td .chip { height: 22px; padding: 0 8px; font-size: 11px; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.editable { cursor: text; background: color-mix(in srgb, var(--accent-2) 45%, transparent); }
 td.editable:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
@@ -261,6 +276,7 @@ tr.group td { background: var(--surface-2); font-weight: 600; }
 .sticky-1 { position: sticky; left: 0; z-index: 1; background: var(--surface); }
 th.sticky-1 { z-index: 3; background: var(--surface-2); }
 table.dense td, table.dense th { padding: 3px 8px; }
+table.dense td .chip { height: 20px; font-size: 10px; }
 
 /* ---------- лист / диалог */
 .modal-back { position: fixed; inset: 0; z-index: 60; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; animation: fade .15s; }

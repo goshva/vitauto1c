@@ -77,6 +77,17 @@ const SUPPLIERS = [
   '66666666-6666-6666-6666-666666666605',
 ];
 const WH = '44444444-4444-4444-4444-444444444401';
+// Заказы покупателя из seed/demo-data.sql (ЗК-001…005). Стадии грузятся после них (full-seed.ps1),
+// иначе FK arm.line.customer_order_id не сработает. Закупочные строки заказ покупателя не получают.
+const ORDER_BY_SCENARIO = {
+  happy: 'a0000000-0000-0000-0000-000000000001',
+  stock: 'a0000000-0000-0000-0000-000000000002',
+  car_repair_in: 'a0000000-0000-0000-0000-000000000003',
+  mixed_order: 'a0000000-0000-0000-0000-000000000004',
+  delivery_split: 'a0000000-0000-0000-0000-000000000005',
+};
+const DEFAULT_ORDER = 'a0000000-0000-0000-0000-000000000001';
+const orderFor = (scenarioId) => ORDER_BY_SCENARIO[scenarioId] || DEFAULT_ORDER;
 const CELLS = [
   '88888888-8888-8888-8888-888888888801',
   '88888888-8888-8888-8888-888888888802',
@@ -117,7 +128,8 @@ SCENARIOS.forEach((sc) => {
           q(nom[0]) + ', ' + qty + ', ' + nom[4].toFixed(2) + ', ' + nom[3].toFixed(2) + ', ' + (nom[3] * 1.5).toFixed(2) + ', 1.5, ' +
           q(name) + ', ' + q(nom[2]) + ', ' + q(String(qty)) + ', ' + q(CARS[n % 5]) + ', ' + q('СТ-' + (100 + n)) + ', ' +
           q(comment) + ', ' + q(day) + ', ' + q(WH) + ', ' + q(CELLS[n % 4]) + ', ' +
-          (purchase ? 'true' : 'false') + ', ' + q(onecKey) + ', ' + (i + 1) + ')'
+          (purchase ? 'true' : 'false') + ', ' + q(onecKey) + ', ' + (i + 1) + ', ' +
+          (purchase ? 'null' : q(orderFor(sc.id))) + ')'
       );
       n++;
     });
@@ -131,15 +143,15 @@ const sql = [
   '-- стадия подписана в наименовании позиции (fact_name) в скобках: «товар (сценарий / стадия)».',
   '',
   'insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,',
-  '  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, cell_id, manual_edit, onec_key, sort_order)',
+  '  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, cell_id, manual_edit, onec_key, sort_order, customer_order_id)',
   'values',
   rows.join(',\n'),
   'on conflict (onec_key) do update set status = excluded.status, fact_name = excluded.fact_name, comment = excluded.comment,',
-  '  updated_at = now(), deleted = false;',
+  '  customer_order_id = excluded.customer_order_id, updated_at = now(), deleted = false;',
   '',
 ].join('\n');
 
-fs.writeFileSync(path.join(root, 'seed', 'demo-stages.sql'), '\ufeff' + sql, 'utf8');
+fs.writeFileSync(path.join(root, 'seed', 'demo-stages.sql'), sql, 'utf8');
 
 // Покрытие: узлы process.html, не вошедшие ни в один сценарий, — отдельный блок «вне сценариев».
 const used = new Set();
@@ -156,7 +168,8 @@ const orphanRows = orphans.map((nd, k) => {
     q(nom[0]) + ', 1, ' + nom[4].toFixed(2) + ', ' + nom[3].toFixed(2) + ', ' + (nom[3] * 1.5).toFixed(2) + ', 1.5, ' +
     q(nom[1] + ' (вне сценариев / ' + nd.id + ' ' + title + ')') + ', ' + q(nom[2]) + ", '1', " + q(CARS[k % 5]) + ', ' + q('СТ-9' + (10 + k)) + ', ' +
     q('Стадия ' + nd.id + ' ' + title + ' — не входит в сценарии плеера') + ', ' + q('2026-11-0' + (1 + (k % 5)) + ' 09:00:00') + ', ' + q(WH) + ', ' + q(CELLS[k % 4]) + ', ' +
-    (purchase ? 'true' : 'false') + ', ' + q('demo:stage:orphan:' + nd.id) + ', 1)'
+    (purchase ? 'true' : 'false') + ', ' + q('demo:stage:orphan:' + nd.id) + ', 1, ' +
+    (purchase ? 'null' : q(DEFAULT_ORDER)) + ')'
   );
 });
 let extra = '';
@@ -165,13 +178,13 @@ if (orphanRows.length) {
     '',
     '-- Узлы process.html вне сценариев плеера (A0, A5 и т.п.)',
     'insert into arm.line (id, link_key, operation, status, customer_id, supplier_id, nomenclature_id, quantity, cost_price, sale_price, rrc, coefficient,',
-    '  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, cell_id, manual_edit, onec_key, sort_order)',
+    '  fact_name, fact_article, fact_qty, vehicle_plate, client_order_number, comment, order_date, warehouse_id, cell_id, manual_edit, onec_key, sort_order, customer_order_id)',
     'values',
     orphanRows.join(',\n'),
     'on conflict (onec_key) do update set status = excluded.status, fact_name = excluded.fact_name, comment = excluded.comment,',
-    '  updated_at = now(), deleted = false;',
+    '  customer_order_id = excluded.customer_order_id, updated_at = now(), deleted = false;',
     '',
   ].join('\n');
-  fs.writeFileSync(path.join(root, 'seed', 'demo-stages.sql'), '\ufeff' + sql + extra, 'utf8');
+  fs.writeFileSync(path.join(root, 'seed', 'demo-stages.sql'), sql + extra, 'utf8');
 }
 console.log('строк:', rows.length, '+ вне сценариев:', orphanRows.length, '| сценариев:', SCENARIOS.length, '| узлов:', NODES.length);

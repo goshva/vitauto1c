@@ -41,6 +41,17 @@ const isEmpty = (line, c) => {
   return v === undefined || v === null || v === '' || v === 0 || v === false;
 };
 const visibleColumns = computed(() => columnsPref.visible(session.role, view.value, matrix.columns, lines.items, isEmpty));
+// колонки визуально делятся по букве кода (В, К, М, Н, О, Р, С, Т): граница отмечает начало новой группы
+const bandStarts = computed(() => {
+  const starts = new Set();
+  let prev = null;
+  for (const c of visibleColumns.value) {
+    const band = (c.code || '').charAt(0);
+    if (band !== prev) starts.add(c.id);
+    prev = band;
+  }
+  return starts;
+});
 const cardFields = computed(() => columnsPref.cardColumns(session.role, view.value, matrix.columns));
 const columnsMode = computed(() => {
   const p = pref.value;
@@ -248,10 +259,23 @@ const sheetActions = computed(() => {
   if (view.value === 'sales' && ['ready_to_ship', 'assembly'].includes(l.status) && ['manager', 'admin', 'chief_mechanic'].includes(session.role)) {
     a.push({ key: 'workOrder', title: 'Заказ-наряд', icon: 'wrench' });
   }
-  a.push({ key: 'strike', title: 'Вычеркнуть', icon: 'trash', danger: true });
-  if (view.value === 'sales' && l.customerOrder) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
+  // пункты, которые сервер отклонит (409), не показываем: сервер проверяет те же условия
+  if (canStrikeLine(l)) a.push({ key: 'strike', title: 'Вычеркнуть', icon: 'trash', danger: true });
+  if (view.value === 'sales' && l.customerOrder && canDeleteOrder(l)) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
   return a;
 });
+// совпадает с StrikeLine (arm/lines.go): статус «Черновик»/«В работе» и не чужая отметка
+const OPEN_STATUSES = ['new', 'in_work'];
+function canStrikeLine(l) {
+  return OPEN_STATUSES.includes(l.status) && (!l.markedBy || l.markedBy === userName.value);
+}
+// совпадает с DeleteOrder (arm/docs.go): все активные строки заказа в статусе «Черновик»/«В работе»
+// (заказы поставщику на клиенте не видны — их сервер проверит сам)
+function canDeleteOrder(l) {
+  return lines.items
+    .filter(x => x.customerOrder && x.customerOrder.id === l.customerOrder.id && !x.deleted)
+    .every(x => OPEN_STATUSES.includes(x.status));
+}
 function sheetAction(key) {
   ({ add: openAdd, purchase: openAddPurchase, shipment: openShipment, post: postOrder, strike: strikeLine, deleteOrder,
     selfPickup: selfPickupLine, workOrder: openWorkOrder })[key]();
@@ -301,7 +325,7 @@ async function markOrder(order, marked) {
 async function clearMyMarks() {
   actionsOpen.value = false;
   await run(async () => {
-    for (const l of lines.items.filter(x => x.marked && x.markedBy === userName.value)) await lines.toggleMark(l);
+    await lines.clearUnorderedMarks();
   }, 'Отметки сняты');
 }
 
@@ -402,16 +426,37 @@ async function addLines(items) {
 }
 
 // переходы процессов (POST /lines/transition) — к отмеченным строкам списка, по ролям, как в Арм_API.ПереходыПроцессов
+// rules — допустимые статусы строки по ролям (как в домене backend/internal/domain/domain.go);
+// переход показывается, только если хотя бы одна своя отмеченная строка может его выполнить
 const TRANSITIONS = [
-  { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'] },
-  { to: 'assembly', title: 'На комплектацию', node: 'M9 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'] },
-  { to: 'ready_to_ship', title: 'Собрано', node: 'K3', icon: 'check', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'] },
-  { to: 'shipped', title: 'Самовывоз', node: 'N4', icon: 'supply', roles: ['manager', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'acceptance', title: 'Принять по УПД', node: 'K1', icon: 'file', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'return', title: 'Возврат', node: 'N3 · M16 · K6', icon: 'undo', roles: ['manager', 'storekeeper', 'admin'], views: ['sales', 'purchases'] },
-  { to: 'closed', title: 'Закрыть', node: 'M15 · K7 · G9', icon: 'check', roles: ['manager', 'storekeeper', 'admin', 'chief_mechanic'], views: ['sales', 'purchases'] }
+  { to: 'reserve', title: 'Зарезервировать', node: 'M3', icon: 'lock', roles: ['manager', 'admin'], views: ['sales'],
+    rules: [{ roles: ['manager', 'admin'], from: ['new', 'in_work'] }] },
+  { to: 'assembly', title: 'На комплектацию', node: 'M9 · G3', icon: 'box', roles: ['manager', 'admin', 'chief_mechanic'], views: ['sales'],
+    rules: [
+      { roles: ['manager', 'admin'], from: ['reserve', 'to_stock', 'acceptance'] },
+      { roles: ['manager', 'admin', 'chief_mechanic'], from: ['ready_to_ship'] },
+      { roles: ['manager', 'admin'], from: ['return'] }
+    ] },
+  { to: 'ready_to_ship', title: 'Собрано', node: 'K3', icon: 'check', roles: ['storekeeper', 'manager', 'admin'], views: ['sales'],
+    rules: [{ roles: ['storekeeper', 'manager', 'admin'], from: ['assembly'] }] },
+  { to: 'shipped', title: 'Самовывоз', node: 'N4', icon: 'supply', roles: ['manager', 'admin'], views: ['sales', 'purchases'],
+    rules: [{ roles: ['manager', 'admin'], from: ['paid', 'in_transit'] }] },
+  { to: 'acceptance', title: 'Принять по УПД', node: 'K1', icon: 'file', roles: ['storekeeper', 'admin'], views: ['sales', 'purchases'],
+    rules: [{ roles: ['storekeeper', 'admin'], from: ['shipped'] }] },
+  { to: 'return', title: 'Возврат', node: 'N3 · M16 · K6', icon: 'undo', roles: ['manager', 'storekeeper', 'admin'], views: ['sales', 'purchases'],
+    rules: [{ roles: ['manager', 'storekeeper', 'admin'], from: ['shipped', 'ordered', 'paid', 'in_transit', 'to_stock', 'closed'] }] },
+  { to: 'closed', title: 'Закрыть', node: 'M15 · K7 · G9', icon: 'check', roles: ['manager', 'storekeeper', 'admin', 'chief_mechanic'], views: ['sales', 'purchases'],
+    rules: [
+      { roles: ['manager', 'storekeeper', 'admin'], from: ['shipped', 'ready_to_ship', 'return'] },
+      { roles: ['chief_mechanic', 'admin'], from: ['assembly'] }
+    ] }
 ];
-const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value)));
+// статусы в API приходят в виде кода (new, paid, ...), проверка идёт по своим отметкам — как на сервере
+function canRun(t) {
+  const allowed = t.rules.filter(r => r.roles.includes(session.role)).flatMap(r => r.from);
+  return lines.marked.some(l => l.markedBy === userName.value && allowed.includes(l.status));
+}
+const transitions = computed(() => TRANSITIONS.filter(t => t.roles.includes(session.role) && t.views.includes(view.value) && canRun(t)));
 const transition = t => { closeSheets(); return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`); };
 // печать (АРМ v2.23, блок 3): формы 1С по заказам отмеченных строк, без отметок — по заказу открытой строки
 const PRINTS = [
@@ -598,7 +643,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
           <tr>
             <th class="sticky-1">✓</th>
             <th>Статус</th>
-            <th v-for="c in visibleColumns" :key="c.id" :title="c.title + (c.writable ? '' : ' (только чтение)')">
+            <th v-for="c in visibleColumns" :key="c.id" :class="{ 'band-start': bandStarts.has(c.id) }" :title="c.title + (c.writable ? '' : ' (только чтение)')">
               <span class="code">{{ c.code }}</span>{{ c.title }}
             </th>
           </tr>
@@ -640,14 +685,14 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
                 <button class="link" :title="'Подробно'" @click.stop="openLine(r.line)"><span :class="['chip', statusTone(r.line.status)]">{{ STATUS_TITLES[r.line.status] || r.line.status }}</span></button>
               </td>
               <td v-for="c in visibleColumns" :key="c.id"
-                  :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind) }"
+                  :class="{ editable: !deny(r.line, c), num: ['number'].includes(fieldInfo(c.field).kind), 'band-start': bandStarts.has(c.id) }"
                   :title="deny(r.line, c) || 'Изменить'"
                   @dblclick="startEdit(r.line, c)" @keydown.enter="startEdit(r.line, c)" :tabindex="deny(r.line, c) ? -1 : 0">
                 <template v-if="editing && editing.line.id === r.line.id && editing.column.id === c.id">
                   <input ref="editInput" v-model="editing.value" :type="editing.kind === 'date' ? 'date' : 'text'"
                          @keydown.enter.stop="commitEdit" @keydown.esc="editing = null" @blur="commitEdit" style="width: 150px" />
                 </template>
-                <template v-else>{{ display(r.line, c.field) }}</template>
+                <template v-else><span v-if="!display(r.line, c.field)" class="faint">—</span>{{ display(r.line, c.field) }}</template>
               </td>
             </tr>
           </template>
@@ -899,5 +944,5 @@ tr.group:hover td { background: color-mix(in srgb, var(--accent-2) 75%, var(--su
   padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-2); animation: up .2s; }
 .sb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .sb-info .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (min-width: 900px) { .selbar { left: calc(232px + 24px); right: 24px; bottom: 20px; max-width: 900px; } }
+@media (min-width: 900px) { .selbar { left: calc(var(--nav-w, 232px) + 24px); right: 24px; bottom: 20px; max-width: 900px; transition: left .2s; } }
 </style>

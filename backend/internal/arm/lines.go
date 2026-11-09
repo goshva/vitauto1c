@@ -168,7 +168,7 @@ func (s *Service) Lines(ctx context.Context, a Actor, q map[string]string) (*Lin
 		add("l.warehouse_id = ?::uuid", v)
 	}
 	if truthy(q["onlyWithPurchases"]) && view == "sales" {
-		where = append(where, "exists (select 1 from arm.line p where p.link_key = l.link_key and p.operation = 'Закупка' and not coalesce(p.deleted, false))")
+		where = append(where, "exists (select 1 from arm.line p join doc.supplier_order so on so.id = p.supplier_order_id where so.customer_order_id = l.customer_order_id and p.operation = 'Закупка' and not coalesce(p.deleted, false))")
 	}
 	limit, _ := strconv.Atoi(q["limit"])
 	if limit <= 0 {
@@ -333,12 +333,10 @@ func (s *Service) PatchLine(ctx context.Context, a Actor, idText, field string, 
 			}
 			set["cost_sum"] = round2(qty * price)
 		}
-		// формулы матрицы: цена продажи = (РРЦ, если есть, иначе себестоимость) × коэффициент; ручная цена — коэффициент
+		// формулы матрицы: цена продажи = себестоимость × (1 + коэффициент/100), коэффициент в процентах; ручная цена пересчитывает коэффициент
 		if l.Operation == opSale {
-			rrc, cost, coeff, price := l.RRC, l.CostPrice, l.Coeff, l.SalePrice
+			cost, coeff, price := l.CostPrice, l.Coeff, l.SalePrice
 			switch field {
-			case "РРЦ":
-				rrc = num("rrc")
 			case "СебестоимостьЕдиницы":
 				cost = num("cost_price")
 			case "Коэффициент":
@@ -346,14 +344,11 @@ func (s *Service) PatchLine(ctx context.Context, a Actor, idText, field string, 
 			case "Цена":
 				price = num("sale_price")
 			}
-			base := rrc
-			if base == 0 {
-				base = cost
-			}
+			base := cost
 			if base != 0 && field == "Цена" {
-				set["coefficient"], set["price_change_type"] = price/base, 1
-			} else if base != 0 && coeff != 0 && contains([]string{"Коэффициент", "РРЦ", "СебестоимостьЕдиницы"}, field) {
-				set["sale_price"] = round2(base * coeff)
+				set["coefficient"], set["price_change_type"] = (price/base-1)*100, 1
+			} else if base != 0 && coeff != 0 && contains([]string{"Коэффициент", "СебестоимостьЕдиницы"}, field) {
+				set["sale_price"] = round2(base * (1 + coeff/100))
 				if field == "Коэффициент" {
 					set["price_change_type"] = 2
 				}
@@ -461,7 +456,17 @@ func (s *Service) MarkOrder(ctx context.Context, a Actor, view, orderID string, 
 	}
 	var n, total int
 	err := s.inTx(ctx, a, func(tx pgx.Tx) error {
-		ls, err := selectLines(ctx, tx, "customer_order_id = $1::uuid and operation = $2 and not coalesce(deleted, false) for update", orderID, viewOp(view))
+		// без заказа снимаются только собственные отметки вида: строки «Без заказа» не имеют кнопки группы
+		where := "customer_order_id = $1::uuid and operation = $2 and not coalesce(deleted, false) for update"
+		args := []any{orderID, viewOp(view)}
+		if orderID == "" {
+			if *marked {
+				return fail(400, "bad_request", "Без заказа можно только снять отметки", "marked")
+			}
+			where = "marked and marked_by_id = $1 and operation = $2 and not coalesce(deleted, false) for update"
+			args = []any{a.UserID, viewOp(view)}
+		}
+		ls, err := selectLines(ctx, tx, where, args...)
 		if err != nil {
 			return err
 		}

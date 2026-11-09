@@ -326,7 +326,7 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -335,7 +335,7 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -477,7 +477,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "++++++++++++..."
@@ -841,8 +841,8 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+.............."
    },
    {
     "id": "unit",
@@ -850,8 +850,8 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+.............."
    },
    {
     "id": "qty",
@@ -992,7 +992,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "..............."
@@ -1356,8 +1356,8 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+.............."
    },
    {
     "id": "unit",
@@ -1365,8 +1365,8 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+.............."
    },
    {
     "id": "qty",
@@ -1507,7 +1507,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "++++++++++++..."
@@ -1863,7 +1863,7 @@
     "title": "Артикул",
     "dataType": "select",
     "writable": false,
-    "rights": "..............."
+    "rights": "+++++++++++++++"
    },
    {
     "id": "code_aa",
@@ -1871,8 +1871,8 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+++++++++++++++"
    },
    {
     "id": "unit",
@@ -1880,8 +1880,8 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+++++++++++++++"
    },
    {
     "id": "qty",
@@ -2022,7 +2022,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "+++++++++++++++"
@@ -2043,7 +2043,7 @@
     "title": "Сумма продажи",
     "dataType": "number",
     "writable": false,
-    "rights": "..............."
+    "rights": "+++++++++++++++"
    },
    {
     "id": "supplier",
@@ -2386,7 +2386,7 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -2395,7 +2395,7 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -2537,7 +2537,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "..............."
@@ -2901,7 +2901,7 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -2910,7 +2910,7 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
+    "writable": true,
     "rights": "..............."
    },
    {
@@ -3052,7 +3052,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "..............."
@@ -3416,8 +3416,8 @@
     "code": "М3",
     "title": "Код А-А / код поставщика",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+.............."
    },
    {
     "id": "unit",
@@ -3425,8 +3425,8 @@
     "code": "М4",
     "title": "Ед. изм.",
     "dataType": "select",
-    "writable": false,
-    "rights": "..............."
+    "writable": true,
+    "rights": "+.............."
    },
    {
     "id": "qty",
@@ -3567,7 +3567,7 @@
     "id": "coefficient",
     "field": "Коэффициент",
     "code": "Р1",
-    "title": "Коэфф",
+    "title": "Наценка, %",
     "dataType": "number",
     "writable": true,
     "rights": "..............."
