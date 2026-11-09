@@ -131,19 +131,20 @@ const rows = computed(() => {
   return out;
 });
 
-// ---------- заказы-аккордеон (таблица): свёрнуты по умолчанию; поиск и отбор по заказу раскрывают
-const expanded = ref(new Set());
-const autoOpen = computed(() => !!q.value.trim() || !!lines.filters.customerOrderId);
-const isOpen = key => autoOpen.value || expanded.value.has(key);
+// ---------- заказы-аккордеон (таблица): строки деталей видны по умолчанию, сворачиваются вручную
+const collapsed = ref(new Set()); // ключи заказов, которые пользователь свернул
+const isOpen = key => !collapsed.value.has(key);
+// Поиск и фильтры раскрывают группы: иначе найденные строки спрятаны под свёрнутой шапкой.
+watch([q, quick, () => lines.filters.customerOrderId], () => { collapsed.value = new Set(); });
 function toggleGroup(key) {
-  const s = new Set(expanded.value);
+  const s = new Set(collapsed.value);
   s.has(key) ? s.delete(key) : s.add(key);
-  expanded.value = s;
+  collapsed.value = s;
 }
 const groupKeys = computed(() => rows.value.filter(r => !r.line).map(r => r.key));
-const allOpen = computed(() => groupKeys.value.length > 0 && groupKeys.value.every(isOpen));
+const allOpen = computed(() => groupKeys.value.length > 0 && groupKeys.value.every(k => !collapsed.value.has(k)));
 function toggleAll() {
-  expanded.value = allOpen.value ? new Set() : new Set(groupKeys.value);
+  collapsed.value = allOpen.value ? new Set(groupKeys.value) : new Set();
 }
 const tableRows = computed(() => rows.value.filter(r => !r.line || !r.groupKey || isOpen(r.groupKey)));
 
