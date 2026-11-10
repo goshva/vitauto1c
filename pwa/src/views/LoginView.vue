@@ -39,9 +39,9 @@ async function submit() {
       <div class="logo"><AppIcon name="layers" :size="28" /></div>
       <div>
         <h1>Вход в АРМ</h1>
-        <p class="muted small" style="margin: 0">Закупки и продажи · 1С через OData</p>
+        <p class="muted small" style="margin: 0">Закупки и продажи</p>
       </div>
-      <label class="field">Логин (пользователь ИБ 1С)
+      <label class="field">Логин
         <input v-model="login" list="test-users" autocomplete="username" autocapitalize="none" required />
         <datalist id="test-users"><option v-for="u in TEST_USERS" :key="u" :value="u" /></datalist>
       </label>
