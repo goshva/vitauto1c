@@ -149,8 +149,9 @@ code, pre, textarea { font-family: var(--mono); }
   .app.nav-collapsed .navbar a, .app.nav-collapsed .navbar button { justify-content: center; gap: 0; padding: 0; }
   .app.nav-collapsed .navbar .brand { justify-content: center; padding: 8px 0 16px; }
   .app.nav-collapsed .navbar .nav-badge { position: absolute; top: 2px; right: 2px; margin: 0; }
-  .app.nav-collapsed .navbar .who { align-items: center; padding: 10px 0; }
   .app.nav-collapsed .navbar .who-text { display: none; }
+  .app.nav-collapsed .navbar .who {   justify-content: center;   gap: 0;   padding: 10px 0; }
+
   .navbar .brand { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; font-weight: 800; font-size: 17px; color: var(--fg); }
   .navbar .brand .logo { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; }
   .navbar a, .navbar button { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 12px; font-size: 14px; font-weight: 500;
