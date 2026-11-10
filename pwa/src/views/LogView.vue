@@ -6,6 +6,12 @@ const log = useLogStore();
 const open = ref(null);
 const onlyErrors = ref(false);
 const cls = s => (s === 0 || s >= 500 ? 'err' : s >= 400 ? 'warn' : 'ok');
+
+const fmtTime = v => {
+  if (v == null) return '—';
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d) ? '—' : d.toLocaleTimeString();
+};
 </script>
 
 <template>
@@ -20,7 +26,7 @@ const cls = s => (s === 0 || s >= 500 ? 'err' : s >= 400 ? 'warn' : 'ok');
         <tbody>
           <template v-for="e in log.entries.filter(e => !onlyErrors || e.status === 0 || e.status >= 400)" :key="e.id">
             <tr @click="open = open === e.id ? null : e.id" style="cursor: pointer">
-              <td>{{ e.at.toLocaleTimeString() }}</td>
+              <td>{{ fmtTime(e.at) }}</td>
               <td><b>{{ e.method }}</b></td>
               <td>{{ e.url }}</td>
               <td><span :class="['chip', cls(e.status)]">{{ e.status }}</span></td>
