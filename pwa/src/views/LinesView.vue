@@ -35,7 +35,8 @@ const userName = computed(() => session.user && session.user.userName);
 const layout = computed(() => ui.effectiveLayout);
 const pref = computed(() => columnsPref.pref(session.role, view.value));
 // «Срочно» — только метка (К1): подсветка строки в обоих списках, порядок закупки не меняется.
-const canUrgent = computed(() => session.role === 'admin');
+// Право на запись — по матрице (urgency_fact у manager/admin = «++...»), поэтому UI тоже даёт чекбокс менеджеру.
+const canUrgent = computed(() => !!matrix.columns.find(c => c.field === 'СрочностьКлиента' && c.rights.includes('+')));
 const isUrgent = l => !!(l && l.urgency && String(l.urgency).trim());
 const urgencyColumn = computed(() => matrix.columns.find(c => c.field === 'СрочностьКлиента')
   || { id: 'urgency_fact', field: 'СрочностьКлиента', title: 'Срочность (ФАКТ) / комментарий заказчика' });
