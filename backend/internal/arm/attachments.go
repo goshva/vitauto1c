@@ -107,7 +107,7 @@ func (s *Service) AttachmentDelete(ctx context.Context, a Actor, id string) erro
 	if err != nil {
 		return fail(404, "not_found", "Вложение не найдено")
 	}
-	tag, err := s.DB.Exec(ctx, `update ref.attachment set deleted = true where id = $1 and not deleted`, iid)
+	tag, err := s.DB.Exec(ctx, `update ref.attachment set deleted = true, deleted_by_id = $2, deleted_at = now() where id = $1 and not deleted`, iid, nullable(a.UserID))
 	if err != nil {
 		return err
 	}

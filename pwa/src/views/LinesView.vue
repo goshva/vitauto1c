@@ -8,7 +8,7 @@ import { useMatrixStore } from '../stores/matrix';
 import { useLinesStore } from '../stores/lines';
 import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
-import { api, isGoApi, post } from '../api';
+import { api, get, isGoApi, post } from '../api';
 import { fieldInfo, valueOf, display, STATUS_TITLES, statusTone } from '../lib/columns';
 import { cellText, matchesQuick, filtersAria, filtersBadge } from '../lib/quickFilter';
 import { useColumnsStore, STAGES } from '../stores/columns';
@@ -334,6 +334,10 @@ const sheetActions = computed(() => {
   if (view.value === 'sales' && ['ready_to_ship', 'assembly'].includes(l.status) && ['manager', 'admin', 'chief_mechanic'].includes(session.role)) {
     a.push({ key: 'workOrder', title: 'Заказ-наряд', icon: 'wrench' });
   }
+  // п. 12: варианты поставки по номенклатуре строки (поставщик / цена / срок)
+  if (['manager', 'admin', 'supply'].includes(session.role)) {
+    a.push({ key: 'supplyOptions', title: 'Варианты поставки', icon: 'tag' });
+  }
   // пункты, которые сервер отклонит (409), не показываем: сервер проверяет те же условия
   if (canStrikeLine(l)) a.push({ key: 'strike', title: 'Вычеркнуть', icon: 'trash', danger: true });
   if (view.value === 'sales' && l.customerOrder && canDeleteOrder(l)) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
@@ -353,7 +357,8 @@ function canDeleteOrder(l) {
 }
 function sheetAction(key) {
   ({ add: openAdd, purchase: openAddPurchase, shipment: openShipment, post: postOrder, strike: strikeLine, deleteOrder,
-    selfPickup: selfPickupLine, workOrder: openWorkOrder })[key]();
+    selfPickup: selfPickupLine, workOrder: openWorkOrder,
+    supplyOptions: () => sheetLine.value && openSupplyOptions(sheetLine.value) })[key]();
 }
 
 // N4: самовывоз — флаг на отгруженной строке
@@ -569,6 +574,68 @@ const transition = t => {
   closeSheets();
   return run(() => post('/lines/transition', { view: view.value, to: t.to }), r => `${t.title}: ${result(r)}`);
 };
+// п. 11 «Частичный резерв и дозаказ»: доступное уходит в резерв, недостающее — в строку «к дозаказу».
+const reserveAvailableOpen = ref(false);
+const reserveAvailableZone = ref('');
+async function openReserveAvailable() {
+  actionsOpen.value = false;
+  await loadZones();
+  reserveAvailableZone.value = '';
+  reserveAvailableOpen.value = true;
+}
+async function saveReserveAvailable() {
+  const zoneId = reserveAvailableZone.value;
+  reserveAvailableOpen.value = false;
+  closeSheets();
+  await run(() => post('/lines/reserve-available', { view: view.value, ...(zoneId ? { zoneId } : {}) }),
+    r => `Резервировать доступное: в резерв ${r.reserved}, к дозаказу ${r.shortage}${r.purchases ? `, закупок ${r.purchases}` : ''}`);
+}
+
+// п. 12 «Варианты поставки»: несколько поставщиков с ценой и сроком по номенклатуре строки.
+const supplyOpen = ref(null);          // { line }
+const supplyOptions = ref([]);
+const supplyLoading = ref(false);
+const supplySaving = ref(false);
+const supplyForm = ref({ supplierId: '', supplierName: '', price: 0, deliveryTerm: '', comment: '' });
+const supplyPicker = ref(false);
+async function openSupplyOptions(line) {
+  actionsOpen.value = false;
+  supplyOpen.value = { line };
+  supplyOptions.value = [];
+  supplyForm.value = { supplierId: '', supplierName: '', price: 0, deliveryTerm: '', comment: '' };
+  supplyLoading.value = true;
+  try { supplyOptions.value = await get(`/lines/${line.id}/supply-options`) || []; }
+  catch (e) { toast.error(e); }
+  finally { supplyLoading.value = false; }
+}
+async function applySupplyOption(o) {
+  if (!supplyOpen.value) return;
+  supplySaving.value = true;
+  try {
+    await post(`/lines/${supplyOpen.value.line.id}/supply-options/${encodeURIComponent(o.id)}/apply`, {});
+    toast.show(`Вариант выбран: ${o.supplierName || 'поставщик'}`, 'ok');
+    supplyOpen.value = null;
+    await lines.load();
+  } catch (e) { toast.error(e); }
+  finally { supplySaving.value = false; }
+}
+async function saveSupplyOption() {
+  if (!supplyOpen.value || !supplyForm.value.supplierId) { toast.show('Выберите поставщика', 'error'); return; }
+  supplySaving.value = true;
+  try {
+    await post(`/lines/${supplyOpen.value.line.id}/supply-options`, {
+      supplierId: supplyForm.value.supplierId,
+      price: Number(String(supplyForm.value.price).replace(',', '.')) || 0,
+      deliveryTerm: supplyForm.value.deliveryTerm,
+      comment: supplyForm.value.comment
+    });
+    toast.show('Вариант сохранён', 'ok');
+    const line = supplyOpen.value.line;
+    supplyForm.value = { supplierId: '', supplierName: '', price: 0, deliveryTerm: '', comment: '' };
+    await openSupplyOptions(line);
+  } catch (e) { toast.error(e); }
+  finally { supplySaving.value = false; }
+}
 // печать (АРМ v2.23, блок 3): формы 1С по заказам отмеченных строк, без отметок — по заказу открытой строки
 const PRINTS = [
   { kind: 'shipment_sheet', title: 'Отгрузочная ведомость', node: 'M12' },
@@ -884,6 +951,14 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
             </button>
           </div>
         </template>
+        <template v-if="view === 'sales' && ['manager', 'admin'].includes(session.role)">
+          <div class="menu-title">Резерв</div>
+          <div class="menu">
+            <button :disabled="busy" data-reserve-available @click="openReserveAvailable">
+              <AppIcon name="lock" /> Резервировать доступное <span class="hint">M3 · п. 11</span>
+            </button>
+          </div>
+        </template>
         <template v-if="view === 'sales'">
           <div class="menu-title">Печать</div>
           <div class="menu">
@@ -919,6 +994,62 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       </div>
       <template #actions><button @click="actionsOpen = false">Закрыть</button></template>
     </AppModal>
+
+    <!-- п. 11: частичный резерв — доступное в резерв, недостающее в строку «к дозаказу» -->
+    <AppModal v-if="reserveAvailableOpen" title="Резервировать доступное" @close="reserveAvailableOpen = false">
+      <p class="muted small" style="margin: 0">Свободный остаток партий уйдёт в резерв, недостающее количество — в строку «к дозаказу».</p>
+      <label class="field">Зона склада
+        <select v-model="reserveAvailableZone">
+          <option value="">— не указывать —</option>
+          <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.code }} · {{ z.name }}</option>
+        </select>
+      </label>
+      <template #actions>
+        <button @click="reserveAvailableOpen = false">Отмена</button>
+        <button class="primary" :disabled="busy" data-reserve-available-save @click="saveReserveAvailable">
+          <AppIcon name="lock" :size="16" /> Зарезервировать
+        </button>
+      </template>
+    </AppModal>
+
+    <!-- п. 12: варианты поставки — поставщик, цена, срок -->
+    <AppModal v-if="supplyOpen" :title="`Варианты поставки — ${supplyOpen.line.nomenclature ? supplyOpen.line.nomenclature.name : (supplyOpen.line.factName || 'строка')}`" @close="supplyOpen = null">
+      <div v-if="supplyLoading" class="muted">Загрузка…</div>
+      <div v-else-if="!supplyOptions.length" class="muted small">Вариантов пока нет — добавьте поставщика, цену и срок.</div>
+      <div v-for="o in supplyOptions" :key="o.id" class="card row" style="gap: 8px; align-items: center" data-supply-option>
+        <div class="grow">
+          <b>{{ o.supplierName || '—' }}</b>
+          <div class="muted small">
+            {{ money.format(o.price) }}<template v-if="o.deliveryTerm"> · срок {{ o.deliveryTerm }}</template>
+            <template v-if="o.source === 'history'"> · из истории закупок ({{ o.purchases }})</template>
+            <template v-if="o.selected"> · выбран</template>
+          </div>
+        </div>
+        <button class="primary small" :disabled="supplySaving || o.selected" @click="applySupplyOption(o)">
+          <AppIcon name="check" :size="14" /> {{ o.selected ? 'Выбран' : 'Выбрать' }}
+        </button>
+      </div>
+      <div class="menu-title">Добавить вариант</div>
+      <div class="row" style="gap: 6px">
+        <button class="grow" :disabled="supplySaving" @click="supplyPicker = true">
+          <AppIcon name="user" :size="16" /> {{ supplyForm.supplierName || 'Выбрать поставщика' }}
+        </button>
+      </div>
+      <div class="row" style="gap: 6px; margin-top: 6px">
+        <label class="field grow">Цена <input v-model="supplyForm.price" type="number" step="0.01" /></label>
+        <label class="field grow">Срок <input v-model="supplyForm.deliveryTerm" type="date" /></label>
+      </div>
+      <label class="field">Комментарий <input v-model="supplyForm.comment" placeholder="например, срок 5 дней, самовывоз" /></label>
+      <template #actions>
+        <button @click="supplyOpen = null">Закрыть</button>
+        <button class="primary" :disabled="supplySaving || !supplyForm.supplierId" @click="saveSupplyOption">
+          <AppIcon name="plus" :size="16" /> Сохранить
+        </button>
+      </template>
+    </AppModal>
+    <RefPicker v-if="supplyPicker" dir="counterparties" title="Поставщик"
+               @pick="s => { supplyForm.supplierId = s.id; supplyForm.supplierName = s.name; supplyPicker = false }"
+               @close="supplyPicker = false" />
 
     <!-- меню заказа (карточки) -->
     <AppModal v-if="orderMenu" :title="`Заказ ${orderMenu.group.number}`" @close="orderMenu = null">

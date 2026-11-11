@@ -227,6 +227,40 @@ func (app *App) Register(mux *http.ServeMux) {
 		v, err := app.ARM.ToggleMark(r.Context(), actor(r), r.PathValue("id"))
 		reply(w, 200, v, err)
 	})
+	// Варианты поставки (ТЗ п. 12): поставщик / цена / срок по номенклатуре строки.
+	h("GET /lines/{id}/supply-options", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.SupplyOptions(r.Context(), actor(r), r.PathValue("id"))
+		reply(w, 200, v, err)
+	})
+	h("POST /lines/{id}/supply-options", func(w http.ResponseWriter, r *http.Request) {
+		var b arm.SupplyOptionInput
+		if err := body(r, &b); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		v, err := app.ARM.SupplyOptionSave(r.Context(), actor(r), r.PathValue("id"), b)
+		reply(w, 201, v, err)
+	})
+	h("POST /lines/{id}/supply-options/{optionId}/apply", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.ApplySupplyOption(r.Context(), actor(r), r.PathValue("id"), r.PathValue("optionId"))
+		reply(w, 200, v, err)
+	})
+	// Частичный резерв (ТЗ п. 11): доступное -> резерв, недостающее -> строка «к дозаказу».
+	h("POST /lines/reserve-available", func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			View   string
+			ZoneID string `json:"zoneId"`
+		}
+		if err := body(r, &b); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		if b.View == "" {
+			b.View = "sales"
+		}
+		v, err := app.ARM.ReserveAvailable(r.Context(), actor(r), b.View, b.ZoneID)
+		reply(w, 200, v, err)
+	})
 	h("GET /selection", func(w http.ResponseWriter, r *http.Request) {
 		view := r.URL.Query().Get("view")
 		if view == "" {

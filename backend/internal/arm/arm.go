@@ -106,6 +106,25 @@ func (s *Service) now() time.Time {
 	return time.Now()
 }
 
+// softDeleteSet — мягкое удаление с аудитом: флаг + кто удалил + когда (ТЗ: удаление только пометкой).
+func (s *Service) softDeleteSet(a Actor) map[string]any {
+	return map[string]any{"deleted": true, "deleted_by_id": nullable(a.UserID), "deleted_at": s.now()}
+}
+
+// restoreSet — снятие пометки удаления: чистим и аудит (кто/когда).
+func restoreSet() map[string]any {
+	return map[string]any{"deleted": false, "deleted_by_id": nil, "deleted_at": nil}
+}
+
+// deletedSet — убирает аудит удаления у копии строки, чтобы новая строка не наследовала чужую пометку.
+func deletedSet(set map[string]any) {
+	if _, ok := set["deleted"]; !ok {
+		set["deleted"] = false
+	}
+	set["deleted_by_id"] = nil
+	set["deleted_at"] = nil
+}
+
 // inTx — операция в транзакции; vitauto.user_id — автор для триггеров (уведомления).
 func (s *Service) inTx(ctx context.Context, a Actor, fn func(tx pgx.Tx) error) error {
 	tx, err := s.DB.Begin(ctx)
@@ -184,6 +203,7 @@ func (s *Service) copyLine(ctx context.Context, tx pgx.Tx, src uuid.UUID, set ma
 	}
 	set["onec_key"] = "app:" + id.String()
 	set["version"] = 1
+	deletedSet(set)
 	cols := s.lineColumns(ctx)
 	var names, vals []string
 	args := []any{src}

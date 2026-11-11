@@ -325,7 +325,11 @@ func (s *Service) CatalogDelete(ctx context.Context, a Actor, kind, id string, r
 	if kind == "cars" {
 		table = "ref.car"
 	}
-	if err := s.inTx(ctx, a, func(tx pgx.Tx) error { return updateRow(ctx, tx, table, iid, map[string]any{"deleted": !restore}) }); err != nil {
+	set := restoreSet()
+	if !restore {
+		set = s.softDeleteSet(a)
+	}
+	if err := s.inTx(ctx, a, func(tx pgx.Tx) error { return updateRow(ctx, tx, table, iid, set) }); err != nil {
 		return nil, err
 	}
 	return s.CatalogItem(ctx, kind, id)

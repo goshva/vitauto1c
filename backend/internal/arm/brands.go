@@ -123,7 +123,8 @@ func (s *Service) BrandDelete(ctx context.Context, a Actor, id string, restore b
 				return fail(409, "brand_in_use", fmt.Sprintf("Бренд используют карточки: %d. Сначала переназначьте бренд.", used))
 			}
 		}
-		_, err := tx.Exec(ctx, `update ref.brand set deleted = $2, updated_at = now() where id = $1`, iid, !restore)
+		_, err := tx.Exec(ctx, `update ref.brand set deleted = $2, deleted_by_id = case when $2 then $3::uuid else null end,
+			deleted_at = case when $2 then now() else null end, updated_at = now() where id = $1`, iid, !restore, nullable(a.UserID))
 		return err
 	})
 	if err != nil {

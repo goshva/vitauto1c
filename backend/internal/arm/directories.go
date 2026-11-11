@@ -395,7 +395,11 @@ func (s *Service) DirectoryDelete(ctx context.Context, a Actor, name, id string,
 				return err
 			}
 		}
-		return updateRow(ctx, tx, d.table, iid, map[string]any{"deleted": !restore})
+		set := restoreSet()
+		if !restore {
+			set = s.softDeleteSet(a)
+		}
+		return updateRow(ctx, tx, d.table, iid, set)
 	})
 	if err != nil {
 		return nil, err

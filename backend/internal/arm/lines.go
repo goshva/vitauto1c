@@ -979,6 +979,11 @@ func (s *Service) strikeKeys(ctx context.Context, tx pgx.Tx, a Actor, keys []str
 				continue // заказанная закупка остаётся (её отменяют в заказе поставщику)
 			}
 			set := merge(map[string]any{"deleted": strike}, unmark)
+			if strike {
+				set["deleted_by_id"], set["deleted_at"] = nullable(a.UserID), s.now()
+			} else {
+				set["deleted_by_id"], set["deleted_at"] = nil, nil
+			}
 			if l.Operation == opSale {
 				set["status"] = stDraft
 				if !strike {

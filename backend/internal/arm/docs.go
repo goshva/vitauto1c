@@ -226,8 +226,12 @@ func rebuildOrderItems(ctx context.Context, tx pgx.Tx, order uuid.UUID, ls []lin
 	return err
 }
 
-// DeleteOrder — DELETE /sales/customer-orders/{id}: только без заказов поставщику и строк дальше «В работе».
+// DeleteOrder — DELETE /sales/customer-orders/{id}: только администратор; только без заказов поставщику
+// и строк дальше «В работе». Удаление — мягкое, с автором и временем (ТЗ п. 15).
 func (s *Service) DeleteOrder(ctx context.Context, a Actor, orderID string) error {
+	if a.Role != "admin" {
+		return fail(403, "matrix_denied", "Удалить заказ может только администратор")
+	}
 	oid, err := uuid.Parse(orderID)
 	if err != nil {
 		return fail(404, "not_found", "Заказ покупателя не найден")
@@ -243,10 +247,13 @@ func (s *Service) DeleteOrder(ctx context.Context, a Actor, orderID string) erro
 		if busy {
 			return fail(409, "row_locked", "В заказе есть строки дальше статуса «В работе» — удалить нельзя")
 		}
-		if _, err := tx.Exec(ctx, "update doc.customer_order set deleted = true, version = version + 1, updated_at = now() where id = $1", oid); err != nil {
+		if _, err := tx.Exec(ctx, `update doc.customer_order set deleted = true, deleted_by_id = $2, deleted_at = now(),
+			version = version + 1, updated_at = now() where id = $1`, oid, nullable(a.UserID)); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, "delete from arm.line where customer_order_id = $1", oid)
+		_, err := tx.Exec(ctx, `update arm.line set deleted = true, deleted_by_id = $2, deleted_at = now(),
+			version = version + 1, updated_at = now() where customer_order_id = $1 and not coalesce(deleted, false)`,
+			oid, nullable(a.UserID))
 		return err
 	})
 }
