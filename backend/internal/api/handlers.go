@@ -261,6 +261,11 @@ func (app *App) Register(mux *http.ServeMux) {
 		v, err := app.ARM.ReserveAvailable(r.Context(), actor(r), b.View, b.ZoneID)
 		reply(w, 200, v, err)
 	})
+	// Снять резерв (ФТ п. 10): только автор резерва, строки «Резервирование» -> «В работе».
+	h("POST /lines/unreserve", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.Unreserve(r.Context(), actor(r))
+		reply(w, 200, v, err)
+	})
 	h("GET /selection", func(w http.ResponseWriter, r *http.Request) {
 		view := r.URL.Query().Get("view")
 		if view == "" {

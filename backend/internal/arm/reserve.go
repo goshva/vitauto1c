@@ -2,6 +2,7 @@ package arm
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -81,6 +82,8 @@ func (s *Service) ReserveAvailable(ctx context.Context, a Actor, view, zoneID st
 				if sl.Batch != nil {
 					set["reserve_qty"] = sl.Quantity
 					set["status"] = stReserve
+					// ФТ п. 10: снять резерв может только автор — запоминаем, кто поставил.
+					set["reserved_by_id"] = a.UserID
 					reserved++
 				} else {
 					set["reserve_qty"] = 0
@@ -105,4 +108,59 @@ func (s *Service) ReserveAvailable(ctx context.Context, a Actor, view, zoneID st
 		return nil, err
 	}
 	return map[string]any{"processed": total, "total": total, "reserved": reserved, "shortage": shortage, "purchases": purchases}, nil
+}
+
+// Unreserve — POST /lines/unreserve (ФТ п. 10 «Снять резерв»): по отмеченным продажам «Резервирование»
+// снимает резерв только в тех строках, где автор резерва совпадает с текущим пользователем.
+// Чужие строки пропускаются (в ответе — список). Строка без автора резерва считается общей и снимается.
+// Статус возвращается в «В работе», reserve_qty обнуляется, reserved_by_id очищается.
+func (s *Service) Unreserve(ctx context.Context, a Actor) (map[string]any, error) {
+	if err := requireUser(a); err != nil {
+		return nil, err
+	}
+	var done, total int
+	var skipped []string
+	err := s.inTx(ctx, a, func(tx pgx.Tx) error {
+		marked, err := selectLines(ctx, tx, "marked and marked_by_id = $1 and operation = $2 and not coalesce(deleted, false) and status = $3 order by sort_order for update",
+			a.UserID, opSale, stReserve)
+		if err != nil {
+			return err
+		}
+		total = len(marked)
+		if total == 0 {
+			return fail(409, "nothing_marked", "Нет отмеченных строк продаж в статусе «Резервирование»")
+		}
+		for i := range marked {
+			l := &marked[i]
+			var reserver *uuid.UUID
+			if err := tx.QueryRow(ctx, "select reserved_by_id from arm.line where id = $1", l.ID).Scan(&reserver); err != nil {
+				return err
+			}
+			if reserver != nil && *reserver != a.UserID {
+				name := l.FactName
+				if name == "" {
+					name = l.ID.String()
+				}
+				skipped = append(skipped, name+": резерв поставил другой пользователь")
+				continue
+			}
+			set := merge(map[string]any{"status": stInWork, "reserve_qty": 0, "reserved_by_id": nil}, unmark)
+			if err := updateLine(ctx, tx, l.ID, set); err != nil {
+				return err
+			}
+			done++
+		}
+		if done == 0 {
+			return fail(403, "not_author", "Снять резерв может только тот, кто его поставил: "+strings.Join(skipped, "; "))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := map[string]any{"processed": done, "total": total}
+	if len(skipped) > 0 {
+		res["message"] = "Пропущены: " + strings.Join(skipped, "; ")
+	}
+	return res, nil
 }

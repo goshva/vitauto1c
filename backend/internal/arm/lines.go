@@ -751,10 +751,14 @@ func (s *Service) Transition(ctx context.Context, a Actor, view, to, zoneID stri
 			}
 			set := merge(s.statusSet(l, t.Status), unmark)
 			// Зона склада из формы резерва: сохраняем в строке (для отгрузки/приёмки — по ячейке).
-			if to == "reserve" && zone != nil {
-				set["zone_id"] = *zone
-			}
-			// Дата приёмки: при переходе «Принять по УПД» (acceptance) ставим receipt_date.
+		if to == "reserve" && zone != nil {
+			set["zone_id"] = *zone
+		}
+		// ФТ п. 10: снять резерв может только автор. Запоминаем, кто поставил.
+		if to == "reserve" {
+			set["reserved_by_id"] = a.UserID
+		}
+		// Дата приёмки: при переходе «Принять по УПД» (acceptance) ставим receipt_date.
 			if to == "acceptance" {
 				set["receipt_date"] = s.now()
 			}

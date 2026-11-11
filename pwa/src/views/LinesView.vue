@@ -592,6 +592,14 @@ async function saveReserveAvailable() {
     r => `Резервировать доступное: в резерв ${r.reserved}, к дозаказу ${r.shortage}${r.purchases ? `, закупок ${r.purchases}` : ''}`);
 }
 
+// ФТ п. 10: снять резерв может только тот, кто его поставил (бэкенд пропускает чужие строки).
+const canUnreserve = computed(() => view.value === 'sales' &&
+  lines.marked.some(l => l.markedBy === userName.value && l.status === 'reserve'));
+async function unreserve() {
+  closeSheets();
+  await run(() => post('/lines/unreserve', {}), r => `Снять резерв: ${result(r)}`);
+}
+
 // п. 12 «Варианты поставки»: несколько поставщиков с ценой и сроком по номенклатуре строки.
 const supplyOpen = ref(null);          // { line }
 const supplyOptions = ref([]);
@@ -957,6 +965,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
           <div class="menu">
             <button :disabled="busy" data-reserve-available @click="openReserveAvailable">
               <AppIcon name="lock" /> Резервировать доступное <span class="hint">M3 · п. 11</span>
+            </button>
+            <button v-if="canUnreserve" :disabled="busy" data-unreserve @click="unreserve">
+              <AppIcon name="undo" /> Снять резерв <span class="hint">п. 10 · только автор</span>
             </button>
           </div>
         </template>
