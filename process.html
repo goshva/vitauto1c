@@ -187,6 +187,17 @@
   .est .num{white-space:nowrap;font-variant-numeric:tabular-nums;font-family:Consolas,monospace;font-size:11.5px;}
   .est ul.audit{margin:0;padding-left:18px;font-size:12px;line-height:1.5;}
   .est ul.audit li{margin-bottom:6px;}
+
+  /* Редактор процесса (локальные правки в браузере) */
+  .edit-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 12px;}
+  .edit-root{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));}
+  .edit-node{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px 12px;display:grid;gap:7px;margin:0;}
+  .edit-node legend{font-weight:700;padding:0 4px;display:flex;align-items:center;gap:8px;font-size:12px;}
+  .edit-node label{display:grid;gap:3px;font-size:11px;color:var(--muted);}
+  .edit-node input,.edit-node select,.edit-node textarea{width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font:inherit;font-size:12px;background:#fff;color:var(--text);}
+  .edit-node textarea{resize:vertical;min-height:54px;}
+  .edit-del{margin-left:auto;border:1px solid var(--border);background:#fff;color:#b91c1c;border-radius:6px;padding:2px 7px;font-size:11px;cursor:pointer;}
+  .edit-del:hover{background:#fde8e6;}
 </style>
 </head>
 <body class="body">
@@ -195,13 +206,12 @@
   <h1>Интерактивный процесс Витавто — роли, статусы, покрытие кода</h1>
   <div class="sub">
     B5: схема-дорожки + плеер сценария + слой «есть / частично / нет» в расширении АРМ.
-    Канон: ТЗ + блок-схема + <a href="index.html">матрица прав</a> + <code>src/</code>. Не подключено к 1С.
+    Канон: ТЗ + блок-схема + <code>src/</code>. Не подключено к 1С.
   </div>
   <div class="toolbar">
     <div class="seg" id="viewSeg">
       <button data-view="process" class="active">Процесс заявки</button>
-      <button data-view="zones">Складские зоны</button>
-      <button data-view="estimate">Оценка ТЗ</button>
+      <button data-view="edit">Редактирование процесса</button>
     </div>
     <label class="badge process-chrome">Сценарий
       <select id="scenarioSelect" style="margin-left:6px" size="1"></select>
@@ -216,7 +226,6 @@
     <select id="roleFilter" class="process-chrome" title="Фильтр роли">
       <option value="">Все роли</option>
     </select>
-    <a class="btn" href="index.html">← Матрица прав</a>
     <a class="btn" href="br-fr-analysis.html">Разбор БТ/ФТ</a>
     <a class="btn" href="bt.html">БТ</a>
     <a class="btn" href="ft.html">ФТ</a>
@@ -263,13 +272,22 @@
       <div class="lanes" id="lanes"></div>
     </div>
 
-    <div class="view-panel" id="zonesView" hidden>
-      <div class="edges-hint">Вторая страница блок-схемы: физическое движение деталей по зонам склада.</div>
-      <div class="zones" id="zones"></div>
-    </div>
-
-    <div class="view-panel est" id="estimateView" hidden>
-      <div id="estimateRoot"></div>
+    <div class="view-panel" id="editView" hidden>
+      <div class="edges-hint">
+        Правки хранятся в этом браузере (localStorage) и не влияют на незавершённые процессы:
+        изменённый процесс не меняет уже запущенные экземпляры, изменения начинаются только с первого узла,
+        а новые версии могут наследоваться. Экспортируйте JSON, чтобы перенести правки.
+      </div>
+      <div class="edit-bar">
+        <button type="button" id="editAdd" class="primary">+ Узел</button>
+        <button type="button" id="editSave">Сохранить</button>
+        <button type="button" id="editReset">Сбросить к исходному</button>
+        <button type="button" id="editExport">Экспорт JSON</button>
+        <label class="btn" for="editImport">Импорт JSON</label>
+        <input type="file" id="editImport" accept=".json,application/json" hidden>
+        <span class="badge" id="editStatus"></span>
+      </div>
+      <div class="edit-root" id="editRoot"></div>
     </div>
   </div>
 
@@ -281,7 +299,7 @@
 
 <footer class="app">
   Источники: ТЗ Витавто, <code>витвто.drawio</code>, матрица колонок, gap-анализ <code>src/</code> (АС_АРМ2).
-  Покрытие — экспертная оценка по распакованному расширению. Вкладка «Оценка ТЗ» — остаток часов на код (комфорт ×1,4), не КП.
+  Покрытие — экспертная оценка по распакованному расширению.
   Обновление плеера 19.09.2026: A–C + E механик; без D (НСИ). Покрытие — по АРМ v2.22 (29.10.2026).
 </footer>
 
@@ -350,6 +368,20 @@
     {id:'G8', role:'chief_mechanic', title:'Неопознанная позиция', full:'Уведомление: позиция не опознана. Зеркало M18 — видно одновременно с менеджером, не после handoff.', shape:'rect', cov:'no', status:['new','acceptance'], cols:['name_fact','article_fact','comment'], tz:'Зеркало M18; параллельно M18 (D1).', code:'Нет.', next:[]},
     {id:'G9', role:'chief_mechanic', title:'Печать комплекта документов и выдача авто', full:'Печать комплекта документов по заказ-наряду и выдача автомобиля клиенту после ремонта.', shape:'rect', cov:'no', status:['closed','shipped'], cols:['comment','shipment_date','shipment_number','vehicle_plate_fact'], tz:'E: G4∥G5→G9.', code:'Нет.', next:[]}
   ];
+
+  // Локальный редактор процесса: снимок исходника + загрузка сохранённых правок.
+  var NODES_DEFAULT = JSON.parse(JSON.stringify(NODES));
+  var EDIT_KEY = 'vitauto.process.nodes.v1';
+  (function loadSavedNodes(){
+    try {
+      var raw = localStorage.getItem(EDIT_KEY);
+      if (!raw) return;
+      var arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || !arr.length) return;
+      NODES.length = 0;
+      arr.forEach(function(n){ NODES.push(n); });
+    } catch(e){}
+  })();
 
   var ZONES = [
     {id:'Z0', title:'Поставщик (Авто-Альянс)', desc:'Внешний источник поставки', cov:'no', role:'supplier'},
@@ -629,6 +661,10 @@
 
   var byId = {};
   NODES.forEach(function(n){ byId[n.id] = n; });
+  function rebuildById(){
+    byId = {};
+    NODES.forEach(function(n){ byId[n.id] = n; });
+  }
 
   var elLanes = document.getElementById('lanes');
   var elZones = document.getElementById('zones');
@@ -1042,8 +1078,7 @@
       '<div class="block"><h3>Со схемы</h3><p>'+escapeHtml(n.full)+'</p></div>'+
       '<div class="block"><h3>ТЗ</h3><p>'+escapeHtml(n.tz)+'</p></div>'+
       '<div class="block"><h3>Статусы матрицы</h3><div class="chips">'+statuses+'</div></div>'+
-      '<div class="block"><h3>Колонки матрицы</h3><div class="chips">'+cols+'</div>'+
-        '<p style="margin-top:6px"><a href="index.html">Открыть матрицу прав →</a></p></div>'+
+      '<div class="block"><h3>Колонки матрицы</h3><div class="chips">'+cols+'</div></div>'+
       '<div class="block"><h3>Код АРМ (src)</h3><p>'+escapeHtml(n.code)+'</p></div>'+
       conflict + nextHtml;
 
@@ -1107,21 +1142,14 @@
 
   function setView(v){
     state.view = v;
-    elBody.classList.toggle('view-estimate', v==='estimate');
     document.getElementById('processView').hidden = v!=='process';
-    document.getElementById('zonesView').hidden = v!=='zones';
-    document.getElementById('estimateView').hidden = v!=='estimate';
+    var ev = document.getElementById('editView');
+    if (ev) ev.hidden = v!=='edit';
     document.querySelectorAll('#viewSeg button').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-view')===v);
     });
-    if (v==='estimate'){
-      stopPlay(false);
-      renderEstimate();
-    } else if (v==='zones') {
-      renderZones();
-    } else {
-      renderLanes();
-    }
+    if (v==='process') renderLanes();
+    else if (v==='edit') renderEditor();
     try {
       syncUrlFromState();
     } catch(e){}
@@ -1132,12 +1160,10 @@
     document.getElementById('btnCoverage').classList.toggle('active', state.coverage);
     document.getElementById('btnGapsOnly').classList.toggle('active', state.gapsOnly);
     if (state.view==='process') renderLanes();
-    else if (state.view==='zones') renderZones();
   }
 
   function bootFromQuery(){
     var q = new URLSearchParams(location.search);
-    var view = q.get('view');
     var node = q.get('node');
     var sc = q.get('scenario');
     if (sc && SCENARIOS.some(function(s){return s.id===sc;})) {
@@ -1146,10 +1172,145 @@
       syncScenarioButtons();
       updatePlayerUI();
     }
-    if (view==='zones' || view==='estimate') setView(view);
-    if (node && byId[node] && state.view!=='estimate') selectNode(node, true);
+    if (q.get('view') === 'edit') { setView('edit'); return; }
+    if (node && byId[node]) selectNode(node, true);
     else syncUrlFromState();
   }
+
+  // ── Редактор процесса: локальные правки узлов (localStorage) ──────────────
+  var elEditRoot = document.getElementById('editRoot');
+  var elEditStatus = document.getElementById('editStatus');
+
+  function editStatus(msg){ if (elEditStatus) elEditStatus.textContent = msg || ''; }
+
+  function optHtml(list, val){
+    return list.map(function(x){
+      return '<option value="'+escapeHtml(x[0])+'"'+(x[0]===val?' selected':'')+'>'+escapeHtml(x[1])+'</option>';
+    }).join('');
+  }
+
+  function renderEditor(){
+    if (!elEditRoot) return;
+    var roleList = ROLES.map(function(r){ return [r.id, r.title.replace(/\n/g,' ')]; });
+    var covList = [['ok', COV.ok], ['part', COV.part], ['no', COV.no]];
+    elEditRoot.innerHTML = NODES.map(function(n, i){
+      return '<fieldset class="edit-node" data-i="'+i+'">'+
+        '<legend><code>'+escapeHtml(n.id)+'</code>'+
+          '<button type="button" class="edit-del" data-act="del" title="Удалить узел">✕ удалить</button></legend>'+
+        '<label>Роль<select data-f="role">'+optHtml(roleList, n.role)+'</select></label>'+
+        '<label>Название<input data-f="title" value="'+escapeHtml(n.title||'')+'"></label>'+
+        '<label>Покрытие<select data-f="cov">'+optHtml(covList, n.cov)+'</select></label>'+
+        '<label>ТЗ<input data-f="tz" value="'+escapeHtml(n.tz||'')+'"></label>'+
+        '<label>Код АРМ<input data-f="code" value="'+escapeHtml(n.code||'')+'"></label>'+
+        '<label>Со схемы<textarea data-f="full" rows="3">'+escapeHtml(n.full||'')+'</textarea></label>'+
+      '</fieldset>';
+    }).join('');
+  }
+
+  function applyEditorChange(target){
+    var fs = target && target.closest ? target.closest('.edit-node') : null;
+    if (!fs) return;
+    var n = NODES[parseInt(fs.getAttribute('data-i'), 10)];
+    var f = target.getAttribute('data-f');
+    if (n && f) n[f] = target.value;
+  }
+
+  function addNode(){
+    var used = {};
+    NODES.forEach(function(n){ used[n.id] = true; });
+    var k = 1, id;
+    do { id = 'NEW' + k; k++; } while (used[id]);
+    NODES.push({id:id, role:'manager', title:'Новый узел', full:'', shape:'rect', cov:'no', status:[], cols:[], tz:'', code:'', next:[]});
+    renderEditor();
+    editStatus('Добавлен узел ' + id + ' — нажмите «Сохранить»');
+  }
+
+  function deleteNode(i){
+    var n = NODES[i];
+    if (!n) return;
+    if (!confirm('Удалить узел ' + n.id + ' («' + (n.title||'') + '»)? Переходы других узлов на него останутся.')) return;
+    NODES.splice(i, 1);
+    renderEditor();
+    editStatus('Узел ' + n.id + ' удалён — нажмите «Сохранить»');
+  }
+
+  function refreshAfterEdit(){
+    rebuildById();
+    renderLanes();
+    renderStats();
+    if (state.selected && !byId[state.selected]) {
+      state.selected = null;
+      elSideContent.hidden = true;
+      elSideEmpty.hidden = false;
+    }
+  }
+
+  function saveEditor(){
+    try {
+      localStorage.setItem(EDIT_KEY, JSON.stringify(NODES));
+      refreshAfterEdit();
+      editStatus('Сохранено в браузере · ' + NODES.length + ' узлов');
+    } catch(e){ editStatus('Ошибка сохранения: ' + e.message); }
+  }
+
+  function resetEditor(){
+    if (!confirm('Сбросить правки к исходному процессу? Локальные изменения будут удалены.')) return;
+    try { localStorage.removeItem(EDIT_KEY); } catch(e){}
+    NODES.length = 0;
+    NODES_DEFAULT.forEach(function(n){ NODES.push(JSON.parse(JSON.stringify(n))); });
+    refreshAfterEdit();
+    renderEditor();
+    editStatus('Сброшено к исходному · ' + NODES.length + ' узлов');
+  }
+
+  function exportEditor(){
+    var blob = new Blob([JSON.stringify(NODES, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'process-nodes.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    editStatus('Экспортировано · ' + NODES.length + ' узлов');
+  }
+
+  function importEditor(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        var arr = JSON.parse(reader.result);
+        if (!Array.isArray(arr) || !arr.length) throw new Error('ожидается непустой массив узлов');
+        NODES.length = 0;
+        arr.forEach(function(n){ NODES.push(n); });
+        refreshAfterEdit();
+        renderEditor();
+        editStatus('Импортировано · ' + NODES.length + ' узлов (нажмите «Сохранить»)');
+      } catch(e){ editStatus('Ошибка импорта: ' + e.message); }
+    };
+    reader.readAsText(file);
+  }
+
+  if (elEditRoot){
+    elEditRoot.addEventListener('input', function(e){ applyEditorChange(e.target); });
+    elEditRoot.addEventListener('change', function(e){ applyEditorChange(e.target); });
+    elEditRoot.addEventListener('click', function(e){
+      var b = e.target.closest('button[data-act="del"]');
+      if (!b) return;
+      var fs = b.closest('.edit-node');
+      if (fs) deleteNode(parseInt(fs.getAttribute('data-i'), 10));
+    });
+  }
+  [['editAdd', addNode], ['editSave', saveEditor], ['editReset', resetEditor], ['editExport', exportEditor]].forEach(function(pair){
+    var el = document.getElementById(pair[0]);
+    if (el) el.addEventListener('click', pair[1]);
+  });
+  var elEditImport = document.getElementById('editImport');
+  if (elEditImport) elEditImport.addEventListener('change', function(){
+    if (elEditImport.files && elEditImport.files[0]) importEditor(elEditImport.files[0]);
+    elEditImport.value = '';
+  });
 
   // events
   document.getElementById('viewSeg').addEventListener('click', function(e){

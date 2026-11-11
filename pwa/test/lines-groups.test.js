@@ -14,6 +14,7 @@ const { mockLines } = vi.hoisted(() => {
 });
 
 vi.mock('../src/api', () => ({
+  isGoApi: vi.fn(() => true),
   api: vi.fn(async (method, path) => {
     if (path === '/matrix') {
       return {

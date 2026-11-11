@@ -117,6 +117,55 @@ func (app *App) Register(mux *http.ServeMux) {
 		writeJSON(w, 200, arm.MatrixFor(actor(r).Role))
 	})
 
+	// настройки прав групп пользователей: роль = группа; матрица полей + процессы/узлы + CRUD
+	h("GET /settings/groups", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.UserGroups(r.Context())
+		reply(w, 200, v, err)
+	})
+	h("GET /settings/groups/{role}", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.UserGroupByRole(r.Context(), r.PathValue("role"))
+		reply(w, 200, v, err)
+	})
+	h("GET /settings/groups/{role}/matrix", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.UserGroupMatrix(r.Context(), r.PathValue("role"))
+		reply(w, 200, v, err)
+	})
+	h("GET /settings/groups/{role}/processes", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.UserGroupProcesses(r.Context(), r.PathValue("role"))
+		reply(w, 200, v, err)
+	})
+	h("GET /settings/groups/{role}/crud", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.UserGroupCRUDList(r.Context(), r.PathValue("role"))
+		reply(w, 200, v, err)
+	})
+	// запись матрицы прав: пишет matrix.json и применяет без пересборки (hot-reload)
+	h("PUT /settings/groups/{role}/matrix", func(w http.ResponseWriter, r *http.Request) {
+		if actor(r).Role != "admin" {
+			writeProblem(w, &arm.Problem{Status: 403, Code: "matrix_denied", Message: "Менять матрицу прав может только администратор"})
+			return
+		}
+		var b struct {
+			Columns []arm.MatrixColumn `json:"columns"`
+		}
+		if err := body(r, &b); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		if err := app.ARM.SaveGroupMatrix(r.Context(), r.PathValue("role"), b.Columns); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"ok": true, "etag": arm.MatrixETag()})
+	})
+	// перечитать matrix.json с диска (hot-reload по сигналу)
+	h("POST /settings/reload", func(w http.ResponseWriter, r *http.Request) {
+		if err := arm.ReloadMatrix(); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"ok": true, "etag": arm.MatrixETag()})
+	})
+
 	// строки
 	h("GET /lines", func(w http.ResponseWriter, r *http.Request) {
 		v, err := app.ARM.Lines(r.Context(), actor(r), query(r))

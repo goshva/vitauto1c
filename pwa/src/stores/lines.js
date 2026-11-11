@@ -11,6 +11,7 @@ export const useLinesStore = defineStore('lines', {
   state: () => ({
     view: 'sales',
     filters: { ...DEFAULT_FILTERS, ...load('filters', {}) },
+    quick: null, // быстрый фильтр по значению ячейки: { path, kind, value } — считает сервер
     items: [],
     nextCursor: null,
     loading: false,
@@ -24,11 +25,19 @@ export const useLinesStore = defineStore('lines', {
   actions: {
     query(cursor) {
       const f = this.filters;
-      return {
+      const q = {
         view: this.view, periodFrom: f.periodFrom, periodTo: f.periodTo, customerOrderId: f.customerOrderId,
         hideShipped: f.hideShipped, hideDeleted: f.hideDeleted, onlyWithPurchases: f.onlyWithPurchases,
         groupByCustomerOrder: f.groupByCustomerOrder, limit: 100, cursor
       };
+      // Быстрый фильтр по значению ячейки сервер отдаёт только совпадающими строками,
+      // поэтому не нужно листать все страницы и фильтровать на клиенте.
+      if (this.quick && this.quick.path && this.quick.value) {
+        q.quickPath = this.quick.path;
+        q.quickKind = this.quick.kind || 'text';
+        q.quickValue = this.quick.value;
+      }
+      return q;
     },
     async load() {
       this.loading = true;

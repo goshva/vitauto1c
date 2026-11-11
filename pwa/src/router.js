@@ -15,7 +15,8 @@ const routes = [
   { path: '/returns', name: 'returns', component: () => import('./views/ReturnsView.vue') },
   { path: '/work-orders', name: 'workOrders', component: () => import('./views/WorkOrdersView.vue') },
   { path: '/access-requests', name: 'accessRequests', component: () => import('./views/AccessRequestsView.vue') },
-  { path: '/matrix', name: 'matrix', component: () => import('./views/MatrixView.vue') },
+  { path: '/processes', name: 'processes', component: () => import('./views/ProcessView.vue'), meta: { admin: true } },
+  { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue') },
   { path: '/console', name: 'console', component: () => import('./views/ConsoleView.vue') },
   { path: '/log', name: 'log', component: () => import('./views/LogView.vue'), meta: { public: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }
@@ -26,6 +27,7 @@ const router = createRouter({ history: createWebHistory(), routes });
 router.beforeEach(to => {
   const s = useSessionStore();
   if (!to.meta.public && !s.loggedIn) return { name: 'login', query: { next: to.fullPath } };
+  if (to.meta.admin && s.loggedIn && s.role !== 'admin') return { name: 'lines', params: { view: s.views[0] || 'sales' } };
   if (to.name === 'lines' && s.loggedIn && !s.views.includes(to.params.view)) {
     return { name: 'lines', params: { view: s.views[0] } };
   }

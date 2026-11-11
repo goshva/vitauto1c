@@ -167,6 +167,17 @@ func (s *Service) Lines(ctx context.Context, a Actor, q map[string]string) (*Lin
 	if v := q["warehouseId"]; v != "" {
 		add("l.warehouse_id = ?::uuid", v)
 	}
+	// Быстрый фильтр по значению ячейки: клиент присылает путь в JSON строки (a.api),
+	// поэтому сервер отдаёт только совпадающие строки, а не все страницы подряд.
+	if v := q["quickValue"]; v != "" {
+		pred, vs, err := quickPredicate(q["quickPath"], q["quickKind"], v)
+		if err != nil {
+			return nil, err
+		}
+		start := len(args) + 1
+		args = append(args, vs...)
+		where = append(where, fillPlaceholders(pred, start))
+	}
 	if truthy(q["onlyWithPurchases"]) && view == "sales" {
 		where = append(where, "exists (select 1 from arm.line p join doc.supplier_order so on so.id = p.supplier_order_id where so.customer_order_id = l.customer_order_id and p.operation = 'Закупка' and not coalesce(p.deleted, false))")
 	}
@@ -199,6 +210,96 @@ func (s *Service) Lines(ctx context.Context, a Actor, q map[string]string) (*Lin
 		page.NextCursor = &next
 	}
 	return page, rows.Err()
+}
+
+// quickPredicate — SQL-условие по значению ячейки. Путь (например, customer.name)
+// передаётся отдельным параметром и разбирается string_to_array, поэтому подстановки
+// в SQL нет; значение сравнивается по типу, чтобы совпадать с отображением в PWA.
+// Возвращает фрагмент с '?'-плейсхолдерами и аргументы в том же порядке.
+func quickPredicate(path, kind, value string) (string, []any, error) {
+	if err := validateQuickPath(path); err != nil {
+		return "", nil, err
+	}
+	expr := "(a.api #>> string_to_array(?, '.'))"
+	switch kind {
+	case "date":
+		if d, ok := ruDateToISO(value); ok {
+			return expr + " = ?", []any{path, d}, nil
+		}
+	case "number":
+		if n, ok := ruNumber(value); ok {
+			return expr + "::numeric = ?::numeric", []any{path, n}, nil
+		}
+	case "bool":
+		b := "false"
+		if value == "✓" {
+			b = "true"
+		}
+		return expr + "::boolean = ?::boolean", []any{path, b}, nil
+	}
+	return expr + " = ?", []any{path, value}, nil
+}
+
+// fillPlaceholders подставляет $N по порядку вместо '?'.
+func fillPlaceholders(pred string, start int) string {
+	var b strings.Builder
+	idx := start
+	for i, part := range strings.Split(pred, "?") {
+		if i > 0 {
+			fmt.Fprintf(&b, "$%d", idx)
+			idx++
+		}
+		b.WriteString(part)
+	}
+	return b.String()
+}
+
+// validateQuickPath — путь в JSON: до 4 сегментов [A-Za-z0-9_], без подстановок.
+func validateQuickPath(path string) error {
+	segs := strings.Split(path, ".")
+	if len(segs) == 0 || len(segs) > 4 {
+		return fail(400, "bad_request", "quickPath: неверная глубина пути")
+	}
+	for _, s := range segs {
+		if !validQuickSegment(s) {
+			return fail(400, "bad_request", "quickPath: недопустимый сегмент")
+		}
+	}
+	return nil
+}
+
+func validQuickSegment(s string) bool {
+	if s == "" || len(s) > 32 {
+		return false
+	}
+	for _, r := range s {
+		if r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// ruDateToISO — «12.03.2026» -> «2026-03-12» (так дата хранится в JSON строки).
+func ruDateToISO(v string) (string, bool) {
+	p := strings.Split(strings.TrimSpace(v), ".")
+	if len(p) != 3 || len(p[0]) != 2 || len(p[1]) != 2 || len(p[2]) != 4 {
+		return "", false
+	}
+	return p[2] + "-" + p[1] + "-" + p[0], true
+}
+
+// ruNumber — «1 234,5» -> «1234.5» (как показывает num.format в PWA).
+func ruNumber(v string) (string, bool) {
+	s := strings.NewReplacer(" ", "", "\u00a0", "", ",", ".").Replace(strings.TrimSpace(v))
+	if s == "" {
+		return "", false
+	}
+	if _, err := strconv.ParseFloat(s, 64); err != nil {
+		return "", false
+	}
+	return s, true
 }
 
 func requireUser(a Actor) error {

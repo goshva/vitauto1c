@@ -27,6 +27,8 @@ tags:
     description: Вход и роль интерфейса
   - name: matrix
     description: Колонки и права редактирования
+  - name: settings
+    description: Настройки прав групп пользователей (роль = группа)
   - name: lines
     description: Строки АРМ (агрегат Line)
   - name: sales
@@ -121,6 +123,154 @@ paths:
                 $ref: '#/components/schemas/Matrix'
         '304':
           description: Не изменилась
+  /settings/groups:
+    get:
+      tags: [settings]
+      summary: Настройки прав групп пользователей
+      description: |
+        Группа = роль. Для каждой группы отдаются матрица полей по статусам, процессы и узлы
+        (`process.html`), CRUD-права справочников и каталога. Источник — `matrix.json` и
+        `process-presets.json`, собранные из `index.html`, `process.html` и `questionnaire.html`.
+        Связь прав и CRUD с процессами и узлами сохраняется в `processes[].columns`.
+      operationId: listUserGroups
+      responses:
+        '200':
+          description: Настройки всех групп
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroups'
+  /settings/groups/{role}:
+    parameters:
+      - $ref: '#/components/parameters/Role'
+    get:
+      tags: [settings]
+      summary: Настройки одной группы
+      description: |
+        Матрица группы, её процессы и узлы, CRUD-права. Неизвестная роль — 404.
+      operationId: getUserGroup
+      responses:
+        '200':
+          description: Настройки группы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /settings/groups/{role}/matrix:
+    parameters:
+      - $ref: '#/components/parameters/Role'
+    get:
+      tags: [settings]
+      summary: Матрица прав группы
+      operationId: getUserGroupMatrix
+      responses:
+        '200':
+          description: Матрица группы по статусам
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Matrix'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [settings]
+      summary: Записать матрицу прав группы
+      description: |
+        Меняет только маску прав (`rights`) колонок группы: пишет `matrix.json` и применяет
+        изменения сразу, без пересборки (hot-reload). Метаданные колонок (id, поле, тип,
+        название) не меняются; длина маски равна числу статусов, допустимые символы `+`, `c`, `.`.
+        Доступно только роли `admin`. На незавершённые процессы изменения не влияют.
+      operationId: putUserGroupMatrix
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [columns]
+              properties:
+                columns:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MatrixColumn'
+      responses:
+        '200':
+          description: Матрица записана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  etag:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /settings/reload:
+    post:
+      tags: [settings]
+      summary: Перечитать matrix.json с диска
+      description: Hot-reload матрицы прав — читает рабочую копию `matrix.json` и применяет её без пересборки.
+      operationId: reloadSettings
+      responses:
+        '200':
+          description: Матрица перечитана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  etag:
+                    type: string
+  /settings/groups/{role}/processes:
+    parameters:
+      - $ref: '#/components/parameters/Role'
+    get:
+      tags: [settings]
+      summary: Процессы и узлы группы
+      description: Узлы `process.html`, закреплённые за ролью, с их статусами и колонками матрицы.
+      operationId: getUserGroupProcesses
+      responses:
+        '200':
+          description: Узлы группы
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserGroupProcess'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /settings/groups/{role}/crud:
+    parameters:
+      - $ref: '#/components/parameters/Role'
+    get:
+      tags: [settings]
+      summary: CRUD-права группы
+      description: |
+        Справочники (`directories`), каталог (`catalog`) и бренды (`brands`) с операциями
+        `read`, `create`, `update`, `delete`, `restore`.
+      operationId: getUserGroupCRUD
+      responses:
+        '200':
+          description: CRUD-права группы
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserGroupCRUD'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /lines:
     get:
       tags: [lines]
@@ -184,6 +334,29 @@ paths:
             minimum: 1
             maximum: 500
             default: 100
+        - name: quickPath
+          in: query
+          schema:
+            type: string
+          description: |
+            Путь к значению в JSON строки (`a.api`) для быстрого фильтра по ячейке, например `customer.name`.
+            До 4 сегментов, только `[A-Za-z0-9_]`. Используется вместе с `quickValue`.
+        - name: quickKind
+          in: query
+          schema:
+            type: string
+            enum: [text, date, number, bool]
+            default: text
+          description: |
+            Тип значения для сравнения: `text` — строка, `date` — дата (`12.03.2026`),
+            `number` — число (пробелы и запятая допускаются), `bool` — `✓` или пусто.
+        - name: quickValue
+          in: query
+          schema:
+            type: string
+          description: |
+            Значение быстрого фильтра. Сервер отбирает только совпадающие строки до пагинации,
+            поэтому для просмотра всего набора не нужно листать страницы. Пустая строка — без фильтра.
       responses:
         '200':
           description: Страница строк
@@ -1984,6 +2157,13 @@ components:
       schema:
         type: string
         format: uuid
+    Role:
+      name: role
+      in: path
+      required: true
+      description: Роль = группа пользователей
+      schema:
+        $ref: '#/components/schemas/Role'
   responses:
     BadRequest:
       description: Не разобран запрос
@@ -2120,6 +2300,94 @@ components:
           maxLength: 15
           description: 15 символов `+`, `c` или `.` по порядку statuses
           example: '++.............'
+    UserGroup:
+      type: object
+      required: [role, title, matrix, processes, crud]
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
+        title:
+          type: string
+        matrix:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatrixColumn'
+        processes:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserGroupProcess'
+        crud:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserGroupCRUD'
+    UserGroupProcess:
+      type: object
+      required: [id, role, roleTitle, title, statuses, columns]
+      properties:
+        id:
+          type: string
+          description: Узел process.html (N1, M1, A0 …)
+        role:
+          $ref: '#/components/schemas/Role'
+        roleTitle:
+          type: string
+        title:
+          type: string
+        statuses:
+          type: array
+          items:
+            type: string
+        columns:
+          type: array
+          description: id колонок матрицы, которые видит и правит группа на этом узле
+          items:
+            type: string
+    UserGroupCRUD:
+      type: object
+      required: [entity, name, title, operations]
+      properties:
+        entity:
+          type: string
+          enum: [directories, catalog, brands]
+        name:
+          type: string
+        title:
+          type: string
+        operations:
+          type: array
+          items:
+            type: string
+            enum: [read, create, update, delete, restore]
+    UserGroups:
+      type: object
+      required: [source, statuses, groups, groupIds, columns, processes, crud]
+      properties:
+        source:
+          type: string
+        statuses:
+          type: array
+          items:
+            type: string
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserGroup'
+        groupIds:
+          type: array
+          items:
+            type: string
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatrixColumn'
+        processes:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserGroupProcess'
+        crud:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserGroupCRUD'
     LinePage:
       type: object
       required: [items]

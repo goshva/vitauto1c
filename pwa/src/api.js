@@ -9,7 +9,7 @@ import { ApiError } from './odata/errors';
 
 export { ApiError };
 
-const isGoApi = base => /\/api(\/|$)/.test(base || '');
+export const isGoApi = base => /\/api(\/|$)/.test(base || '');
 
 function joinUrl(base, path) {
   const b = (base || '/api/v1').replace(/\/$/, '');

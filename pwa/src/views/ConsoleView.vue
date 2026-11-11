@@ -9,6 +9,7 @@ import { load as loadPref, save as savePref } from '../storage';
 const session = useSessionStore();
 const ctx = reactive({
   lineId: '', customerOrderId: '', customerId: '', contractId: '', nomenclatureId: '', jobId: '',
+  role: 'manager',
   today: new Date().toISOString().slice(0, 10),
   ...loadPref('console.ctx', {})
 });
@@ -90,6 +91,11 @@ async function runSmoke() {
   };
   await step('GET /session', '/session');
   await step('GET /matrix', '/matrix');
+  await step('GET /settings/groups', '/settings/groups');
+  await step('GET /settings/groups/{role}', '/settings/groups/' + ctx.role);
+  await step('GET /settings/groups/{role}/matrix', '/settings/groups/' + ctx.role + '/matrix');
+  await step('GET /settings/groups/{role}/processes', '/settings/groups/' + ctx.role + '/processes');
+  await step('GET /settings/groups/{role}/crud', '/settings/groups/' + ctx.role + '/crud');
   const views = session.views;
   const page = await step('GET /lines', '/lines', { view: views[0], limit: 50 });
   const line = page && page.items && page.items[0];

@@ -8,7 +8,7 @@ import { useMatrixStore } from '../stores/matrix';
 import { useLinesStore } from '../stores/lines';
 import { useToastStore } from '../stores/toast';
 import { useUiStore } from '../stores/ui';
-import { api, post } from '../api';
+import { api, isGoApi, post } from '../api';
 import { fieldInfo, valueOf, display, STATUS_TITLES, statusTone } from '../lib/columns';
 import { cellText, matchesQuick, filtersAria, filtersBadge } from '../lib/quickFilter';
 import { useColumnsStore, STAGES } from '../stores/columns';
@@ -44,16 +44,55 @@ async function setUrgent(line, on) {
 }
 
 // ---------- быстрый фильтр по значению (двойной клик по ячейке таблицы)
-const quick = ref(null); // { field, title, value }
+const quick = ref(null); // { field, title, value, path, kind }
+const loadingAll = ref(false); // догрузка страниц (только OData-режим, без серверного фильтра)
 const quickText = (line, field) => cellText(line, field, display);
+
+// Путь в JSON строки для серверного фильтра: справочники и номенклатура
+// отображаются именем, поэтому фильтруем по <prop>.name.
+function quickTarget(field) {
+  const { prop, kind } = fieldInfo(field);
+  if (!prop) return null;
+  if (kind === 'ref' || kind === 'nomenclature') return { path: prop + '.name', kind: 'text' };
+  return { path: prop, kind };
+}
 function quickFilter(line, column) {
   const v = quickText(line, column.field);
   if (!v || v === '—') return;
-  quick.value = { field: column.field, title: column.title, value: v };
+  quick.value = { field: column.field, title: column.title, value: v, ...(quickTarget(column.field) || {}) };
   lines.current = line.id;
+  applyQuick();
 }
 function quickFilterStatus(line) {
-  quick.value = { field: 'status', title: 'Статус', value: line.status };
+  quick.value = { field: 'status', title: 'Статус', value: line.status, path: 'status', kind: 'text' };
+  applyQuick();
+}
+// В Go-API фильтр по значению считает сервер — в выборку попадают только совпадающие
+// строки, листать все страницы не нужно. В OData-режиме серверного фильтра нет:
+// догружаем страницы и фильтруем на клиенте.
+function applyQuick() {
+  const q = quick.value;
+  lines.quick = q && q.path ? { path: q.path, kind: q.kind || 'text', value: q.value } : null;
+  if (isGoApi(session.baseUrl)) lines.load().catch(e => toast.error(e));
+  else loadAllPages();
+}
+function clearQuick() {
+  quick.value = null;
+  lines.quick = null;
+  lines.load().catch(e => toast.error(e));
+}
+async function loadAllPages() {
+  if (loadingAll.value) return;
+  loadingAll.value = true;
+  try {
+    let guard = 0;
+    while (lines.nextCursor && guard++ < 100) await lines.loadMore();
+    if (lines.nextCursor) toast.show('Показаны не все строки — сузьте фильтр', 'info');
+  } catch (e) {
+    toast.error(e);
+  } finally {
+    loadingAll.value = false;
+  }
 }
 function matchQuick(l) { return matchesQuick(l, quick.value, display); }
 
@@ -97,7 +136,7 @@ async function reload() {
 }
 // ---------- поиск (по загруженным строкам) и группировка по заказам
 const q = ref('');
-watch(view, () => { q.value = ''; quick.value = null; reload(); }, { immediate: true });
+watch(view, () => { q.value = ''; quick.value = null; lines.quick = null; reload(); }, { immediate: true });
 
 const searchText = l => [l.factName, l.factArticle, l.nomenclature && l.nomenclature.name, l.nomenclature && l.nomenclature.article,
   l.customerOrder && l.customerOrder.number, l.clientOrderNumber, l.customer && l.customer.name, l.supplier && l.supplier.name, l.comment]
@@ -161,6 +200,7 @@ const filterAria = computed(() => filtersAria(filterCount.value, shown.value.len
 const filterBadge = computed(() => filtersBadge(filterCount.value, shown.value.length));
 function resetFilters() {
   quick.value = null;
+  lines.quick = null;
   lines.resetFilters();
   applyFilters();
 }
@@ -669,7 +709,7 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         <button v-if="lines.filters.customerOrderId" class="chip on" @click="clearOrder" title="Показать все заказы">
           Заказ {{ (lines.items[0] && lines.items[0].customerOrder && lines.items[0].customerOrder.number) || lines.filters.customerOrderId.slice(0, 8) }} <AppIcon name="x" :size="14" />
         </button>
-        <button v-if="quick" class="chip on" @click="quick = null" :title="`Снять фильтр по значению «${quick.value}»`">
+        <button v-if="quick" class="chip on" @click="clearQuick()" :title="`Снять фильтр по значению «${quick.value}»`">
           {{ quick.title }}: {{ quick.value }} <AppIcon name="x" :size="14" />
         </button>
         <button class="chip" :class="{ on: lines.filters.groupByCustomerOrder }" @click="toggleFilter('groupByCustomerOrder')">По заказам</button>
@@ -686,7 +726,8 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
         </button>
       </div>
       <div class="muted small lines-count">
-        <span v-if="lines.loading">Загрузка…</span>
+        <span v-if="loadingAll">Загружаю все строки… ({{ lines.items.length }})</span>
+        <span v-else-if="lines.loading">Загрузка…</span>
         <span v-else>Строк: {{ shown.length }}<template v-if="q || quick"> из {{ lines.items.length }}</template><template v-if="groupKeys.length"> · заказов {{ groupKeys.length }}</template></span>
       </div>
     </div>
@@ -793,9 +834,9 @@ const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
       <button v-if="q" class="link" style="margin-top: 8px" @click="q = ''">Сбросить поиск</button>
     </div>
     <div v-if="lines.nextCursor" class="row" style="justify-content: center; padding: 12px">
-      <button :disabled="lines.loading" @click="lines.loadMore()">Загрузить ещё</button>
+      <button :disabled="lines.loading || loadingAll" @click="lines.loadMore()">Загрузить ещё</button>
     </div>
-    <p v-if="layout === 'table'" class="muted small">Двойной клик по значению — фильтр по нему, Enter по ячейке — правка, по статусу — карточка строки. Права — по матрице роли.</p>
+    <p v-if="layout === 'table'" class="muted small">Двойной клик по значению — фильтр по нему (сервер отбирает только совпадающие строки, без перелистывания всех страниц), Enter по ячейке — правка, по статусу — карточка строки. Права — по матрице роли.</p>
 
     <!-- новый заказ -->
     <button v-if="view === 'sales' && !selCount" class="fab primary" aria-label="Новый заказ" title="Новый заказ" :disabled="busy" @click="openNewOrder">

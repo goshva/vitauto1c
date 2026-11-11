@@ -32,7 +32,7 @@ wsBus.on('resync', () => { if (route.name === 'lines') lines.load().catch(() => 
 
 const VIEW_TITLES = { sales: 'Продажи', purchases: 'Закупки', supply: 'Снабжение' };
 const ROLE_TITLES = { manager: 'Менеджер', storekeeper: 'Кладовщик', chief_mechanic: 'Гл. механик', admin: 'Администратор', supplier: 'Поставщик', client: 'Клиент', supply: 'Снабжение' };
-const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', matrix: 'Матрица прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ', returns: 'Возвраты', workOrders: 'Заказ-наряды', accessRequests: 'Запросы доступа' };
+const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', processes: 'Управление процессами', settings: 'Настройки прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ', returns: 'Возвраты', workOrders: 'Заказ-наряды', accessRequests: 'Запросы доступа' };
 
 // Навигация: основные пункты — в нижней панели телефона, остальные — в «Ещё»; на ПК всё в боковой панели
 const nav = computed(() => [
@@ -44,13 +44,15 @@ const nav = computed(() => [
   { to: '/returns', title: 'Возвраты', icon: 'undo' },
   ...(session.role === 'chief_mechanic' || session.role === 'admin' || session.role === 'manager'
     ? [{ to: '/work-orders', title: 'Заказ-наряды', icon: 'wrench' }] : []),
-  ...(session.role === 'admin' ? [{ to: '/access-requests', title: 'Доступ', icon: 'lock' }] : []),
+  ...(session.role === 'admin' ? [{ to: '/access-requests', title: 'Доступ', icon: 'lock' }, { to: '/processes', title: 'Процессы', icon: 'layers' }] : []),
   { to: '/directories', title: 'Справочники', icon: 'book' },
-  { to: '/matrix', title: 'Матрица', icon: 'grid' },
+  { to: '/settings', title: 'Настройки прав', icon: 'sliders' },
   { to: '/console', title: 'Консоль', icon: 'terminal' },
   { to: '/log', title: 'Журнал', icon: 'activity', badge: log.errors }
 ]);
 const more = ref(false);
+// Профиль пользователя — модальное окно по клику на .who: тема и выход из аккаунта.
+const who = ref(false);
 const moreActive = computed(() => nav.value.some(n => !n.main && typeof n.to === 'string' && route.path.startsWith(n.to)));
 
 const CATALOG_TITLES = { goods: 'Товары', services: 'Услуги', cars: 'Машины' };
@@ -68,6 +70,7 @@ watch(() => session.expired, v => {
 
 async function logout() {
   more.value = false;
+  who.value = false;
   await session.logout();
   router.push({ name: 'login' });
 }
@@ -93,8 +96,7 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
         <span v-if="log.errors" class="nav-badge">{{ log.errors }}</span>
       </button>
       <div class="spacer desk-only"></div>
-      <button class="desk-only" :title="ui.navCollapsed ? 'Настройки' : null" :aria-label="ui.navCollapsed ? 'Настройки' : null" @click="more = true"><span class="pill"><AppIcon name="sliders" /></span><span class="label">Настройки</span></button>
-      <div class="who">
+      <div class="who" role="button" tabindex="0" :aria-label="'Профиль: ' + (session.user.userName || '')" @click="who = true" @keydown.enter.prevent="who = true" @keydown.space.prevent="who = true">
         <span class="who-icon"><AppIcon name="user" :size="18" /></span>
         <div class="who-text">
           <b>{{ session.user.userName }}</b>
@@ -116,7 +118,7 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
     </div>
 
     <AppModal v-if="more" title="Меню" @close="more = false">
-      <div class="row" style="gap: 12px; padding: 4px 4px 8px">
+      <div class="row" role="button" tabindex="0" style="gap: 12px; padding: 4px 4px 8px; cursor: pointer" @click="more = false; who = true" @keydown.enter.prevent="more = false; who = true" @keydown.space.prevent="more = false; who = true">
         <span class="chip info" style="width: 44px; height: 44px; border-radius: 50%; justify-content: center; padding: 0"><AppIcon name="user" /></span>
         <div class="grow"><b>{{ session.user && session.user.userName }}</b><div class="muted small">{{ ROLE_TITLES[session.role] || session.role }} · {{ session.user && session.user.login }}</div></div>
       </div>
@@ -125,12 +127,21 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
           <AppIcon :name="n.icon" /> {{ n.title }} <span v-if="n.badge" class="chip err" style="margin-left: auto">{{ n.badge }}</span>
         </RouterLink>
       </div>
+      <template #actions><span></span></template>
+    </AppModal>
+
+    <!-- Профиль: открывается по клику на .who; тема и выход — здесь -->
+    <AppModal v-if="who" title="Профиль" @close="who = false">
+      <div class="row" style="gap: 12px; padding: 4px 4px 8px">
+        <span class="chip info" style="width: 44px; height: 44px; border-radius: 50%; justify-content: center; padding: 0"><AppIcon name="user" /></span>
+        <div class="grow"><b>{{ session.user && session.user.userName }}</b><div class="muted small">{{ ROLE_TITLES[session.role] || session.role }} · {{ session.user && session.user.login }}</div></div>
+      </div>
       <div class="menu-title">Тема</div>
       <div class="segmented" role="radiogroup" aria-label="Тема">
         <button v-for="[k, t] in THEMES" :key="k" :class="{ on: ui.theme === k }" role="radio" :aria-checked="ui.theme === k" @click="ui.setTheme(k)">{{ t }}</button>
       </div>
       <div class="menu">
-        <button class="danger" @click="logout"><AppIcon name="logout" /> Выйти</button>
+        <button class="danger" @click="logout"><AppIcon name="logout" /> Выйти из аккаунта</button>
       </div>
       <template #actions><span></span></template>
     </AppModal>
@@ -145,4 +156,7 @@ const THEMES = [['system', 'Как в системе'], ['light', 'Светла�
 .app:not(.logged-in) .main { padding-bottom: 32px; }
 .content { min-width: 0; }
 .navbar a, .navbar button { text-decoration: none; }
+/* Блок пользователя в сайдбаре — кликабельная кнопка профиля */
+.navbar .who { cursor: pointer; border-radius: 10px; }
+.navbar .who:hover { background: var(--surface-2); }
 </style>
