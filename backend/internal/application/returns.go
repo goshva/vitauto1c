@@ -13,9 +13,25 @@ import (
 	"vitauto/backend/internal/domain"
 )
 
+// contains — есть ли s в list.
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+// returnRoles — кому доступны операции с возвратами (М16, К6).
+var returnRoles = []string{"manager", "storekeeper", "admin"}
+
 // ReturnCreate — M16: создание возврата (от клиента или поставщику).
 // operation = "Продажа" → клиентский возврат, "Закупка" → возврат поставщику.
 func (s *Service) ReturnCreate(ctx context.Context, a domain.Actor, op domain.Operation, orderID string, lines []ReturnLine) (*ReturnDoc, error) {
+	if !contains(returnRoles, a.Role) {
+		return nil, fail(403, "matrix_denied", "Возвраты доступны менеджеру, кладовщику и администратору")
+	}
 	if err := requireActor(a); err != nil {
 		return nil, err
 	}
@@ -111,6 +127,9 @@ func (s *Service) ReturnCreate(ctx context.Context, a domain.Actor, op domain.Op
 
 // ReturnPost — проведение возврата (К6): движение склада + перевод строк в статус «Возврат».
 func (s *Service) ReturnPost(ctx context.Context, a domain.Actor, returnID string) (map[string]any, error) {
+	if !contains(returnRoles, a.Role) {
+		return nil, fail(403, "matrix_denied", "Возвраты доступны менеджеру, кладовщику и администратору")
+	}
 	id, err := parseID(returnID)
 	if err != nil {
 		return nil, err
@@ -202,6 +221,9 @@ func (s *Service) ReturnPost(ctx context.Context, a domain.Actor, returnID strin
 
 // ReturnCancel — отмена возврата.
 func (s *Service) ReturnCancel(ctx context.Context, a domain.Actor, returnID string) error {
+	if !contains(returnRoles, a.Role) {
+		return fail(403, "matrix_denied", "Возвраты доступны менеджеру, кладовщику и администратору")
+	}
 	id, err := parseID(returnID)
 	if err != nil {
 		return err
