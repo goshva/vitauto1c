@@ -339,10 +339,10 @@ const sheetActions = computed(() => {
   if (view.value === 'sales' && l.customerOrder && canDeleteOrder(l)) a.push({ key: 'deleteOrder', title: 'Удалить заказ', icon: 'trash', danger: true });
   return a;
 });
-// совпадает с StrikeLine (arm/lines.go): статус «Черновик»/«В работе» и не чужая отметка
+// совпадает с StrikeLine (arm/lines.go): только администратор, статус «Черновик»/«В работе» и не чужая отметка
 const OPEN_STATUSES = ['new', 'in_work'];
 function canStrikeLine(l) {
-  return OPEN_STATUSES.includes(l.status) && (!l.markedBy || l.markedBy === userName.value);
+  return session.role === 'admin' && OPEN_STATUSES.includes(l.status) && (!l.markedBy || l.markedBy === userName.value);
 }
 // совпадает с DeleteOrder (arm/docs.go): все активные строки заказа в статусе «Черновик»/«В работе»
 // (заказы поставщику на клиенте не видны — их сервер проверит сам)

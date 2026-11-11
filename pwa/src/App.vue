@@ -32,7 +32,7 @@ wsBus.on('resync', () => { if (route.name === 'lines') lines.load().catch(() => 
 
 const VIEW_TITLES = { sales: 'Продажи', purchases: 'Закупки', supply: 'Снабжение' };
 const ROLE_TITLES = { manager: 'Менеджер', storekeeper: 'Кладовщик', chief_mechanic: 'Гл. механик', admin: 'Администратор', supplier: 'Поставщик', client: 'Клиент', supply: 'Снабжение' };
-const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', processes: 'Управление процессами', settings: 'Настройки прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ', returns: 'Возвраты', workOrders: 'Заказ-наряды', accessRequests: 'Запросы доступа' };
+const PAGE_TITLES = { import: 'Загрузка листа', directories: 'Справочники', processes: 'Управление процессами', settings: 'Настройки прав', console: 'Консоль API', log: 'Журнал запросов', document: 'Документ', returns: 'Возвраты', unidentified: 'Неопознанные', workOrders: 'Заказ-наряды', accessRequests: 'Запросы доступа' };
 
 // Навигация: основные пункты — в нижней панели телефона, остальные — в «Ещё»; на ПК всё в боковой панели
 const nav = computed(() => [
@@ -42,6 +42,7 @@ const nav = computed(() => [
   { to: '/catalog/services', title: 'Услуги', icon: 'wrench' },
   { to: '/catalog/cars', title: 'Машины', icon: 'car' },
   { to: '/returns', title: 'Возвраты', icon: 'undo' },
+  { to: '/unidentified', title: 'Неопознанные', icon: 'box' },
   ...(session.role === 'chief_mechanic' || session.role === 'admin' || session.role === 'manager'
     ? [{ to: '/work-orders', title: 'Заказ-наряды', icon: 'wrench' }] : []),
   ...(session.role === 'admin' ? [{ to: '/access-requests', title: 'Доступ', icon: 'lock' }, { to: '/processes', title: 'Процессы', icon: 'layers' }] : []),

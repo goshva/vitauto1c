@@ -925,6 +925,10 @@ func (s *Service) Shipments(ctx context.Context, a Actor, orderID, date, number,
 
 // StrikeLine — DELETE /lines/{id} (F-1): продажа и незаказанные закупки ключа вычеркиваются, строка уходит из заказа.
 func (s *Service) StrikeLine(ctx context.Context, a Actor, idText string) error {
+	// ТЗ п.15: право «Удаление» снято со всех профилей, кроме администратора.
+	if a.Role != "admin" {
+		return fail(403, "matrix_denied", "Вычеркнуть строку может только администратор")
+	}
 	id, err := parseID(idText)
 	if err != nil {
 		return err

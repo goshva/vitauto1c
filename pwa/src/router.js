@@ -13,6 +13,7 @@ const routes = [
   { path: '/documents/:kind/:id', name: 'document', component: () => import('./views/DocumentView.vue') },
   { path: '/directories/:name?', name: 'directories', component: () => import('./views/DirectoriesView.vue') },
   { path: '/returns', name: 'returns', component: () => import('./views/ReturnsView.vue') },
+  { path: '/unidentified', name: 'unidentified', component: () => import('./views/UnidentifiedView.vue') },
   { path: '/work-orders', name: 'workOrders', component: () => import('./views/WorkOrdersView.vue') },
   { path: '/access-requests', name: 'accessRequests', component: () => import('./views/AccessRequestsView.vue') },
   { path: '/processes', name: 'processes', component: () => import('./views/ProcessView.vue'), meta: { admin: true } },

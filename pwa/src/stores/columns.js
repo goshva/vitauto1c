@@ -8,8 +8,11 @@ import presets from '../lib/process-presets.json';
 //   карточка      — cardIds: поля под заголовком карточки, в выбранном порядке (null — набор по умолчанию списка);
 //   детали строки — detailHideEmpty (пустые поля свёрнуты), detailEditableFirst (сначала то, что можно менять).
 export const COMPACT = ['order_client_number', 'customer', 'contract', 'name_fact', 'name', 'article', 'qty', 'stock_qty',
-  'batch_fifo', 'price', 'sum', 'rrc', 'coefficient', 'extra_field_1', 'extra_field_2', 'supplier', 'shipment_date',
-  'shipment_number', 'receipt_date', 'comment'];
+  'reserve_qty', 'batch_fifo', 'price', 'sum', 'rrc', 'coefficient', 'extra_field_1', 'extra_field_2', 'supplier',
+  'shipment_date', 'shipment_number', 'receipt_date', 'paid_status', 'comment'];
+// «Колонки движения» (ТЗ §4.4) — 5 колонок: Резерв / Оплата / Приёмка / Отгрузка / Возврат.
+// Набор доступен в режиме «Колонки» → «Колонки движения» (стадия MOV в process-presets.json).
+export const MOVEMENT = ['reserve_qty', 'paid_status', 'receipt_date', 'shipment_date', 'line_status'];
 // отметка и статус показываются всегда (отдельно)
 export const ALWAYS = ['cell_select', 'line_status'];
 // заголовок карточки: наименование (ФАКТ / номенклатура) и артикул — всегда

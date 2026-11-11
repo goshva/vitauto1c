@@ -63,7 +63,7 @@ var nomKind = map[string]string{"goods": "Запас", "services": "Услуга
 
 const retailPrice = "Розничная цена"
 
-const nomItem = `jsonb_build_object('id', n.id, 'code', coalesce(n.code, ''), 'name', n.name, 'fullName', coalesce(nullif(n.full_name, ''), n.name),
+const nomItem = `jsonb_build_object('id', n.id, 'code', coalesce(n.code, ''), 'extCode', coalesce(n.ext_code, ''), 'name', n.name, 'fullName', coalesce(nullif(n.full_name, ''), n.name),
 	'article', coalesce(n.article, ''), 'unit', case when u.id is null then null else jsonb_build_object('id', u.id, 'name', u.name) end,
 	'brand', case when b.id is null then null else jsonb_build_object('id', b.id, 'name', b.name) end,
 	'searchStatus', coalesce(n.search_status, ''), 'ownership', coalesce(n.ownership, ''),
@@ -230,8 +230,15 @@ func (s *Service) CatalogSave(ctx context.Context, a Actor, kind, id string, b m
 			}
 			set["full_name"] = full
 		}
+		// «Наименование для печати» можно менять и отдельно от основного наименования.
+		if v, ok := str("fullName"); ok && v != "" {
+			set["full_name"] = v
+		}
 		if v, ok := str("article"); ok {
 			set["article"] = v
+		}
+		if v, ok := str("extCode"); ok {
+			set["ext_code"] = v
 		}
 		if v, ok := str("unitId"); ok {
 			set["unit_id"] = uuidOrNil(v)

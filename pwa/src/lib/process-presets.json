@@ -831,6 +831,20 @@
     "shipment_number",
     "vehicle_plate_fact"
    ]
+  },
+  {
+   "id": "MOV",
+   "role": "admin",
+   "roleTitle": "Движение",
+   "title": "Колонки движения",
+   "statuses": [],
+   "columns": [
+    "reserve_qty",
+    "paid_status",
+    "receipt_date",
+    "shipment_date",
+    "line_status"
+   ]
   }
  ]
 }

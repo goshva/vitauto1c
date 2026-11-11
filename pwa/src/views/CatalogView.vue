@@ -80,7 +80,7 @@ watch([groupId, brandId, searchStatus, ownership, showDeleted], () => load());
 function formOf(it) {
   if (isCars.value) return { vin: it.vin || '', plate: it.plate || '', model: it.model, groupId: it.group ? it.group.id : (groupId.value || ''),
     year: it.year || '', chassis: it.chassis || '', engine: it.engine || '', comment: it.comment || '', name: it.name || '' };
-  return { name: it.name || '', article: it.article || '', unitId: it.unit ? it.unit.id : (units.value.find(u => /^шт/.test(u.name)) || {}).id || '',
+  return { name: it.name || '', fullName: it.fullName || '', extCode: it.extCode || '', article: it.article || '', unitId: it.unit ? it.unit.id : (units.value.find(u => /^шт/.test(u.name)) || {}).id || '',
     price: it.price ?? '', comment: it.comment || '', brandId: it.brand ? it.brand.id : '', searchStatus: it.searchStatus || '',
     ownership: it.ownership || '', analog: it.analog || null };
 }
@@ -93,7 +93,7 @@ function open(it) {
 function bodyOf(f) {
   if (isCars.value) return { vin: f.vin, plate: f.plate, modelId: f.model ? f.model.id : '', groupId: f.groupId, year: f.year || null,
     chassis: f.chassis, engine: f.engine, comment: f.comment, ...(edit.value.id ? { name: f.name } : {}) };
-  return { name: f.name, article: f.article, unitId: f.unitId, comment: f.comment, price: f.price === '' ? undefined : f.price,
+  return { name: f.name, fullName: f.fullName, extCode: f.extCode, article: f.article, unitId: f.unitId, comment: f.comment, price: f.price === '' ? undefined : f.price,
     brandId: f.brandId || '', searchStatus: f.searchStatus || '', ownership: f.ownership || '',
     analogId: f.analog ? f.analog.id : '' };
 }
@@ -296,7 +296,9 @@ function priceGroups(list) {
           </template>
           <template v-else>
             <label class="field">Наименование <input v-model="edit.form.name" required /></label>
+            <label class="field">Наименование для печати <input v-model="edit.form.fullName" /></label>
             <label v-if="kind === 'goods'" class="field">Артикул <input v-model="edit.form.article" /></label>
+            <label v-if="kind === 'goods'" class="field">Код поставщика <input v-model="edit.form.extCode" class="mono" /></label>
             <div class="row" style="flex-wrap: nowrap">
               <label class="field grow">Единица
                 <select v-model="edit.form.unitId"><option value="">—</option><option v-for="u in units" :key="u.id" :value="u.id">{{ u.name }}</option></select>

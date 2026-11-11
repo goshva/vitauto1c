@@ -250,6 +250,8 @@ export function createBackend({ baseUrl, session, log }) {
   }
 
   async function strikeLine(id) {
+    // ТЗ п.15: право «Удаление» снято со всех профилей, кроме администратора.
+    if (role() !== 'admin') fail(403, 'matrix_denied', 'Вычеркнуть строку может только администратор');
     const rec = await record(id);
     const ln = toLine(rec, units);
     if (!['new', 'in_work'].includes(ln.status)) fail(409, 'row_locked', 'Вычеркнуть можно только строку в статусе «Черновик» или «В работе»');
