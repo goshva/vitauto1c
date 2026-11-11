@@ -771,3 +771,15 @@ values
    'demo:awaiting:1', 1)
 on conflict (onec_key) do update set status = excluded.status, quantity = excluded.quantity,
   customer_order_id = excluded.customer_order_id, comment = excluded.comment, updated_at = now();
+
+-- Свободный остаток для FIFO-резерва (ТЗ п. 11 «Частичный резерв и дозаказ»):
+-- приходные движения по партиям, которые уже проставлены в строках «НаСкладе».
+-- Без них availableStock (stock.move) пуст и «Резервировать доступное» всегда уходит в дозаказ.
+insert into stock.move (id, period, recorder_type, recorder_id, line_no, active, movement, warehouse_id,
+    nomenclature_id, batch_id, qty, amount, content, onec_key)
+select uuidv7(), date_trunc('day', now()) - interval '5 days', 'seed_stock', l.id, 0, true, 0,
+       '44444444-4444-4444-4444-444444444401', l.nomenclature_id, l.batch_id,
+       l.quantity, coalesce(l.cost_sum, 0), 'Демо-остаток для резерва (п. 11)', 'demo:stock:' || l.id
+from arm.line l
+where l.batch_id is not null and l.status = 'НаСкладе' and not coalesce(l.deleted, false)
+on conflict (onec_key) do update set qty = excluded.qty, amount = excluded.amount, active = true, deleted = false;

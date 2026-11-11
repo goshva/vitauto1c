@@ -15,11 +15,11 @@ func (s *Service) ReserveAvailable(ctx context.Context, a Actor, view, zoneID st
 	if view != "sales" {
 		return nil, fail(400, "bad_request", "view: sales", "view")
 	}
-	if err := requireUser(a); err != nil {
-		return nil, err
-	}
 	if a.Role != "manager" && a.Role != "admin" {
 		return nil, fail(403, "matrix_denied", "Резервирование доступного доступно менеджеру и администратору АРМ")
+	}
+	if err := requireUser(a); err != nil {
+		return nil, err
 	}
 	var zone *uuid.UUID
 	if zoneID != "" {
