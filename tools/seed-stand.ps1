@@ -37,6 +37,12 @@ $psql = Join-Path $PgBin 'psql.exe'
 $pgCtl = Join-Path $PgBin 'pg_ctl.exe'
 $Exe = Join-Path $Root 'bin\VITAUTO.exe'
 
+# Кэш Go — внутри репозитория: миграции применяются и там, где нет доступа к %LOCALAPPDATA%
+# (как в tools\build-seed-app.ps1).
+$env:GOCACHE = Join-Path $Root '.gocache'
+$env:GOTMPDIR = Join-Path $Root '.gotmp'
+New-Item -ItemType Directory -Force -Path $env:GOCACHE, $env:GOTMPDIR | Out-Null
+
 function Write-Step($text) { Write-Host "  [..] $text" -ForegroundColor Yellow }
 function Write-Ok($text) { Write-Host "  [OK] $text" -ForegroundColor Green }
 function Write-Err($text) { Write-Host "  [FAIL] $text" -ForegroundColor Red }
@@ -56,10 +62,16 @@ Write-Ok "PostgreSQL на $PgPort"
 if (-not $SkipReseed) {
     # ── База с нуля ─────────────────────────────────────────────────────────
     Write-Step "Пересоздание базы $Db..."
-    & $psql -h 127.0.0.1 -p $PgPort -U postgres -d postgres -v ON_ERROR_STOP=1 `
-        -c "drop database if exists $Db with (force);" `
-        -c "create database $Db template template0 encoding 'UTF8' locale_provider icu icu_locale 'ru-RU' locale 'C';"
-    if ($LASTEXITCODE -ne 0) { throw "Не удалось пересоздать $Db" }
+    # psql пишет NOTICE в stderr; при $ErrorActionPreference = 'Stop' это исключение.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $psql -h 127.0.0.1 -p $PgPort -U postgres -d postgres -v ON_ERROR_STOP=1 `
+            -c "drop database if exists $Db with (force);" `
+            -c "create database $Db template template0 encoding 'UTF8' locale_provider icu icu_locale 'ru-RU' locale 'C';"
+        $recreateExit = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $prevEap }
+    if ($recreateExit -ne 0) { throw "Не удалось пересоздать $Db" }
     Write-Ok "База $Db создана"
 
     # ── Схема (миграции текущего коммита) ───────────────────────────────────
@@ -75,18 +87,29 @@ if (-not $SkipReseed) {
     $env:Path = (Split-Path $go) + ';' + $env:Path
     $env:VITAUTO_DB = "postgres://postgres:${PgPassword}@127.0.0.1:${PgPort}/$Db"
     Push-Location (Join-Path $Root 'backend')
+    # Go-логгер пишет информационные строки в stderr: при $ErrorActionPreference = 'Stop'
+    # PowerShell считает их ошибкой — та же причина, что и в init-db.ps1.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     try {
-        & $go run ./cmd/migrator schema-up
-        if ($LASTEXITCODE -ne 0) { throw 'schema-up завершился с ошибкой' }
+        & $go run ./cmd/migrator schema-up 2>&1 | ForEach-Object { "$_" }
+        $migrateExit = $LASTEXITCODE
     } finally {
+        $ErrorActionPreference = $prevEap
         Pop-Location
     }
+    if ($migrateExit -ne 0) { throw 'schema-up завершился с ошибкой' }
     Write-Ok 'Схема обновлена'
 
     # ── Демо-данные ─────────────────────────────────────────────────────────
     Write-Step 'Демо-данные (clean + demo-app + demo-stages + demo-data)...'
-    & (Join-Path $Root 'seed\full-seed.ps1') -Port $PgPort -Password $PgPassword
-    if ($LASTEXITCODE -ne 0) { throw 'seed завершился с ошибкой' }
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & (Join-Path $Root 'seed\full-seed.ps1') -Port $PgPort -Password $PgPassword 2>&1 | ForEach-Object { "$_" }
+        $seedExit = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $prevEap }
+    if ($seedExit -ne 0) { throw 'seed завершился с ошибкой' }
 }
 
 # ── Ярлык ───────────────────────────────────────────────────────────────────

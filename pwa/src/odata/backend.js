@@ -35,7 +35,13 @@ const DOC_SETS = { customer_order: 'Document_ЗаказПокупателя', su
 
 const JOBS = new Map();   // итоги «В работе» (need_split/failed в регистр не пишутся)
 
-export const NOT_SUPPORTED = {};
+// Операции, которые в режиме 1С недоступны: НСИ ведётся в самой 1С, а не из АРМ.
+export const NOT_SUPPORTED = {
+  'POST /directories/{}': 'Справочники в режиме 1С ведутся в 1С: создание из АРМ недоступно',
+  'PATCH /directories/{}/{}': 'Справочники в режиме 1С ведутся в 1С: изменение из АРМ недоступно',
+  'DELETE /directories/{}/{}': 'Справочники в режиме 1С ведутся в 1С: пометка удаления из АРМ недоступна',
+  'POST /directories/{}/{}/restore': 'Справочники в режиме 1С ведутся в 1С: восстановление из АРМ недоступно'
+};
 export function denyReason(column, line, userName, statuses) {
   if (!column.writable) return 'поле только для чтения';
   if (line.locked) return 'строка заблокирована фоном';
@@ -764,7 +770,13 @@ export function createBackend({ baseUrl, session, log }) {
     if (method === 'POST' && path === '/notifications/read') return ok(await readNotifications(body || {}));
     if (method === 'GET' && seg[0] === 'jobs' && seg.length === 2) return ok(await job(decodeURIComponent(seg[1])));
     if (method === 'GET' && seg[0] === 'documents' && seg.length === 3) return ok(await documentCard(seg[1], seg[2]));
-    if (method === 'GET' && seg[0] === 'directories' && seg.length === 2) return ok(await directory(seg[1], query));
+    if (seg[0] === 'directories') {
+      if (method === 'GET' && seg.length === 2) return ok(await directory(seg[1], query));
+      // имя справочника и id — переменные сегменты, «restore» остаётся литералом (ключи NOT_SUPPORTED)
+      const parts = seg.slice(1).map((s, i) => (i <= 1 ? '{}' : s));
+      const op = `${method} /directories/${parts.join('/')}`;
+      if (NOT_SUPPORTED[op]) fail(501, 'not_supported', NOT_SUPPORTED[op]);
+    }
     if (seg[0] === 'catalog' && ['goods', 'services', 'cars'].includes(seg[1])) {
       const id = seg[2] ? decodeURIComponent(seg[2]) : null;
       if (method === 'GET' && !id) return ok(await catalogList(seg[1], query));

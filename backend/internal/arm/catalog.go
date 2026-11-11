@@ -33,44 +33,23 @@ func jsonRows(ctx context.Context, db querier, sql string, args ...any) ([]json.
 func like(q string) string { return "%" + strings.ToLower(strings.TrimSpace(q)) + "%" }
 
 // Directory — GET /directories/{name}: списки для полей «выбор».
+// Справочники с CRUD (directories.go) отдают полный набор полей для правки администратором.
 func (s *Service) Directory(ctx context.Context, name string, q map[string]string) ([]json.RawMessage, error) {
+	if _, ok := dirDefs[name]; ok {
+		return s.DirectoryList(ctx, name, q)
+	}
 	named := "jsonb_build_object('id', id, 'name', name)"
 	switch name {
-	case "counterparties":
-		return jsonRows(ctx, s.DB, "select "+named+" from ref.counterparty where not deleted and not coalesce(is_folder, false) and ($1 = '' or lower(name) like $2) order by name limit 50", q["q"], like(q["q"]))
-	case "contracts":
-		if q["ownerId"] == "" {
-			return []json.RawMessage{}, nil
-		}
-		return jsonRows(ctx, s.DB, "select "+named+" from ref.contract where not deleted and counterparty_id = $1::uuid order by name", q["ownerId"])
 	case "nomenclature":
 		return jsonRows(ctx, s.DB, `select jsonb_build_object('id', n.id, 'name', n.name, 'article', coalesce(n.article, ''), 'code', coalesce(n.ext_code, ''), 'unit', coalesce(u.name, ''))
 			from ref.nomenclature n left join ref.unit u on u.id = n.unit_id
 			where not n.deleted and not coalesce(n.is_folder, false) and ($1 = '' or lower(n.name) like $2 or lower(n.article) like $2) order by n.name limit 50`, q["q"], like(q["q"]))
 	case "batches":
 		return jsonRows(ctx, s.DB, "select "+named+" from ref.batch where not deleted and ($1 = '' or owner_id = $1::uuid) limit 100", q["nomenclatureId"])
-	case "service-types":
-		return jsonRows(ctx, s.DB, "select "+named+" from ref.service_kind where not deleted order by name")
-	case "payment-forms":
-		return jsonRows(ctx, s.DB, "select "+named+" from ref.payment_form where not deleted order by name")
-	case "units":
-		return jsonRows(ctx, s.DB, "select "+named+" from ref.unit where not deleted order by name")
 	case "car-models":
 		return jsonRows(ctx, s.DB, "select "+named+" from ref.car_model where not deleted and not coalesce(is_folder, false) and ($1 = '' or lower(name) like $2) order by name limit 100", q["q"], like(q["q"]))
 	case "car-groups":
 		return jsonRows(ctx, s.DB, "select "+named+" from ref.car where not deleted and coalesce(is_folder, false) order by name")
-	case "warehouses":
-		return jsonRows(ctx, s.DB, "select jsonb_build_object('id', id, 'name', name, 'main', is_main) from ref.warehouse where not deleted and is_warehouse order by is_main desc, name")
-	case "cells":
-		return jsonRows(ctx, s.DB, `select jsonb_build_object('id', c.id, 'name', c.code, 'warehouseId', c.warehouse_id,
-				'zone', coalesce(c.zone, ''), 'zoneId', c.zone_id, 'zoneName', coalesce(z.name, ''))
-			from ref.storage_cell c left join ref.warehouse_zone z on z.id = c.zone_id
-			where not c.deleted and ($1 = '' or c.warehouse_id = $1::uuid) order by coalesce(z.sort, 99), c.code`, q["warehouseId"])
-	case "zones":
-		return jsonRows(ctx, s.DB, `select jsonb_build_object('id', z.id, 'code', z.code, 'name', z.name,
-				'purpose', coalesce(z.purpose, ''),
-				'cells', (select count(*) from ref.storage_cell c where c.zone_id = z.id and not c.deleted))
-			from ref.warehouse_zone z where not z.deleted order by z.sort, z.code`)
 	case "brands":
 		return jsonRows(ctx, s.DB, "select "+brandJSON+" from ref.brand where not deleted and ($1 = '' or lower(name) like $2) order by name limit 100", strings.TrimSpace(q["q"]), like(q["q"]))
 	}

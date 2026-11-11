@@ -415,6 +415,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/directories/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Бренды номенклатуры (ТЗ 2.2) */
+        get: operations["listBrands"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directories/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Зоны склада (ТЗ 2.4) — шесть предопределённых зон */
+        get: operations["listZones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/directories/contracts": {
         parameters: {
             query?: never;
@@ -675,6 +709,76 @@ export interface paths {
         get: operations["listCarGroups"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directories/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Новый элемент справочника (только администратор)
+         * @description Справочники с правкой из интерфейса: `counterparties`, `contracts`, `service-types`,
+         *     `payment-forms`, `units`, `warehouses`, `zones`, `cells`. Состав полей — `DirectoryInput`,
+         *     поля вне списка игнорируются. НСИ ведёт администратор: остальным ролям — 403.
+         *
+         */
+        post: operations["createDirectoryItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directories/{name}/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        /** Элемент справочника */
+        get: operations["getDirectoryItem"];
+        put?: never;
+        post?: never;
+        /** Пометить элемент справочника на удаление (только администратор) */
+        delete: operations["deleteDirectoryItem"];
+        options?: never;
+        head?: never;
+        /** Изменить элемент справочника (только администратор) */
+        patch: operations["updateDirectoryItem"];
+        trace?: never;
+    };
+    "/directories/{name}/{itemId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Снять пометку удаления элемента справочника (только администратор) */
+        post: operations["restoreDirectoryItem"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1084,6 +1188,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Новый бренд (ТЗ 2.2, только администратор) */
+        post: operations["createBrand"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brandId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: components["parameters"]["BrandId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Пометить бренд на удаление (только администратор, без привязанных карточек) */
+        delete: operations["deleteBrand"];
+        options?: never;
+        head?: never;
+        /** Изменить бренд (только администратор) */
+        patch: operations["updateBrand"];
+        trace?: never;
+    };
+    "/brands/{brandId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: components["parameters"]["BrandId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Снять пометку удаления бренда (только администратор) */
+        post: operations["restoreBrand"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Вложения карточки (фото, ТЗ 2.1) */
+        get: operations["listAttachments"];
+        put?: never;
+        /** Загрузить фото карточки (multipart, до 5 МБ, только изображения) */
+        post: operations["uploadAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentId: components["parameters"]["AttachmentId"];
+            };
+            cookie?: never;
+        };
+        /** Файл вложения (для <img>; токен можно передать ?token=) */
+        get: operations["getAttachment"];
+        put?: never;
+        post?: never;
+        /** Пометить вложение на удаление */
+        delete: operations["deleteAttachment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cells": {
         parameters: {
             query?: never;
@@ -1397,6 +1595,69 @@ export interface components {
             contract?: components["schemas"]["NamedRef"];
             comment?: string;
         };
+        Brand: {
+            /** Format: uuid */
+            id?: string;
+            code?: string;
+            name?: string;
+            country?: string;
+            comment?: string;
+            deleted?: boolean;
+        };
+        BrandInput: {
+            name: string;
+            code?: string;
+            country?: string;
+            comment?: string;
+        };
+        /** @description Элемент справочника; набор полей зависит от справочника (см. DirectoryInput) */
+        DirectoryItem: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            deleted?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Поля по справочникам (`{name}` в пути):
+         *     `counterparties` — name, fullName, inn, kpp, comment, isCustomer, isSupplier, inactive;
+         *     `contracts` — name, contractNo, contractDate (ГГГГ-ММ-ДД), comment, counterpartyId, inactive;
+         *     `service-types`, `payment-forms` — name, code;
+         *     `units` — name, code, fullName, intlCode;
+         *     `warehouses` — name, code, unitType, isWarehouse, isMain, orderBased;
+         *     `zones` — code, name, purpose, sort;
+         *     `cells` — code, warehouseId, zoneId, capacity, blocked.
+         *     Обязательные при создании: `counterparties`/`service-types`/`payment-forms`/`units`/`warehouses` — name;
+         *     `contracts` — name и counterpartyId; `zones` — code и name; `cells` — code и warehouseId.
+         *      */
+        DirectoryInput: {
+            name?: string;
+            code?: string;
+            comment?: string;
+            inactive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        Attachment: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            ownerType?: "nomenclature" | "unidentified" | "car";
+            /** Format: uuid */
+            ownerId?: string;
+            name?: string;
+            contentType?: string;
+            size?: number;
+            url?: string;
+        };
+        Zone: {
+            /** Format: uuid */
+            id?: string;
+            code?: string;
+            name?: string;
+            purpose?: string;
+            cells?: number;
+        };
         NamedRef: {
             /** Format: uuid */
             id?: string;
@@ -1454,6 +1715,11 @@ export interface components {
             price?: number | null;
             deleted?: boolean;
             comment?: string;
+            brand?: components["schemas"]["NamedRef"];
+            searchStatus?: string;
+            ownership?: string;
+            analog?: components["schemas"]["NamedRef"];
+            photos?: components["schemas"]["Attachment"][];
             vin?: string;
             plate?: string;
             model?: components["schemas"]["NamedRef"];
@@ -1472,6 +1738,20 @@ export interface components {
             unitId?: string;
             comment?: string;
             price?: number;
+            /**
+             * Format: uuid
+             * @description Бренд (ТЗ 2.1/2.2)
+             */
+            brandId?: string;
+            /** @enum {string} */
+            searchStatus?: "В работе" | "Найден" | "Не опознан";
+            /** @enum {string} */
+            ownership?: "Заказная" | "Закупочная" | "Тендерная";
+            /**
+             * Format: uuid
+             * @description Кросс-код, прямая парная связь; пустая строка снимает связь
+             */
+            analogId?: string;
             vin?: string;
             modelId?: string;
             groupId?: string;
@@ -1727,6 +2007,10 @@ export interface components {
     parameters: {
         CatalogKind: "goods" | "services" | "cars";
         ItemId: string;
+        /** @description Имя справочника с правкой из интерфейса */
+        DirectoryName: "counterparties" | "contracts" | "service-types" | "payment-forms" | "units" | "warehouses" | "zones" | "cells";
+        BrandId: string;
+        AttachmentId: string;
         /** @description ИдентификаторЗаписи регистра */
         LineId: string;
         DocumentId: string;
@@ -2214,6 +2498,11 @@ export interface operations {
                     /** Format: date */
                     shipmentDate: string;
                     shipmentNumber: string;
+                    /**
+                     * Format: uuid
+                     * @description Зона отгрузки (ref.warehouse_zone, ТЗ 2.4)
+                     */
+                    zoneId?: string;
                 };
             };
         };
@@ -2389,6 +2678,48 @@ export interface operations {
             };
         };
     };
+    listBrands: {
+        parameters: {
+            query?: {
+                q?: components["parameters"]["Query"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Бренды */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"][];
+                };
+            };
+        };
+    };
+    listZones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Зоны с числом ячеек */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Zone"][];
+                };
+            };
+        };
+    };
     listContracts: {
         parameters: {
             query: {
@@ -2510,6 +2841,11 @@ export interface operations {
                     view: "sales" | "purchases";
                     /** @enum {string} */
                     to: "reserve" | "assembly" | "ready_to_ship" | "shipped" | "acceptance" | "return" | "closed";
+                    /**
+                     * Format: uuid
+                     * @description Зона склада для перехода «В резерв» (ref.warehouse_zone, ТЗ 2.4)
+                     */
+                    zoneId?: string;
                 };
             };
         };
@@ -2763,6 +3099,147 @@ export interface operations {
             };
         };
     };
+    createDirectoryItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DirectoryInput"];
+            };
+        };
+        responses: {
+            /** @description Элемент создан */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryItem"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDirectoryItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Элемент с полями правки */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryItem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDirectoryItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Элемент с пометкой удаления */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryItem"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateDirectoryItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DirectoryInput"];
+            };
+        };
+        responses: {
+            /** @description Элемент */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryItem"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    restoreDirectoryItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Имя справочника с правкой из интерфейса */
+                name: components["parameters"]["DirectoryName"];
+                itemId: components["parameters"]["ItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Элемент */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryItem"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listCatalog: {
         parameters: {
             query?: {
@@ -2772,6 +3249,14 @@ export interface operations {
                 deleted?: boolean;
                 /** @description Только для cars — группа */
                 groupId?: string;
+                /** @description Только для goods/services — фильтр по бренду (ТЗ 2.1) */
+                brandId?: string;
+                /** @description Только для goods/services — «В работе», «Найден», «Не опознан» */
+                searchStatus?: string;
+                /** @description Только для goods/services — «Заказная», «Закупочная», «Тендерная» */
+                ownership?: string;
+                /** @description Только для goods/services — карточки с аналогом (кросс-код) */
+                analogId?: string;
             };
             header?: never;
             path: {
@@ -3362,6 +3847,205 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    createBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandInput"];
+            };
+        };
+        responses: {
+            /** @description Бренд создан */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: components["parameters"]["BrandId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Бренд */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: components["parameters"]["BrandId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandInput"];
+            };
+        };
+        responses: {
+            /** @description Бренд */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    restoreBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: components["parameters"]["BrandId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Бренд */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"];
+                };
+            };
+        };
+    };
+    listAttachments: {
+        parameters: {
+            query: {
+                ownerType: "nomenclature" | "unidentified" | "car";
+                ownerId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Вложения */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"][];
+                };
+            };
+        };
+    };
+    uploadAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @enum {string} */
+                    ownerType: "nomenclature" | "unidentified" | "car";
+                    /** Format: uuid */
+                    ownerId: string;
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Файл загружен */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getAttachment: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path: {
+                attachmentId: components["parameters"]["AttachmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Байты файла */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
+                };
+            };
+        };
+    };
+    deleteAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentId: components["parameters"]["AttachmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Удалено */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     listCells: {

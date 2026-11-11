@@ -188,3 +188,20 @@ describe('OData: пишущие операции PWA', () => {
     }
   });
 });
+
+// Справочники в режиме 1С (OData) доступны только на чтение: запись отвечает 501 not_supported,
+// а не «нет операции». НСИ ведётся в самой 1С; в Go-режиме те же пути обслуживает arm.DirectorySave.
+describe('OData: справочники — только чтение', () => {
+  it('POST/PATCH/DELETE/restore справочника — 501 not_supported (без обращения к OData)', async () => {
+    const call = createBackend({ baseUrl: 'http://127.0.0.1:1/odata', session: { token: 't', user: { role: 'admin' } } });
+    const cases = [
+      ['POST', '/directories/zones'],
+      ['PATCH', '/directories/zones/x'],
+      ['DELETE', '/directories/zones/x'],
+      ['POST', '/directories/zones/x/restore']
+    ];
+    for (const [method, path] of cases) {
+      await expect(call(method, path, { body: {} })).rejects.toMatchObject({ status: 501, code: 'not_supported' });
+    }
+  });
+});

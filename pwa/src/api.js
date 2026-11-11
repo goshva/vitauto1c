@@ -94,3 +94,5 @@ export async function api(method, path, { query, body } = {}) {
 
 export const get = (path, query, opts) => api('GET', path, { ...opts, query }).then(r => r.data);
 export const post = (path, body) => api('POST', path, { body }).then(r => r.data);
+export const patch = (path, body) => api('PATCH', path, { body }).then(r => r.data);
+export const del = path => api('DELETE', path).then(r => r.data);

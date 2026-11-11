@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -57,35 +58,55 @@ func main() {
 	defer closeLog()
 	log.SetOutput(logger)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	initLogLevel()
 
 	log.Printf("=== VITAUTO демо-стенд ===")
 	log.Printf("адрес: %s, база: %s", cfg.addr, redactDSN(cfg.dsn))
+	logDebugf("уровень логирования: %s", levelName())
+	logDebugf("данные приложения: %s, каталог PostgreSQL: %s, порт %s", cfg.appData, cfg.pgData, cfg.pgPort)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	url := "http://" + cfg.addr + "/"
 
-	// Уже запущенный экземпляр — просто открываем окно.
+	// Экземпляр уже слушает порт. Сначала поднимаем PostgreSQL: прошлый процесс мог
+	// остаться «живым», но неработоспособным из-за остановленной базы. Без этого шага
+	// повторный запуск просто открывал окно поверх сломанного стенда.
 	if isListening(cfg.addr) {
-		log.Printf("сервер уже слушает %s — открываю окно", cfg.addr)
-		if err := openWindow(cfg, url, make(chan struct{})); err != nil {
-			fatalBox("Не удалось открыть окно приложения:\n" + err.Error())
+		log.Printf("сервер уже слушает %s", cfg.addr)
+		if err := ensurePostgres(cfg); err != nil {
+			log.Printf("PostgreSQL: %v", err)
 		}
-		return
+
+		health := probeHealth(cfg.addr, 5*time.Second)
+		logDebugf("health существующего экземпляра: %s", health)
+		if health.OK {
+			log.Printf("стенд работает — открываю окно")
+			if err := openWindow(cfg, url, make(chan struct{})); err != nil {
+				fatalBox("Не удалось открыть окно приложения:\n"+err.Error(), 1)
+			}
+			return
+		}
+
+		msg := "Стенд уже запущен, но не работает (" + health.String() + ").\n\n" +
+			"Остановите его и запустите заново:\n" +
+			"  tools\\stand.ps1 -Action restart"
+		log.Printf("неработоспособный экземпляр: %s", health)
+		fatalBox(msg, 2)
 	}
 
 	if err := ensurePostgres(cfg); err != nil {
 		log.Printf("PostgreSQL: %v", err)
-		fatalBox("Не удалось запустить PostgreSQL на порту " + cfg.pgPort + ":\n" + err.Error())
+		fatalBox("Не удалось запустить PostgreSQL на порту "+cfg.pgPort+":\n"+err.Error(), 1)
 	}
 
 	pool, err := waitPool(ctx, cfg.dsn, 30*time.Second)
 	if err != nil {
 		log.Printf("база: %v", err)
-		fatalBox("База данных vitauto_app недоступна:\n" + err.Error() +
-			"\n\nПроверьте, что PostgreSQL запущен на порту " + cfg.pgPort +
-			" и база создана (tools\\seed-stand.ps1).")
+		fatalBox("База данных vitauto_app недоступна:\n"+err.Error()+
+			"\n\nПроверьте, что PostgreSQL запущен на порту "+cfg.pgPort+
+			" и база создана (tools\\seed-stand.ps1).", 1)
 	}
 	defer pool.Close()
 
@@ -99,25 +120,25 @@ func main() {
 		WS:   hub,
 	}
 
-	handler := newHandler(api.NewMux(pool, app))
+	handler := withRequestLog(newHandler(api.NewMux(pool, app)))
 	srv := &http.Server{Addr: cfg.addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("слушаю %s", cfg.addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("сервер: %v", err)
-			fatalBox("Не удалось запустить сервер на " + cfg.addr + ":\n" + err.Error())
+			fatalBox("Не удалось запустить сервер на "+cfg.addr+":\n"+err.Error(), 1)
 		}
 	}()
 
 	// Ждём, пока сервер поднимется, чтобы окно не открылось на пустой порт.
 	if !waitListening(cfg.addr, 10*time.Second) {
-		fatalBox("Сервер не поднялся на " + cfg.addr)
+		fatalBox("Сервер не поднялся на "+cfg.addr, 1)
 	}
 
 	done := make(chan struct{})
 	if err := openWindow(cfg, url, done); err != nil {
 		log.Printf("окно: %v", err)
-		fatalBox("Не удалось открыть окно приложения:\n" + err.Error())
+		fatalBox("Не удалось открыть окно приложения:\n"+err.Error(), 1)
 	} else {
 		log.Printf("окно приложения открыто: %s", url)
 	}
@@ -142,24 +163,34 @@ func loadConfig() config {
 		appData = filepath.Join(home, ".vitauto")
 	}
 	port := env("VITAUTO_PG_PORT", "5434")
+	addr := env("VITAUTO_APP_ADDR", "127.0.0.1:18180")
+	// Основной стенд пишет в app.log; экземпляр на другом порту (отладка, второй
+	// стенд) — в свой файл, иначе два процесса делят один лог.
+	logName := "app.log"
+	if addr != "127.0.0.1:18180" {
+		suffix := strings.NewReplacer(":", "-", ".", "-").Replace(addr)
+		logName = "app-" + suffix + ".log"
+	}
 	return config{
-		addr:     env("VITAUTO_APP_ADDR", "127.0.0.1:18180"),
+		addr:     addr,
 		dsn:      env("VITAUTO_DB", "postgres://postgres:postgres@127.0.0.1:"+port+"/vitauto_app"),
 		pgPort:   port,
 		pgData:   env("VITAUTO_PG_DATA", `D:\vitauto_app\pgdata`),
 		pgBin:    env("VITAUTO_PG_BIN", `C:\Program Files\PostgreSQL 1C\18\bin`),
 		appData:  appData,
-		logFile:  filepath.Join(appData, "logs", "app.log"),
+		logFile:  filepath.Join(appData, "logs", logName),
 		openMode: env("VITAUTO_OPEN", "app"),
 	}
 }
 
 func setupLog(path string) (io.Writer, func()) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "лог: не удалось создать каталог %s: %v — пишу только в поток ошибок\n", filepath.Dir(path), err)
 		return os.Stderr, func() {}
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "лог: не удалось открыть %s: %v — пишу только в поток ошибок\n", path, err)
 		return os.Stderr, func() {}
 	}
 	return io.MultiWriter(f, os.Stderr), func() { _ = f.Close() }
@@ -172,6 +203,34 @@ func redactDSN(dsn string) string {
 		}
 	}
 	return dsn
+}
+
+// withRequestLog пишет каждый HTTP-запрос при VITAUTO_LOG_LEVEL=debug или trace.
+// Для отладки PWA это основной источник понимания, что именно вызвал экран.
+func withRequestLog(next http.Handler) http.Handler {
+	if logLevel > levelDebug {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		path := r.URL.Path
+		if r.URL.RawQuery != "" {
+			path += "?" + r.URL.RawQuery
+		}
+		log.Printf("[http] %s %s -> %d (%s)", r.Method, path, rec.status, time.Since(started).Round(time.Millisecond))
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
 }
 
 // newHandler: /api/* — REST/WebSocket, остальное — собранная PWA с fallback на index.html.
@@ -352,15 +411,18 @@ func findBrowser() (string, error) {
 	return "", errors.New("Chrome/Edge не найден (нужен для окна приложения)")
 }
 
-// fatalBox показывает ошибку и в логе, и в окне — ярлык запускает exe без консоли.
-func fatalBox(msg string) {
+// fatalBox показывает ошибку и в логе, и окном (если запуск не через скрипт), затем выходит.
+// Коды: 1 — общий сбой запуска, 2 — порт занят неработоспособным экземпляром.
+func fatalBox(msg string, code int) {
 	log.Printf("ОШИБКА: %s", msg)
-	user32 := syscall.NewLazyDLL("user32.dll")
-	proc := user32.NewProc("MessageBoxW")
-	text, _ := syscall.UTF16PtrFromString(msg)
-	caption, _ := syscall.UTF16PtrFromString("VITAUTO — демо-стенд")
-	_, _, _ = proc.Call(0, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(caption)), 0x10)
-	os.Exit(1)
+	if os.Getenv("VITAUTO_NO_UI") == "" {
+		user32 := syscall.NewLazyDLL("user32.dll")
+		proc := user32.NewProc("MessageBoxW")
+		text, _ := syscall.UTF16PtrFromString(msg)
+		caption, _ := syscall.UTF16PtrFromString("VITAUTO — демо-стенд")
+		_, _, _ = proc.Call(0, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(caption)), 0x10)
+	}
+	os.Exit(code)
 }
 
 func env(k, def string) string {
@@ -368,4 +430,91 @@ func env(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// ── Уровни логирования ──────────────────────────────────────────────────────
+// VITAUTO_LOG_LEVEL=trace|debug|info (по умолчанию info). debug добавляет решения
+// запуска и каждый HTTP-запрос, trace — всё то же плюс мелочи вроде готовности портов.
+const (
+	levelTrace = 0
+	levelDebug = 1
+	levelInfo  = 2
+)
+
+var logLevel = levelInfo
+
+func initLogLevel() {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("VITAUTO_LOG_LEVEL"))) {
+	case "trace":
+		logLevel = levelTrace
+	case "debug":
+		logLevel = levelDebug
+	case "warn", "error":
+		logLevel = levelInfo + 1 // только проблемы
+	default:
+		logLevel = levelInfo
+	}
+}
+
+func levelName() string {
+	switch logLevel {
+	case levelTrace:
+		return "trace"
+	case levelDebug:
+		return "debug"
+	case levelInfo:
+		return "info"
+	default:
+		return "warn"
+	}
+}
+
+func logDebugf(format string, args ...any) {
+	if logLevel <= levelDebug {
+		log.Printf("[debug] "+format, args...)
+	}
+}
+
+func logTracef(format string, args ...any) {
+	if logLevel <= levelTrace {
+		log.Printf("[trace] "+format, args...)
+	}
+}
+
+// ── Проверка работоспособности уже запущенного экземпляра ───────────────────
+type healthState struct {
+	Status   string
+	Database string
+	OK       bool
+}
+
+func (h healthState) String() string {
+	db := h.Database
+	if db == "" {
+		db = "нет данных"
+	}
+	return "статус " + h.Status + ", база " + db
+}
+
+func probeHealth(addr string, timeout time.Duration) healthState {
+	out := healthState{Status: "нет ответа"}
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Get("http://" + addr + "/api/v1/health")
+	if err != nil {
+		logDebugf("health: %v", err)
+		return out
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Status   string `json:"status"`
+		Database string `json:"database"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		logDebugf("health: разбор ответа: %v", err)
+		return out
+	}
+	out.Status = body.Status
+	out.Database = body.Database
+	out.OK = body.Status == "ok"
+	return out
 }

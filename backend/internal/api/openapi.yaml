@@ -1039,6 +1039,116 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/NamedRef'
+  /directories/{name}:
+    parameters:
+      - $ref: '#/components/parameters/DirectoryName'
+    post:
+      tags: [directories]
+      summary: Новый элемент справочника (только администратор)
+      description: |
+        Справочники с правкой из интерфейса: `counterparties`, `contracts`, `service-types`,
+        `payment-forms`, `units`, `warehouses`, `zones`, `cells`. Состав полей — `DirectoryInput`,
+        поля вне списка игнорируются. НСИ ведёт администратор: остальным ролям — 403.
+      operationId: createDirectoryItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectoryInput'
+      responses:
+        '201':
+          description: Элемент создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /directories/{name}/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/DirectoryName'
+      - $ref: '#/components/parameters/ItemId'
+    get:
+      tags: [directories]
+      summary: Элемент справочника
+      operationId: getDirectoryItem
+      responses:
+        '200':
+          description: Элемент с полями правки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [directories]
+      summary: Изменить элемент справочника (только администратор)
+      operationId: updateDirectoryItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectoryInput'
+      responses:
+        '200':
+          description: Элемент
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [directories]
+      summary: Пометить элемент справочника на удаление (только администратор)
+      operationId: deleteDirectoryItem
+      responses:
+        '200':
+          description: Элемент с пометкой удаления
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryItem'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /directories/{name}/{itemId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/DirectoryName'
+      - $ref: '#/components/parameters/ItemId'
+    post:
+      tags: [directories]
+      summary: Снять пометку удаления элемента справочника (только администратор)
+      operationId: restoreDirectoryItem
+      responses:
+        '200':
+          description: Элемент
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryItem'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /catalog/{kind}:
     parameters:
       - $ref: '#/components/parameters/CatalogKind'
@@ -1814,6 +1924,14 @@ components:
       schema:
         type: string
         format: uuid
+    DirectoryName:
+      name: name
+      in: path
+      required: true
+      description: Имя справочника с правкой из интерфейса
+      schema:
+        type: string
+        enum: [counterparties, contracts, service-types, payment-forms, units, warehouses, zones, cells]
     BrandId:
       name: brandId
       in: path
@@ -2364,6 +2482,41 @@ components:
           type: string
         comment:
           type: string
+    DirectoryItem:
+      type: object
+      description: Элемент справочника; набор полей зависит от справочника (см. DirectoryInput)
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        deleted:
+          type: boolean
+    DirectoryInput:
+      type: object
+      description: |
+        Поля по справочникам (`{name}` в пути):
+        `counterparties` — name, fullName, inn, kpp, comment, isCustomer, isSupplier, inactive;
+        `contracts` — name, contractNo, contractDate (ГГГГ-ММ-ДД), comment, counterpartyId, inactive;
+        `service-types`, `payment-forms` — name, code;
+        `units` — name, code, fullName, intlCode;
+        `warehouses` — name, code, unitType, isWarehouse, isMain, orderBased;
+        `zones` — code, name, purpose, sort;
+        `cells` — code, warehouseId, zoneId, capacity, blocked.
+        Обязательные при создании: `counterparties`/`service-types`/`payment-forms`/`units`/`warehouses` — name;
+        `contracts` — name и counterpartyId; `zones` — code и name; `cells` — code и warehouseId.
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        comment:
+          type: string
+        inactive:
+          type: boolean
     Attachment:
       type: object
       properties:

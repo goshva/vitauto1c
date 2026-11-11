@@ -325,6 +325,37 @@ func (app *App) Register(mux *http.ServeMux) {
 		v, err := app.ARM.Directory(r.Context(), r.PathValue("name"), query(r))
 		reply(w, 200, v, err)
 	})
+	// CRUD справочников: читает любой авторизованный, меняет только администратор (arm.DirectorySave).
+	h("POST /directories/{name}", func(w http.ResponseWriter, r *http.Request) {
+		var b map[string]any
+		if err := body(r, &b); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		v, err := app.ARM.DirectorySave(r.Context(), actor(r), r.PathValue("name"), "", b)
+		reply(w, 201, v, err)
+	})
+	h("GET /directories/{name}/{id}", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.DirectoryItem(r.Context(), r.PathValue("name"), r.PathValue("id"))
+		reply(w, 200, v, err)
+	})
+	h("PATCH /directories/{name}/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var b map[string]any
+		if err := body(r, &b); err != nil {
+			writeProblem(w, err)
+			return
+		}
+		v, err := app.ARM.DirectorySave(r.Context(), actor(r), r.PathValue("name"), r.PathValue("id"), b)
+		reply(w, 200, v, err)
+	})
+	h("DELETE /directories/{name}/{id}", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.DirectoryDelete(r.Context(), actor(r), r.PathValue("name"), r.PathValue("id"), false)
+		reply(w, 200, v, err)
+	})
+	h("POST /directories/{name}/{id}/restore", func(w http.ResponseWriter, r *http.Request) {
+		v, err := app.ARM.DirectoryDelete(r.Context(), actor(r), r.PathValue("name"), r.PathValue("id"), true)
+		reply(w, 200, v, err)
+	})
 	catalog := func(kind string) bool { return kind == "goods" || kind == "services" || kind == "cars" }
 	notFound := &arm.Problem{Status: 404, Code: "not_found", Message: "Раздел: goods, services, cars"}
 	h("GET /catalog/{kind}", func(w http.ResponseWriter, r *http.Request) {
