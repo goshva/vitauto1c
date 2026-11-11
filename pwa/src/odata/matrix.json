@@ -580,6 +580,15 @@
     "dataType": "text",
     "writable": true,
     "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
+    "writable": true,
+    "rights": "+++++++++++++++"
    }
   ],
   "storekeeper": [
@@ -932,7 +941,7 @@
     "title": "Цена (себес.)",
     "dataType": "number",
     "writable": true,
-    "rights": ".......++......"
+    "rights": "..............."
    },
    {
     "id": "sum",
@@ -968,7 +977,7 @@
     "title": "Оплачено (счёт, оплата, постоплата)",
     "dataType": "select",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "invoice_number",
@@ -977,7 +986,7 @@
     "title": "Счёт №",
     "dataType": "text",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "invoice_date",
@@ -986,7 +995,7 @@
     "title": "Дата счёта",
     "dataType": "date",
     "writable": true,
-    "rights": "+++++++++++++++"
+    "rights": "..............."
    },
    {
     "id": "coefficient",
@@ -1093,6 +1102,15 @@
     "code": "Т2",
     "title": "Комментарий 2",
     "dataType": "text",
+    "writable": true,
+    "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
     "writable": true,
     "rights": "+++++++++++++++"
    }
@@ -1610,6 +1628,15 @@
     "dataType": "text",
     "writable": true,
     "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
+    "writable": true,
+    "rights": "+++++++++++++++"
    }
   ],
   "admin": [
@@ -2123,6 +2150,15 @@
     "code": "Т2",
     "title": "Комментарий 2",
     "dataType": "text",
+    "writable": true,
+    "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
     "writable": true,
     "rights": "+++++++++++++++"
    }
@@ -2640,6 +2676,15 @@
     "dataType": "text",
     "writable": true,
     "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
+    "writable": true,
+    "rights": "+++++++++++++++"
    }
   ],
   "client": [
@@ -3155,6 +3200,15 @@
     "dataType": "text",
     "writable": true,
     "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
+    "writable": true,
+    "rights": "+++++++++++++++"
    }
   ],
   "supply": [
@@ -3668,6 +3722,15 @@
     "code": "Т2",
     "title": "Комментарий 2",
     "dataType": "text",
+    "writable": true,
+    "rights": "+++++++++++++++"
+   },
+   {
+    "id": "extra_flag",
+    "field": "ДопПризнак",
+    "code": "Т3",
+    "title": "Доп. признак (AD)",
+    "dataType": "checkbox",
     "writable": true,
     "rights": "+++++++++++++++"
    }

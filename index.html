@@ -375,7 +375,8 @@
     {id:'supplier_order_date', title:'Дата заказа поставщику', group:'auto'},
     {id:'delivery_term', title:'Срок поставки', group:'receipt'},
     {id:'comment', title:'Комментарий', group:'comment'},
-    {id:'comment_2', title:'Комментарий 2', group:'comment'}
+    {id:'comment_2', title:'Комментарий 2', group:'comment'},
+    {id:'extra_flag', title:'Доп. признак (AD)', group:'comment', type:'bool'}
   ];
 
   // Примеры строк реальной таблицы (для наглядного предпросмотра прав роли)
@@ -556,7 +557,7 @@
   };
   var DATA_TYPE_VALUES = ['select','date','text','number','checkbox','matrix'];
   var DEFAULT_DATA_TYPES = {
-    cell_select:'checkbox', doc_signed_original:'checkbox',
+    cell_select:'checkbox', doc_signed_original:'checkbox', extra_flag:'checkbox',
     row_number:'number', ordered_in_transit_qty:'number', rrc:'number', coefficient:'number',
     shipment_date:'date', order_date:'date', receipt_date:'date', upd_date:'date', invoice_date:'date', supplier_order_date:'date', delivery_term:'date', assembly_sent_date:'date',
     customer:'select', contract:'select', service_type:'select',

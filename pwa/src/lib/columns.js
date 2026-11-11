@@ -5,6 +5,8 @@ export const FIELDS = {
   ОтметкаСтроки: { prop: 'marked', kind: 'bool' },
   Порядок: { prop: 'order', kind: 'number' },
   ДокументПодписанОригинал: { prop: 'signedOriginal', kind: 'bool' },
+  // ФТ v2 п. 13: признак-флажок строки (бывшая колонка AD файла-реестра) — доп. реквизит
+  ДопПризнак: { prop: 'extraFlag', kind: 'bool' },
   ДатаОтгрузки: { prop: 'shipmentDate', kind: 'date' },
   НомерОтгрузки: { prop: 'shipmentNumber', kind: 'text' },
   ДатаЗаказа: { prop: 'orderDate', kind: 'date' },
