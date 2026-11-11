@@ -754,6 +754,15 @@ func (s *Service) Transition(ctx context.Context, a Actor, view, to, zoneID stri
 			if to == "reserve" && zone != nil {
 				set["zone_id"] = *zone
 			}
+			// Дата приёмки: при переходе «Принять по УПД» (acceptance) ставим receipt_date.
+			if to == "acceptance" {
+				set["receipt_date"] = s.now()
+			}
+			// Возврат: проводкой возврата считается переход «Возврат» — фиксируем дату в receipt_date,
+			// иначе колонка движения «Приёмка» остаётся пустой (ФТ п. 4).
+			if to == "return" {
+				set["receipt_date"] = s.now()
+			}
 			if err := updateLine(ctx, tx, l.ID, set); err != nil {
 				return err
 			}
