@@ -22,6 +22,7 @@ type SupplyOption struct {
 	Source       string  `json:"source"` // saved — сохранённое предложение, history — подсказка из истории закупок
 	Purchases    int     `json:"purchases,omitempty"`
 	Selected     bool    `json:"selected"`
+	LeadDays     *int    `json:"leadDays,omitempty"` // для history — дней от сегодня
 }
 
 // SupplyOptionInput — тело POST /lines/{id}/supply-options.
@@ -86,15 +87,15 @@ func (s *Service) SupplyOptions(ctx context.Context, a Actor, lineID string) ([]
 	}
 	rows, err := s.DB.Query(ctx, `
 		select o.id::text, o.supplier_id::text, coalesce(c.name, ''), coalesce(o.price, 0)::float8,
-		       o.delivery_term, coalesce(o.comment, ''), 'saved'::text, 0
+		       o.delivery_term, coalesce(o.comment, ''), 'saved'::text, 0, null::int
 		  from ref.supplier_offer o
 		  left join ref.counterparty c on c.id = o.supplier_id
 		 where o.nomenclature_id = $1 and not o.deleted
 		union all
-		select '', h.supplier_id::text, coalesce(c.name, ''), h.price, h.delivery_term, '', 'history'::text, h.cnt
+		select '', h.supplier_id::text, coalesce(c.name, ''), h.price, null, '', 'history'::text, h.cnt, h.lead_days
 		  from (
 		    select l.supplier_id, max(coalesce(l.sale_price, 0))::float8 as price,
-		           max(l.delivery_term) as delivery_term, count(*)::int as cnt
+		           extract(day from (max(l.delivery_term) - current_date))::int as lead_days, count(*)::int as cnt
 		      from arm.line l
 		     where l.nomenclature_id = $1 and l.operation = 'Закупка' and l.supplier_id is not null
 		       and not coalesce(l.deleted, false)
@@ -110,11 +111,15 @@ func (s *Service) SupplyOptions(ctx context.Context, a Actor, lineID string) ([]
 	var out []SupplyOption
 	for rows.Next() {
 		var o SupplyOption
-		var term *time.Time
-		if err := rows.Scan(&o.ID, &o.SupplierID, &o.SupplierName, &o.Price, &term, &o.Comment, &o.Source, &o.Purchases); err != nil {
+		var savedTerm *time.Time
+		var histLeadDays *int
+		if err := rows.Scan(&o.ID, &o.SupplierID, &o.SupplierName, &o.Price, &savedTerm, &o.Comment, &o.Source, &o.Purchases, &histLeadDays); err != nil {
 			return nil, err
 		}
-		o.DeliveryTerm = fmtTerm(term)
+		if o.Source == "saved" && savedTerm != nil {
+			o.DeliveryTerm = fmtTerm(savedTerm)
+		}
+		o.LeadDays = histLeadDays
 		if o.Source == "history" && o.ID == "" {
 			o.ID = "history:" + o.SupplierID
 		}
@@ -138,6 +143,9 @@ func (s *Service) SupplyOptionSave(ctx context.Context, a Actor, lineID string, 
 	if err != nil {
 		return nil, fail(400, "bad_request", "supplierId: нужен идентификатор поставщика", "supplierId")
 	}
+	if in.Price < 0 {
+		return nil, fail(400, "bad_request", "price: цена не может быть отрицательной", "price")
+	}
 	term, err := parseTerm(in.DeliveryTerm)
 	if err != nil {
 		return nil, err
@@ -148,6 +156,14 @@ func (s *Service) SupplyOptionSave(ctx context.Context, a Actor, lineID string, 
 	}
 	if nom == nil {
 		return nil, fail(409, "no_nomenclature", "Сначала сопоставьте номенклатуру строки")
+	}
+	// Проверка: строка не в закрытом статусе.
+	var status string
+	if err := s.DB.QueryRow(ctx, "select status from arm.line where id = $1 and not coalesce(deleted, false)", lid).Scan(&status); err != nil {
+		return nil, err
+	}
+	if status == stDone {
+		return nil, fail(409, "row_closed", "Нельзя менять вариант поставки для выполненной строки")
 	}
 	var outID uuid.UUID
 	err = s.inTx(ctx, a, func(tx pgx.Tx) error {
@@ -216,10 +232,16 @@ func (s *Service) ApplySupplyOption(ctx context.Context, a Actor, lineID, option
 		if err != nil {
 			return nil, fail(400, "bad_request", "optionId: нужен идентификатор варианта", "optionId")
 		}
-		if err := s.DB.QueryRow(ctx, `select max(coalesce(sale_price, 0))::float8, max(delivery_term)
+		var leadDays *int
+		if err := s.DB.QueryRow(ctx, `select max(coalesce(sale_price, 0))::float8,
+			extract(day from (max(delivery_term) - current_date))::int
 			from arm.line where nomenclature_id = $1 and operation = 'Закупка' and supplier_id = $2 and not coalesce(deleted, false)`,
-			*nom, supplier).Scan(&price, &term); err != nil {
+			*nom, supplier).Scan(&price, &leadDays); err != nil {
 			return nil, err
+		}
+		if leadDays != nil {
+			t := s.now().AddDate(0, 0, *leadDays)
+			term = &t
 		}
 	} else {
 		oid, err := parseID(optionID)
@@ -233,6 +255,14 @@ func (s *Service) ApplySupplyOption(ctx context.Context, a Actor, lineID, option
 			}
 			return nil, err
 		}
+	}
+	// Проверка: строка не в закрытом статусе.
+	var status string
+	if err := s.DB.QueryRow(ctx, "select status from arm.line where id = $1 and not coalesce(deleted, false)", lid).Scan(&status); err != nil {
+		return nil, err
+	}
+	if status == stDone {
+		return nil, fail(409, "row_closed", "Нельзя применять вариант поставки к выполненной строке")
 	}
 
 	err = s.inTx(ctx, a, func(tx pgx.Tx) error {
