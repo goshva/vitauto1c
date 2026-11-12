@@ -9,17 +9,17 @@ import (
 
 // Ошибки домена (application layer конвертирует в Problem).
 var (
-	ErrNotFound       = errors.New("строка не найдена")
-	ErrVersion        = errors.New("строка изменена другим пользователем (version)")
-	ErrDeleted        = errors.New("строка удалена")
-	ErrLocked         = errors.New("строка заблокирована фоном")
-	ErrClosed         = errors.New("закрытую строку меняет только администратор")
-	ErrNothingMarked  = errors.New("нет отмеченных строк")
-	ErrMatrixDenied   = errors.New("матрица: действие недоступно")
-	ErrNotAuthor      = errors.New("меняет только автор строки")
-	ErrFieldReadonly  = errors.New("поле только для чтения")
-	ErrFSM            = errors.New("переход недоступен из текущего статуса")
-	ErrStatusViaFSM   = errors.New("статус меняется переходами процесса")
+	ErrNotFound      = errors.New("строка не найдена")
+	ErrVersion       = errors.New("строка изменена другим пользователем (version)")
+	ErrDeleted       = errors.New("строка удалена")
+	ErrLocked        = errors.New("строка заблокирована фоном")
+	ErrClosed        = errors.New("закрытую строку меняет только администратор")
+	ErrNothingMarked = errors.New("нет отмеченных строк")
+	ErrMatrixDenied  = errors.New("матрица: действие недоступно")
+	ErrNotAuthor     = errors.New("меняет только автор строки")
+	ErrFieldReadonly = errors.New("поле только для чтения")
+	ErrFSM           = errors.New("переход недоступен из текущего статуса")
+	ErrStatusViaFSM  = errors.New("статус меняется переходами процесса")
 )
 
 // Actor — пользователь, выполняющий команду (порт из application).
@@ -27,7 +27,10 @@ type Actor struct {
 	UserID   uuid.UUID
 	UserName string
 	Login    string
-	Role     string
+	Role     Role
+	// IfMatch — ожидаемая версия строки (заголовок If-Match). 0 — проверка не требуется.
+	// Поле введено в Step 2a: его используют guards и Save. Чтение HTTP-заголовка — Step 4.
+	IfMatch int64
 }
 
 // Line — агрегат «Строка АРМ» (arm.line, docs/migration/ddd/02-tactical.md).
@@ -64,6 +67,9 @@ type Line struct {
 	Coeff     float64
 	NormHours float64
 	CostSum   float64
+	// PriceChangeType — как выставлена цена: 1 — вручную (Цена), 2 — коэффициентом.
+	// Столбец price_change_type; правила FR-8/FR-9 в arm/lines.go:448-456.
+	PriceChangeType int
 
 	SignedOriginal bool
 	ShipmentDate   *time.Time
@@ -95,10 +101,17 @@ func (l *Line) SaleSum() float64 {
 	return base * l.SalePrice
 }
 
-// Authorize — 5 проверок команды над строкой (02-tactical.md §Line.authorize):
-// версия, пометка, закрытая строка, матрица поля, блокировка фона.
-// expectedVersion == 0 — проверка версии пропускается (переходы по отмеченным строкам).
-func (l *Line) Authorize(a Actor, field string, expectedVersion int64) error {
+// guards — инварианты команды, не зависящие от поля (шаги 1–3 authorize,
+// docs/migration/ddd/02-tactical.md:36-38): удалённость, версия, блокировка фона,
+// закрытая строка.
+//
+// expectedVersion == 0 — проверка версии пропускается (пакетные переходы по отмеченным строкам).
+// allowClosed — для переходов и для единственного поля, доступного на закрытой строке
+// («ДокументПодписанОригинал»): см. Q20 и arm/lines.go:409.
+//
+// Закрытость — именно StatusDone, а НЕ IsClosedSale(): IsClosedSale() описывает
+// «продажи, не держащие склад» (status.go:41) и участвует только в расчёте остатков (fifo.go).
+func (l *Line) guards(a Actor, expectedVersion int64, allowClosed bool) error {
 	if l.Deleted {
 		return ErrDeleted
 	}
@@ -108,26 +121,92 @@ func (l *Line) Authorize(a Actor, field string, expectedVersion int64) error {
 	if l.Status == StatusLockedBgJob {
 		return ErrLocked
 	}
-	if l.Status == StatusDone && a.Role != "admin" {
+	if l.Status == StatusDone && a.Role != RoleAdmin && !allowClosed {
 		return ErrClosed
 	}
-	if field != "" {
-		col, ok := ColumnFor(a.Role, field)
-		if !ok {
-			return ErrFieldReadonly
+	return nil
+}
+
+// checkField — инвариант матрицы прав для конкретного поля (шаг 4 authorize,
+// 02-tactical.md:39). Матрица — доменная политика, поэтому проверка живёт здесь,
+// а не в прикладном слое (decision Q16).
+func (l *Line) checkField(a Actor, f Field) error {
+	col, ok := ColumnFor(a.Role, f)
+	if !ok {
+		return ErrFieldReadonly
+	}
+	switch why := DenyReason(a.Role, col, l.Status, l.MarkedByMe(a)); why {
+	case "":
+		return nil
+	case "меняет только автор строки":
+		return ErrNotAuthor
+	case "поле только для чтения", "строка заблокирована фоном":
+		return ErrFieldReadonly
+	default:
+		return ErrMatrixDenied
+	}
+}
+
+// ChangeField — команда изменения одного поля (02-tactical.md §2.1).
+// Права и инварианты проверяются внутри команды (decision A1), прикладной слой
+// только загружает и сохраняет агрегат.
+func (l *Line) ChangeField(a Actor, field Field, value any) error {
+	// «ДокументПодписанОригинал» исключён из проверки закрытой строки — как в arm/lines.go:409.
+	// Это сохранение ПОРЯДКА проверок arm, а не функциональное исправление: матрица всё равно
+	// запрещает это поле не-администратору во всех статусах (у manager rights = "............cc.",
+	// в статусе closed — "."), поэтому итоговый ответ и так 403 matrix_denied. С исключением
+	// сообщение приходит от матрицы, без него — от проверки закрытой строки.
+	allowClosed := field == FieldSignedOriginal
+	if err := l.guards(a, a.IfMatch, allowClosed); err != nil {
+		return err
+	}
+	if err := l.checkField(a, field); err != nil {
+		return err
+	}
+	set, ok := settersFor(field)
+	if !ok {
+		return ErrFieldReadonly
+	}
+	if err := set(l, value); err != nil {
+		return err
+	}
+	l.recalcSums(field)
+	l.Version++
+	return nil
+}
+
+// recalcSums — формулы матрицы FR-7..9. Точный перенос arm/lines.go:428-457:
+//
+//	cost_sum    = количество × себестоимость единицы (при изменении любого из них);
+//	sale_price  = себестоимость × (1 + коэффициент/100) при изменении коэффициента
+//	              или себестоимости, если оба не нулевые;
+//	коэффициент = (цена/себестоимость − 1) × 100 при ручном вводе цены, price_change_type = 1;
+//	              price_change_type = 2 при пересчёте от коэффициента.
+//
+// Коэффициент при ручном вводе цены НЕ округляется, цена продажи — округляется round2.
+// Нормо-часы в этих формулах не участвуют: они влияют только на вычисляемую сумму
+// продажи (Line.SaleSum и представление arm.line_api), а не на хранимую цену.
+func (l *Line) recalcSums(f Field) {
+	if f == FieldQuantity || f == FieldCostPrice {
+		l.CostSum = round2(l.Quantity * l.CostPrice)
+	}
+	if l.Operation != OpSale || l.CostPrice == 0 {
+		return
+	}
+	switch f {
+	case FieldSalePrice:
+		l.Coeff = (l.SalePrice/l.CostPrice - 1) * 100
+		l.PriceChangeType = 1
+	case FieldCoeff:
+		if l.Coeff != 0 {
+			l.SalePrice = round2(l.CostPrice * (1 + l.Coeff/100))
+			l.PriceChangeType = 2
 		}
-		why := DenyReason(a.Role, col, l.Status, l.MarkedByMe(a))
-		switch {
-		case why == "":
-		case why == "меняет только автор строки":
-			return ErrNotAuthor
-		case why == "поле только для чтения", why == "строка заблокирована фоном":
-			return ErrFieldReadonly
-		default:
-			return ErrMatrixDenied
+	case FieldCostPrice:
+		if l.Coeff != 0 {
+			l.SalePrice = round2(l.CostPrice * (1 + l.Coeff/100))
 		}
 	}
-	return nil
 }
 
 // TransitionTo — FSM-переход: проверяет роль и статус, меняет статус, возвращает доменные события.
@@ -175,8 +254,14 @@ func (l *Line) SetSelfPickup(on bool) {
 }
 
 // RejectAssembly — M10: кладовщик отклоняет комплектацию (Собран/Подготовлено → Комплектуется, причина в Comment2).
+//
+// guards() вызывается первой строкой, как и в остальных командах: без него удалённую строку
+// можно отклонить, а строку, заблокированную фоном, — изменить (Step 2a, ревью §6.4).
 func (l *Line) RejectAssembly(a Actor, reason string) error {
-	if !contains([]string{"storekeeper", "admin"}, a.Role) {
+	if err := l.guards(a, a.IfMatch, false); err != nil {
+		return err
+	}
+	if a.Role != RoleStorekeeper && a.Role != RoleAdmin {
 		return ErrMatrixDenied
 	}
 	if l.Status != StatusAssembled && l.Status != StatusPrepared {

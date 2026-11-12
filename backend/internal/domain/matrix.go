@@ -6,11 +6,8 @@ import (
 	"fmt"
 )
 
-// Field — поле строки (fields_gen.go): столбец arm.line и вид значения (ref, enum, date, number, bool, text).
-type Field struct {
-	Column string
-	Kind   string
-}
+// Field (имя поля, ubiquitous language) и FieldInfo (столбец + вид значения)
+// объявлены в field.go; значения Fields заполняются генератором в fields_gen.go.
 
 //go:embed matrix.json
 var matrixJSON []byte
@@ -49,12 +46,12 @@ type MatrixResponse struct {
 }
 
 // MatrixFor — матрица роли (неизвестная роль — как менеджер, как в PWA).
-func MatrixFor(role string) MatrixResponse {
-	cols, ok := matrix.Roles[role]
+func MatrixFor(role Role) MatrixResponse {
+	cols, ok := matrix.Roles[string(role)]
 	if !ok {
-		cols = matrix.Roles["manager"]
+		cols = matrix.Roles[string(RoleManager)]
 	}
-	return MatrixResponse{Role: role, Statuses: matrix.Statuses, Columns: cols}
+	return MatrixResponse{Role: string(role), Statuses: matrix.Statuses, Columns: cols}
 }
 
 // MatrixETag — версия матрицы для If-None-Match.
@@ -64,7 +61,10 @@ func MatrixETag() string {
 
 // DenyReason — почему поле нельзя менять (как useMatrixStore.denyReason PWA и ОтказИзмененияСтрокиOData 1С) или "".
 // markedByMe — строку пометил текущий пользователь (символ 'c' в матрице).
-func DenyReason(role string, col MatrixColumn, status Status, markedByMe bool) string {
+//
+// Принимает доменный Status, а не код API и не строку: ключ матрицы (StatusCode) наружу
+// не выходит, поэтому передать значение 1С или код по ошибке нельзя (decision R9).
+func DenyReason(role Role, col MatrixColumn, status Status, markedByMe bool) string {
 	if !col.Writable {
 		return "поле только для чтения"
 	}
@@ -94,10 +94,10 @@ func DenyReason(role string, col MatrixColumn, status Status, markedByMe bool) s
 	return fmt.Sprintf("матрица: нельзя в статусе «%s»", st)
 }
 
-// ColumnFor — колонка матрицы роли по имени поля API.
-func ColumnFor(role, field string) (MatrixColumn, bool) {
+// ColumnFor — колонка матрицы роли по имени поля (Field, ubiquitous language).
+func ColumnFor(role Role, field Field) (MatrixColumn, bool) {
 	for _, c := range MatrixFor(role).Columns {
-		if c.Field == field {
+		if c.Field == string(field) {
 			return c, true
 		}
 	}

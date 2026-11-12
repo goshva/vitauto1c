@@ -132,14 +132,45 @@ func (m *Migrator) Gen(ctx context.Context) error {
 	if err := os.WriteFile(filepath.Join(m.Root, "db", "load", "typed.sql"), []byte(load), 0o644); err != nil {
 		return err
 	}
-	fields, err := GenerateArmFields(meta, cols)
+	fields, err := GenerateDomainFields(meta, cols)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(m.Root, "backend", "internal", "arm", "fields_gen.go"), []byte(fields), 0o644); err != nil {
+	fields, err = gofmtSource("domain/fields_gen.go", fields)
+	if err != nil {
 		return err
 	}
-	m.Log("gen: 0002_typed.sql %d байт, typed.sql %d байт, fields_gen.go %d байт", len(ddl), len(load), len(fields))
+	if err := os.WriteFile(filepath.Join(m.Root, "backend", "internal", "domain", "fields_gen.go"), []byte(fields), 0o644); err != nil {
+		return err
+	}
+	// Переходная копия для arm.PatchLine: удаляется вместе с ним в Step 2c.
+	armFields, err := GenerateArmFields(meta, cols)
+	if err != nil {
+		return err
+	}
+	armFields, err = gofmtSource("arm/fields_gen.go", armFields)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(m.Root, "backend", "internal", "arm", "fields_gen.go"), []byte(armFields), 0o644); err != nil {
+		return err
+	}
+	fieldMap, err := GenerateFieldMap(meta, cols)
+	if err != nil {
+		return err
+	}
+	fieldMap, err = gofmtSource("adapters/postgres/field_map_gen.go", fieldMap)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(m.Root, "backend", "internal", "adapters", "postgres"), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(m.Root, "backend", "internal", "adapters", "postgres", "field_map_gen.go"), []byte(fieldMap), 0o644); err != nil {
+		return err
+	}
+	m.Log("gen: 0002_typed.sql %d байт, typed.sql %d байт, domain/fields_gen.go %d байт, arm/fields_gen.go %d байт, adapters/postgres/field_map_gen.go %d байт",
+		len(ddl), len(load), len(fields), len(armFields), len(fieldMap))
 	return nil
 }
 
