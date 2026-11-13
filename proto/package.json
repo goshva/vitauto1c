@@ -1,0 +1,40 @@
+{
+  "name": "vitauto-proto",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Прототип АРМ ВИТАВТО: Bun + Hono + Drizzle + Zod + HTMX + Playwright",
+  "scripts": {
+    "dev": "bun run --watch src/server.ts",
+    "start": "bun run src/server.ts",
+    "test": "bun test tests --parallel=1",
+    "test:unit": "bun test tests/unit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run db/migrate.ts",
+    "db:seed": "bun run db/seed.ts",
+    "db:reset": "bun run db/reset.ts",
+    "openapi": "bun run scripts/openapi.ts",
+    "arch": "bun run scripts/arch.ts",
+    "baseline": "bun run scripts/baseline.ts",
+    "e2e": "playwright test",
+    "e2e:mutation": "playwright test --grep @mutation --workers=1",
+    "e2e:ui": "playwright test --ui",
+    "db:seed:all": "bun run db/seed.ts --all",
+    "test:integration": "bun test tests/integration --parallel=1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.6.3",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.18",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/bun": "^1.4.4",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^7.0.2"
+  }
+}

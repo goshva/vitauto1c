@@ -1,0 +1,1 @@
+ALTER TABLE "line" ADD COLUMN "return_id" uuid;

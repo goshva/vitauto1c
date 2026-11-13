@@ -1,0 +1,192 @@
+/* АРМ: таблица строк. Задача стилей — читаемость, а не украшение:
+   оператор смотрит на 12 колонок и должен находить статус мгновенно. */
+
+:root {
+  --line: #d8dde4;
+  --head: #eef1f5;
+  --accent: #1f5fbf;
+  --muted: #7b8794;
+  --warn: #b45309;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 14px/1.45 "Segoe UI", Roboto, Arial, sans-serif;
+  color: #1c2430;
+  background: #f7f9fb;
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.top h1 { font-size: 17px; margin: 0; }
+.top nav a { margin-right: 14px; color: var(--accent); text-decoration: none; }
+.top nav a:hover { text-decoration: underline; }
+
+main { padding: 12px 16px; }
+
+/* Панель действий */
+#actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.marked-count {
+  min-width: 26px;
+  padding: 1px 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 10px;
+}
+.hint { color: var(--muted); }
+.hint-partial { color: var(--warn); margin: 0; font-size: 13px; }
+
+.buttons button {
+  margin-right: 6px;
+  padding: 5px 11px;
+  font: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.buttons button:hover { background: #17509f; }
+
+/* Таблица */
+table.lines {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+table.lines th,
+table.lines td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+table.lines th {
+  position: sticky;
+  top: 0;
+  background: var(--head);
+  font-weight: 600;
+  white-space: nowrap;
+}
+table.lines tbody tr:hover { background: #f2f7ff; }
+.c-num { text-align: right; white-space: nowrap; }
+.c-mark { width: 26px; text-align: center; }
+.c-code { color: var(--muted); white-space: nowrap; }
+.c-comment { max-width: 220px; }
+
+.empty { color: #c2cad4; }
+.empty-row { padding: 18px; text-align: center; color: var(--muted); }
+
+/* Статусы: цвет помогает найти строку, но смысл несёт текст */
+.c-status { white-space: nowrap; font-weight: 600; }
+.s-new { color: #2563eb; }
+.s-in_work, .s-partially_ordered, .s-ordered { color: #7c3aed; }
+.s-paid, .s-in_transit { color: #0891b2; }
+.s-acceptance, .s-to_stock, .s-reserve { color: #b45309; }
+.s-assembly, .s-ready_to_ship { color: #15803d; }
+.s-shipped, .s-closed { color: #475569; }
+.s-return { color: #b91c1c; }
+
+/* Фильтр продажи/закупки */
+.filter { margin-bottom: 8px; }
+.filter label { margin-right: 16px; cursor: pointer; }
+
+.vh {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Форма загрузки листа и кнопки цепочки */
+.import { margin-bottom: 10px; }
+.import summary { cursor: pointer; color: var(--accent); }
+.import form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 8px; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+.import label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.import input { padding: 3px 6px; font: inherit; border: 1px solid var(--line); border-radius: 3px; }
+
+.chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.chain-label { color: var(--muted); }
+.chain button { padding: 4px 9px; font: inherit; background: #475569; color: #fff; border: 0; border-radius: 3px; cursor: pointer; }
+.chain button:hover { background: #334155; }
+.chain button[disabled] { opacity: .45; cursor: default; }
+.chain-cell { display: inline-flex; gap: 4px; align-items: center; }
+/* Печатные формы: бланк, а не экран. Шрифт мельче, таблица во всю ширину,
+   подписи внизу. При печати убираем навигацию. */
+.print-sheet { background: #fff; padding: 18px 22px; border: 1px solid var(--line); border-radius: 4px; }
+.print-head h1 { margin: 0 0 4px; font-size: 19px; }
+.print-meta { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+table.print { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.print th, table.print td { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+table.print thead th { background: var(--head); white-space: nowrap; }
+table.print tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
+.print-signs { display: flex; gap: 32px; margin-top: 34px; font-size: 13px; }
+.print-signs div { flex: 1; border-top: 1px solid #99a; padding-top: 4px; }
+
+@media print {
+  .top, .import, .filter, #actions { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0; }
+  .print-sheet { border: 0; padding: 0; }
+}
+/* Карта процессов: статистика, список процессов, схема шагов.
+   Схема читается сверху вниз: номер, что происходит, кто делает, где строки. */
+
+table.stats { border-collapse: collapse; margin-bottom: 14px; background: #fff; border: 1px solid var(--line); }
+table.stats caption { text-align: left; padding: 6px 10px; color: var(--muted); }
+table.stats th, table.stats td { padding: 4px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+table.stats th { background: var(--head); font-weight: 600; }
+
+.proc-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.proc-card {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 11px; background: #fff; color: inherit;
+  border: 1px solid var(--line); border-radius: 4px; text-decoration: none;
+}
+.proc-card:hover { border-color: var(--accent); }
+.proc-active { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.proc-title { font-weight: 600; }
+.proc-steps { font-size: 12px; color: var(--muted); }
+
+ol.scheme { list-style: none; margin: 0; padding: 0; counter-reset: none; }
+.step {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 6px 10px; background: #fff; border: 1px solid var(--line); border-bottom: 0;
+}
+.step:last-child { border-bottom: 1px solid var(--line); }
+.step-n {
+  min-width: 24px; text-align: right; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.step-body { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.step-title { font-weight: 600; }
+.step-role { font-size: 12px; color: var(--accent); }
+.step-note { font-size: 12px; color: var(--muted); }
+.step-state { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.step-count {
+  min-width: 24px; padding: 1px 8px; text-align: center;
+  font-weight: 600; color: var(--muted); background: #eef1f5; border-radius: 10px;
+}
+/* Строки есть — шаг «живой», на него стоит смотреть. */
+.step-count-live { color: #fff; background: var(--accent); }

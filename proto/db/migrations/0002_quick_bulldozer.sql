@@ -1,0 +1,1 @@
+ALTER TABLE "line" ADD COLUMN "shipment_doc_id" uuid;

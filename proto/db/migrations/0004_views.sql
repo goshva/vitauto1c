@@ -1,0 +1,3 @@
+-- 0004: empty placeholder. Views moved to 0006 because 0004 runs BEFORE 0005,
+-- and 0005 adds shipment.car_id which line_view depends on.
+-- Journal order is immutable, so the SQL is what moves.

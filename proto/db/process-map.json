@@ -1,0 +1,1821 @@
+{
+  "generated": {
+    "scenarios": 11,
+    "nodes": 45
+  },
+  "statuses": [
+    "acceptance",
+    "assembly",
+    "closed",
+    "in_transit",
+    "new",
+    "ordered",
+    "paid",
+    "ready_to_ship",
+    "reserve",
+    "return",
+    "shipped"
+  ],
+  "scenarios": [
+    {
+      "id": "happy",
+      "group": "main",
+      "title": "Основной: закупка → отгрузка",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Клиент передаёт заявку (Excel/фото).",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M1"
+          ],
+          "titles": [
+            "Загрузка заявки в 1С"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер загружает заявку в 1С.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры: остатка нет → закуп.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M4"
+          ],
+          "titles": [
+            "Заказ поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Заказ поставщику.",
+          "status": "ordered"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "P1"
+          ],
+          "titles": [
+            "Обработка заказа"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик обработал заказ.",
+          "status": "ordered"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "M7"
+          ],
+          "titles": [
+            "Контроль оплаты"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Контроль оплаты (после P1).",
+          "status": "paid"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "P2"
+          ],
+          "titles": [
+            "Отгрузка → В пути"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Товар в пути; доставка — в комментарии.",
+          "status": "in_transit"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "K1"
+          ],
+          "titles": [
+            "Приёмка (УПД)"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Приёмка по УПД.",
+          "status": "acceptance"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "K2"
+          ],
+          "titles": [
+            "Размещение по складам"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Размещение.",
+          "status": "acceptance"
+        },
+        {
+          "n": 10,
+          "nodes": [
+            "M8"
+          ],
+          "titles": [
+            "Уведомление о приходе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о приходе (всегда после K2).",
+          "status": "acceptance"
+        },
+        {
+          "n": 11,
+          "nodes": [
+            "M9"
+          ],
+          "titles": [
+            "Задание на комплектацию"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Задание на комплектацию.",
+          "status": "assembly"
+        },
+        {
+          "n": 12,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Сборка (без контроля комплектации M10).",
+          "status": "assembly"
+        },
+        {
+          "n": 13,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности (после K3).",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 14,
+          "nodes": [
+            "M12"
+          ],
+          "titles": [
+            "Отгрузочная ведомость"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер: отгрузочная ведомость.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 15,
+          "nodes": [
+            "K5"
+          ],
+          "titles": [
+            "Отгрузка клиенту / ТК"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Отгрузка.",
+          "status": "shipped"
+        },
+        {
+          "n": 16,
+          "nodes": [
+            "N2a"
+          ],
+          "titles": [
+            "Получение товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Товар у клиента.",
+          "status": "shipped"
+        },
+        {
+          "n": 17,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "stock",
+      "group": "main",
+      "title": "Со склада (резерв)",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Заявка клиента.",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M1"
+          ],
+          "titles": [
+            "Загрузка заявки в 1С"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Загрузка.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры: остаток есть.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M3"
+          ],
+          "titles": [
+            "Резервирование на складе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Резерв.",
+          "status": "reserve"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "M9"
+          ],
+          "titles": [
+            "Задание на комплектацию"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Задание на комплектацию.",
+          "status": "assembly"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Комплектация (без контроля M10).",
+          "status": "assembly"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "M12"
+          ],
+          "titles": [
+            "Отгрузочная ведомость"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер: ведомость.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "K5"
+          ],
+          "titles": [
+            "Отгрузка клиенту / ТК"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Отгрузка.",
+          "status": "shipped"
+        },
+        {
+          "n": 10,
+          "nodes": [
+            "N2a"
+          ],
+          "titles": [
+            "Получение товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Товар.",
+          "status": "shipped"
+        },
+        {
+          "n": 11,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "mixed_order",
+      "group": "main",
+      "title": "Смешанный заказ (склад + закупка)",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Заявка на несколько позиций.",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M1"
+          ],
+          "titles": [
+            "Загрузка заявки в 1С"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Загрузка.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры по строкам.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M3"
+          ],
+          "titles": [
+            "Резервирование на складе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Строки со склада — резерв.",
+          "status": "reserve"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "M4"
+          ],
+          "titles": [
+            "Заказ поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Строки без остатка — заказ поставщику.",
+          "status": "ordered"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "P1"
+          ],
+          "titles": [
+            "Обработка заказа"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик обработал закупочную часть.",
+          "status": "ordered"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "M7"
+          ],
+          "titles": [
+            "Контроль оплаты"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Оплата после P1.",
+          "status": "paid"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "P2"
+          ],
+          "titles": [
+            "Отгрузка → В пути"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Закупка в пути.",
+          "status": "in_transit"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "K1"
+          ],
+          "titles": [
+            "Приёмка (УПД)"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Приход закупочной части.",
+          "status": "acceptance"
+        },
+        {
+          "n": 10,
+          "nodes": [
+            "K2"
+          ],
+          "titles": [
+            "Размещение по складам"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Размещение.",
+          "status": "acceptance"
+        },
+        {
+          "n": 11,
+          "nodes": [
+            "M8"
+          ],
+          "titles": [
+            "Уведомление о приходе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о приходе.",
+          "status": "acceptance"
+        },
+        {
+          "n": 12,
+          "nodes": [
+            "M9"
+          ],
+          "titles": [
+            "Задание на комплектацию"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Общее задание на комплектацию.",
+          "status": "assembly"
+        },
+        {
+          "n": 13,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Сборка смешанного заказа (без контроля M10).",
+          "status": "assembly"
+        },
+        {
+          "n": 14,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 15,
+          "nodes": [
+            "M12"
+          ],
+          "titles": [
+            "Отгрузочная ведомость"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер: ведомость.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 16,
+          "nodes": [
+            "K5"
+          ],
+          "titles": [
+            "Отгрузка клиенту / ТК"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Отгрузка.",
+          "status": "shipped"
+        },
+        {
+          "n": 17,
+          "nodes": [
+            "N2a"
+          ],
+          "titles": [
+            "Получение товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Товар.",
+          "status": "shipped"
+        },
+        {
+          "n": 18,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "delivery_split",
+      "group": "main",
+      "title": "Самовывоз у внешнего поставщика клиентом",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Заявка: клиент заберёт у внешнего поставщика.",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M1"
+          ],
+          "titles": [
+            "Загрузка заявки в 1С"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Загрузка заявки.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры → закуп.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M4"
+          ],
+          "titles": [
+            "Заказ поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Заказ поставщику.",
+          "status": "ordered"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "P1"
+          ],
+          "titles": [
+            "Обработка заказа"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик.",
+          "status": "ordered"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "M7"
+          ],
+          "titles": [
+            "Контроль оплаты"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Оплата.",
+          "status": "paid"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "N4"
+          ],
+          "titles": [
+            "Самовывоз у внешнего поставщика"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Самовывоз у внешнего поставщика.",
+          "status": "shipped"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "M17",
+            "K9"
+          ],
+          "titles": [
+            "Уведомление о самовывозе",
+            "Уведомление о самовывозе"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Уведомление о самовывозе — менеджер (M17) и кладовщик (K9).",
+          "status": "shipped"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "K1"
+          ],
+          "titles": [
+            "Приёмка (УПД)"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Приёмка по УПД (продолжение A4 после M17).",
+          "status": "acceptance"
+        },
+        {
+          "n": 10,
+          "nodes": [
+            "K2"
+          ],
+          "titles": [
+            "Размещение по складам"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Размещение.",
+          "status": "acceptance"
+        },
+        {
+          "n": 11,
+          "nodes": [
+            "M8"
+          ],
+          "titles": [
+            "Уведомление о приходе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о приходе.",
+          "status": "acceptance"
+        },
+        {
+          "n": 12,
+          "nodes": [
+            "M9"
+          ],
+          "titles": [
+            "Задание на комплектацию"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Задание на комплектацию.",
+          "status": "assembly"
+        },
+        {
+          "n": 13,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Комплектация (без контроля M10).",
+          "status": "assembly"
+        },
+        {
+          "n": 14,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 15,
+          "nodes": [
+            "M12"
+          ],
+          "titles": [
+            "Отгрузочная ведомость"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Отгрузочная ведомость.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 16,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "virtual_buy",
+      "group": "purchase",
+      "title": "Виртуальный закуп (менеджер → админ)",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Срочная заявка, документов поставщика нет.",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M1"
+          ],
+          "titles": [
+            "Загрузка заявки в 1С"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер загружает.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры; Развилка: вирт. контур / права.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M13"
+          ],
+          "titles": [
+            "Недостаточно прав, обратись к админу"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Недостаточно прав, обратись к админу.",
+          "status": "ordered"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "A3"
+          ],
+          "titles": [
+            "Подтверждение чека админом"
+          ],
+          "roles": [
+            "admin"
+          ],
+          "note": "Админ: подтверждение чека — конец сценария B1.",
+          "status": "paid"
+        }
+      ]
+    },
+    {
+      "id": "defect",
+      "group": "purchase",
+      "title": "Контроль комплектации → снова задание (продолжение A)",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Продолжение A1/A2/A3: комплектация + сборочный лист.",
+          "status": "assembly"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M10"
+          ],
+          "titles": [
+            "Контроль комплектации"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Контроль комплектации — отклонение.",
+          "status": "assembly"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M9",
+            "K8"
+          ],
+          "titles": [
+            "Задание на комплектацию",
+            "Розыск позиции"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Менеджер → M9; кладовщик → розыск (K8) одновременно.",
+          "status": "assembly"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Повторная комплектация.",
+          "status": "assembly"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "M12"
+          ],
+          "titles": [
+            "Отгрузочная ведомость"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Отгрузочная ведомость.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "K5"
+          ],
+          "titles": [
+            "Отгрузка клиенту / ТК"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Отгрузка клиенту / ТК.",
+          "status": "shipped"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "N2a"
+          ],
+          "titles": [
+            "Получение товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Получение товара клиентом.",
+          "status": "shipped"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "cancel_supplier",
+      "group": "purchase",
+      "title": "Отмена заказа у поставщика",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Заявка клиента.",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "M1"
+          ],
+          "titles": [
+            "Загрузка заявки в 1С"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Загрузка.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M4"
+          ],
+          "titles": [
+            "Заказ поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Заказ поставщику.",
+          "status": "ordered"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "P1"
+          ],
+          "titles": [
+            "Обработка заказа"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик ещё в работе.",
+          "status": "ordered"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "M7"
+          ],
+          "titles": [
+            "Контроль оплаты"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Оплачено или нет — после P1.",
+          "status": "paid"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "M15"
+          ],
+          "titles": [
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Контроль документов перед возвратом поставщику.",
+          "status": "return"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "M16"
+          ],
+          "titles": [
+            "Заявка на возврат поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Отмена / возврат-отказ до прихода.",
+          "status": "return"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "P3"
+          ],
+          "titles": [
+            "Приём возврата"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик закрыл заказ (без K6).",
+          "status": "return"
+        }
+      ]
+    },
+    {
+      "id": "return",
+      "group": "returns",
+      "title": "Возврат от клиента",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N3"
+          ],
+          "titles": [
+            "Возврат товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Клиент инициирует возврат.",
+          "status": "return"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "K6"
+          ],
+          "titles": [
+            "Приёмка / подготовка возврата"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Приёмка возврата на складе.",
+          "status": "return"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M19"
+          ],
+          "titles": [
+            "Отгрузочная ведомость (корректировка)"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Отгрузочная ведомость (корректировка) — вместо M15.",
+          "status": "return"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M16"
+          ],
+          "titles": [
+            "Заявка на возврат поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер: заявка на возврат поставщику.",
+          "status": "return"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "K6"
+          ],
+          "titles": [
+            "Приёмка / подготовка возврата"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Кладовщик готовит товар к возврату поставщику.",
+          "status": "return"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "P3"
+          ],
+          "titles": [
+            "Приём возврата"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик принимает возврат.",
+          "status": "return"
+        }
+      ]
+    },
+    {
+      "id": "return_mgr",
+      "group": "returns",
+      "title": "Возврат поставщику (от менеджера)",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "M16"
+          ],
+          "titles": [
+            "Заявка на возврат поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Менеджер: заявка на возврат поставщику.",
+          "status": "return"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "K6"
+          ],
+          "titles": [
+            "Приёмка / подготовка возврата"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Передача кладовщику.",
+          "status": "return"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "P3"
+          ],
+          "titles": [
+            "Приём возврата"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Отгрузка / приём возврата поставщиком.",
+          "status": "return"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "return_internal",
+      "group": "returns",
+      "title": "Отказ клиента при получении товара",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N2a"
+          ],
+          "titles": [
+            "Получение товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Продолжение A1/A2/A3: клиент при получении отказывается от товара.",
+          "status": "shipped"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "N3"
+          ],
+          "titles": [
+            "Возврат товара"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Оформление отказа / возврата.",
+          "status": "return"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "K6"
+          ],
+          "titles": [
+            "Приёмка / подготовка возврата"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Приёмка / подготовка возврата на складе.",
+          "status": "return"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M10"
+          ],
+          "titles": [
+            "Контроль комплектации"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Контроль комплектации.",
+          "status": "assembly"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "M9"
+          ],
+          "titles": [
+            "Задание на комплектацию"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Задание на комплектацию.",
+          "status": "assembly"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Комплектация + сборочный лист.",
+          "status": "assembly"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "M12"
+          ],
+          "titles": [
+            "Отгрузочная ведомость"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Отгрузочная ведомость.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "M15",
+            "K7"
+          ],
+          "titles": [
+            "Контроль документов",
+            "Контроль документов"
+          ],
+          "roles": [
+            "manager",
+            "storekeeper"
+          ],
+          "note": "Контроль документов — менеджер и кладовщик одновременно.",
+          "status": "closed"
+        }
+      ]
+    },
+    {
+      "id": "car_repair_in",
+      "group": "mechanic",
+      "title": "Поступление машины в ремонт",
+      "steps": [
+        {
+          "n": 1,
+          "nodes": [
+            "N1"
+          ],
+          "titles": [
+            "Заявка: Excel / фото"
+          ],
+          "roles": [
+            "client"
+          ],
+          "note": "Заявка: машина в ремонт.",
+          "status": "new"
+        },
+        {
+          "n": 2,
+          "nodes": [
+            "G1"
+          ],
+          "titles": [
+            "Открытие заказ-наряда"
+          ],
+          "roles": [
+            "chief_mechanic"
+          ],
+          "note": "Открытие заказ-наряда.",
+          "status": "new"
+        },
+        {
+          "n": 3,
+          "nodes": [
+            "M2"
+          ],
+          "titles": [
+            "Поиск + подбор номенклатуры"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Поиск + подбор номенклатуры.",
+          "status": "new"
+        },
+        {
+          "n": 4,
+          "nodes": [
+            "M3"
+          ],
+          "titles": [
+            "Резервирование на складе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Резерв на складе.",
+          "status": "reserve"
+        },
+        {
+          "n": 5,
+          "nodes": [
+            "M4"
+          ],
+          "titles": [
+            "Заказ поставщику"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Заказ поставщику (запчасти).",
+          "status": "ordered"
+        },
+        {
+          "n": 6,
+          "nodes": [
+            "P1"
+          ],
+          "titles": [
+            "Обработка заказа"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик: обработка заказа.",
+          "status": "ordered"
+        },
+        {
+          "n": 7,
+          "nodes": [
+            "M7"
+          ],
+          "titles": [
+            "Контроль оплаты"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Контроль оплаты.",
+          "status": "paid"
+        },
+        {
+          "n": 8,
+          "nodes": [
+            "P2"
+          ],
+          "titles": [
+            "Отгрузка → В пути"
+          ],
+          "roles": [
+            "supplier"
+          ],
+          "note": "Поставщик: в пути на склад.",
+          "status": "in_transit"
+        },
+        {
+          "n": 9,
+          "nodes": [
+            "K1"
+          ],
+          "titles": [
+            "Приёмка (УПД)"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Приёмка (УПД).",
+          "status": "acceptance"
+        },
+        {
+          "n": 10,
+          "nodes": [
+            "K2"
+          ],
+          "titles": [
+            "Размещение по складам"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Размещение.",
+          "status": "acceptance"
+        },
+        {
+          "n": 11,
+          "nodes": [
+            "M8"
+          ],
+          "titles": [
+            "Уведомление о приходе"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о приходе.",
+          "status": "acceptance"
+        },
+        {
+          "n": 12,
+          "nodes": [
+            "M9"
+          ],
+          "titles": [
+            "Задание на комплектацию"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Задание на комплектацию.",
+          "status": "assembly"
+        },
+        {
+          "n": 13,
+          "nodes": [
+            "K3"
+          ],
+          "titles": [
+            "Комплектация + сборочный лист"
+          ],
+          "roles": [
+            "storekeeper"
+          ],
+          "note": "Комплектация + сборочный лист.",
+          "status": "assembly"
+        },
+        {
+          "n": 14,
+          "nodes": [
+            "M11"
+          ],
+          "titles": [
+            "Уведомление о готовности"
+          ],
+          "roles": [
+            "manager"
+          ],
+          "note": "Уведомление о готовности.",
+          "status": "ready_to_ship"
+        },
+        {
+          "n": 15,
+          "nodes": [
+            "G3"
+          ],
+          "titles": [
+            "Выдача в ремонтную зону"
+          ],
+          "roles": [
+            "chief_mechanic"
+          ],
+          "note": "Выдача в ремонтную зону.",
+          "status": "assembly"
+        },
+        {
+          "n": 16,
+          "nodes": [
+            "G4",
+            "G5"
+          ],
+          "titles": [
+            "Нормо-часы",
+            "Зарплатный фонд"
+          ],
+          "roles": [
+            "chief_mechanic"
+          ],
+          "note": "Нормо-часы и зарплатный фонд одновременно.",
+          "status": null
+        },
+        {
+          "n": 17,
+          "nodes": [
+            "G9"
+          ],
+          "titles": [
+            "Печать комплекта документов и выдача авто"
+          ],
+          "roles": [
+            "chief_mechanic"
+          ],
+          "note": "Печать комплекта документов и выдача авто.",
+          "status": "closed"
+        }
+      ]
+    }
+  ]
+}

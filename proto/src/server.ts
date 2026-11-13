@@ -1,0 +1,124 @@
+import { OpenAPIHono } from '@hono/zod-openapi';
+import { serveStatic } from 'hono/bun';
+import { health } from './health.ts';
+import { lines } from './lines.ts';
+import { fields } from './lines-fields.ts';
+import { transitions } from './lines-transitions.ts';
+import { imports } from './imports.ts';
+import { operations } from './operations.ts';
+import { supply } from './supply.ts';
+import { print } from './print.ts';
+import { supplyUi } from './supply-ui.ts';
+import { refs } from './refs.ts';
+import { refCells } from './ref-cells.ts';
+import { returns } from './returns.ts';
+import { returnsFlow } from './returns-flow.ts';
+import { shipments } from './shipments.ts';
+import { shipmentsFlow } from './shipments-flow.ts';
+import { workOrders } from './work-orders.ts';
+import { workOrdersFlow } from './work-orders-flow.ts';
+import { workOrdersCancel } from './work-orders-cancel.ts';
+import { receipts } from './receipts.ts';
+import { receiptsFlow } from './receipts-flow.ts';
+import { stock } from './stock.ts';
+import { zones } from './zones.ts';
+import { unidentified } from './unidentified.ts';
+import { processesUi } from './processes-ui.ts';
+import { supplierOrders } from './supplier-orders.ts';
+import { supplierOrdersFlow } from './supplier-orders-flow.ts';
+import { linesBulk } from './lines-bulk.ts';
+import { linesLifecycle } from './lines-lifecycle.ts';
+import { documentsUi } from './documents-ui.ts';
+import { testHooks } from './test-hooks.ts';
+import { orders } from './orders.ts';
+import { ordersEdit } from './orders-edit.ts';
+import { linesPage, linesUi, wantsHtml } from './lines-ui.ts';
+import { linesUiActions } from './lines-ui-actions.ts';
+import { linesUiWarehouse } from './lines-ui-warehouse.ts';
+import { Problem, problemResponse } from './problem.ts';
+import { requestId } from './request-id.ts';
+import { idempotency } from './idempotency.ts';
+import type { AppEnv } from './env.ts';
+
+// Сборка приложения. Всё явно: без init(), без глобальных переменных
+// (prototype-spec.md §12: anti-patterns, которые убивают AI-разработку).
+export const app = new OpenAPIHono<AppEnv>();
+
+app.use('*', requestId);
+app.use('*', idempotency);
+
+// Статика: HTMX и таблица стилей лежат локально. Прототип обязан работать
+// без сети — иначе «1С вне контура» превращается в «CDN вне контура».
+//
+// rewriteRequestPath обязателен: без него `/static/app.css` ищется как
+// `public/static/app.css` и отдаётся 404 (проверено).
+app.use(
+  '/static/*',
+  serveStatic({ root: './public', rewriteRequestPath: (p) => p.replace(/^\/static/, '') }),
+);
+
+// ОДИН обработчик ошибок: любой Problem превращается в problem+json с traceId.
+app.onError((err, c) => {
+  if (err instanceof Problem) return problemResponse(c, err);
+  console.error(`[${c.get('requestId') ?? '-'}] ${err.message}`);
+  return problemResponse(c, new Problem(500, 'internal', err.message));
+});
+
+// `GET /lines` — адрес экрана. Браузер просит HTML и получает страницу,
+// тест и агент просят JSON и получают данные. Один URL, два представления.
+// Регистрируется ДО JSON-маршрута: иначе JSON перехватил бы браузер.
+app.get('/lines', async (c, next) => {
+  if (!wantsHtml(c)) return next();
+  const view = c.req.query('view');
+  return c.html(await linesPage(view === 'purchases' ? 'purchase' : 'sale'));
+});
+
+app.route('/', health);
+// linesBulk монтируется ДО lines: иначе /lines/{id} перехватил бы /lines/summary.
+app.route('/', linesBulk);
+app.route('/', linesLifecycle);
+app.route('/', documentsUi);
+
+// Тестовые хуки: только при PROTO_TEST_HOOKS=1. В обычном запуске адресов,
+// меняющих данные в обход API, не должно быть.
+if (Bun.env.PROTO_TEST_HOOKS === '1') app.route('/', testHooks);
+app.route('/', lines);
+app.route('/', fields);
+app.route('/', transitions);
+app.route('/', imports);
+app.route('/', operations);
+app.route('/', supply);
+app.route('/', print);
+app.route('/', supplyUi);
+app.route('/', refs);
+app.route('/', refCells);
+app.route('/', returns);
+app.route('/', returnsFlow);
+app.route('/', shipments);
+app.route('/', shipmentsFlow);
+app.route('/', workOrders);
+app.route('/', workOrdersFlow);
+app.route('/', workOrdersCancel);
+app.route('/', receipts);
+app.route('/', receiptsFlow);
+app.route('/', stock);
+app.route('/', zones);
+app.route('/', unidentified);
+app.route('/', processesUi);
+app.route('/', supplierOrders);
+app.route('/', supplierOrdersFlow);
+app.route('/', orders);
+app.route('/', ordersEdit);
+app.route('/', linesUi);
+app.route('/', linesUiActions);
+app.route('/', linesUiWarehouse);
+
+export type App = typeof app;
+
+// Сервер поднимается только при прямом запуске — в тестах app импортируется
+// и вызывается через app.request(), без открытия порта.
+if (import.meta.main) {
+  const port = Number(Bun.env.PORT ?? 18190);
+  console.log(`vitauto-proto слушает http://127.0.0.1:${port}`);
+  Bun.serve({ port, hostname: '127.0.0.1', fetch: app.fetch });
+}

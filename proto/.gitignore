@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.local
+
+# артефакты Playwright
+e2e-report/
+playwright-report/
+test-results/
+
+# артефакты прогонов
+logs/baseline-*.json
+
+# временный каталог drizzle-kit
+.tmp/

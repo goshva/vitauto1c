@@ -1,0 +1,4604 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "vitauto-proto",
+    "version": "0.1.0",
+    "description": "Прототип АРМ ВИТАВТО. 1С вне контура, один администратор, роли — после прототипа."
+  },
+  "components": {
+    "schemas": {
+      "LineRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "marked": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string",
+            "nullable": true
+          },
+          "salePrice": {
+            "type": "string",
+            "nullable": true
+          },
+          "saleSum": {
+            "type": "string",
+            "nullable": true
+          },
+          "costPrice": {
+            "type": "string",
+            "nullable": true
+          },
+          "costSum": {
+            "type": "string",
+            "nullable": true
+          },
+          "stockQty": {
+            "type": "string"
+          },
+          "reserveQty": {
+            "type": "string"
+          },
+          "inTransitQty": {
+            "type": "string"
+          },
+          "nomenclature": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomenclatureArticle": {
+            "type": "string",
+            "nullable": true
+          },
+          "customer": {
+            "type": "string",
+            "nullable": true
+          },
+          "supplier": {
+            "type": "string",
+            "nullable": true
+          },
+          "contract": {
+            "type": "string",
+            "nullable": true
+          },
+          "batch": {
+            "type": "string",
+            "nullable": true
+          },
+          "stockCell": {
+            "type": "string",
+            "nullable": true
+          },
+          "factName": {
+            "type": "string",
+            "nullable": true
+          },
+          "factQty": {
+            "type": "string",
+            "nullable": true
+          },
+          "factArticle": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipmentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "marked",
+          "status",
+          "quantity",
+          "salePrice",
+          "saleSum",
+          "costPrice",
+          "costSum",
+          "stockQty",
+          "reserveQty",
+          "inTransitQty",
+          "nomenclature",
+          "nomenclatureArticle",
+          "customer",
+          "supplier",
+          "contract",
+          "batch",
+          "stockCell",
+          "factName",
+          "factQty",
+          "factArticle",
+          "clientOrderNumber",
+          "shipmentNumber",
+          "orderDate",
+          "comment"
+        ],
+        "additionalProperties": {
+          "nullable": true
+        }
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Живость сервиса и БД",
+        "responses": {
+          "200": {
+            "description": "Сервис отвечает; db сообщает доступность базы отдельно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    },
+                    "service": {
+                      "type": "string",
+                      "enum": [
+                        "vitauto-proto"
+                      ]
+                    },
+                    "version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "db": {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "service",
+                    "version",
+                    "db"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/summary": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Свод по статусам: сколько строк, количество и суммы",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sales",
+                "purchases"
+              ],
+              "default": "sales"
+            },
+            "required": false,
+            "name": "view",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Свод",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "byStatus": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          },
+                          "lines": {
+                            "type": "integer"
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "saleSum": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "lines",
+                          "quantity",
+                          "saleSum"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "object",
+                      "properties": {
+                        "lines": {
+                          "type": "integer"
+                        },
+                        "quantity": {
+                          "type": "string"
+                        },
+                        "saleSum": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "lines",
+                        "quantity",
+                        "saleSum"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "byStatus",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/bulk-field": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Проставить поле у отмеченных строк",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "field",
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Итог",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "updated"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Поле не редактируется массово"
+          },
+          "409": {
+            "description": "Нет отмеченных строк"
+          }
+        }
+      }
+    },
+    "/lines/export": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Выгрузить строки в CSV",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sales",
+                "purchases"
+              ],
+              "default": "sales"
+            },
+            "required": false,
+            "name": "view",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/{id}": {
+      "delete": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Удалить строку (мягко)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Строка удалена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Строка не найдена"
+          },
+          "409": {
+            "description": "Отгруженную строку удалять нельзя"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Строка по идентификатору",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Строка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineRow"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Изменить поле строки (If-Match: версия)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Имя колонки, например quantity или sale_price"
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "field",
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Строка изменена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Поле не редактируется"
+          },
+          "404": {
+            "description": "Строка не найдена"
+          },
+          "409": {
+            "description": "Конфликт версий"
+          }
+        }
+      }
+    },
+    "/lines/{id}/restore": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Восстановить удалённую строку",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Строка восстановлена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Удалённая строка не найдена"
+          }
+        }
+      }
+    },
+    "/lines/bulk-delete": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Удалить отмеченные строки",
+        "responses": {
+          "200": {
+            "description": "Итог",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "deleted",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк"
+          }
+        }
+      }
+    },
+    "/lines": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Список строк",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sales",
+                "purchases"
+              ],
+              "default": "sales"
+            },
+            "required": false,
+            "name": "view",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "minimum": 0,
+              "default": 0
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Строки и курсор продолжения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LineRow"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестный статус в фильтре",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/transition": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Переход процесса по отмеченным строкам",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "to"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Итог обработки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "processed": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "processed",
+                    "total",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестный переход"
+          },
+          "409": {
+            "description": "Нет отмеченных строк"
+          }
+        }
+      }
+    },
+    "/lines/{id}/mark": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Отметить или снять отметку",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "marked": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "marked"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Отметка применена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "marked": {
+                      "type": "boolean"
+                    },
+                    "markedCount": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "marked",
+                    "markedCount"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Строка не найдена"
+          }
+        }
+      }
+    },
+    "/imports": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Создать заказ из листа клиента (N1 → M1)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customerId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Заказчик (ref.counterparty)"
+                  },
+                  "contractId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "organizationId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "operation": {
+                    "type": "string",
+                    "enum": [
+                      "sale",
+                      "purchase"
+                    ],
+                    "default": "sale"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "article": {
+                          "type": "string",
+                          "description": "Артикул из заявки"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Наименование «как написал клиент»"
+                        },
+                        "qty": {
+                          "type": "string",
+                          "description": "Количество текстом — клиент пишет по-разному"
+                        },
+                        "unit": {
+                          "type": "string"
+                        },
+                        "vehiclePlate": {
+                          "type": "string",
+                          "description": "Госномер авто из заявки"
+                        },
+                        "clientNumber": {
+                          "type": "string",
+                          "description": "Номер заказа клиента"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    },
+                    "minItems": 1,
+                    "description": "Строки листа, минимум одна"
+                  }
+                },
+                "required": [
+                  "customerId",
+                  "rows"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Заказ создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orderId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "lineIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                      }
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "orderId",
+                    "number",
+                    "lineIds",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Нет строк или неизвестный заказчик"
+          }
+        }
+      }
+    },
+    "/lines/{id}/cell": {
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Разместить строку в ячейке (K2)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cellId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  }
+                },
+                "required": [
+                  "cellId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Размещено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "cell": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "cell",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ячейка не найдена или заблокирована"
+          },
+          "404": {
+            "description": "Строка не найдена"
+          }
+        }
+      }
+    },
+    "/sales/jobs": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Задание: отмеченные строки в «Заказано», заказ поставщику (M4, K5)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "allowSplit": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Итог задания",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "processed": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "supplierOrderId": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    }
+                  },
+                  "required": [
+                    "jobId",
+                    "state",
+                    "processed",
+                    "total",
+                    "skipped",
+                    "supplierOrderId"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк"
+          }
+        }
+      }
+    },
+    "/supply/status": {
+      "post": {
+        "tags": [
+          "supply"
+        ],
+        "summary": "Статус снабжения по отмеченным строкам (M7, P2)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "paid",
+                      "in_transit",
+                      "acceptance",
+                      "to_stock",
+                      "assembly",
+                      "assembled"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Итог",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "processed": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "processed",
+                    "total",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк"
+          }
+        }
+      }
+    },
+    "/refs/nomenclature": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Номенклатура",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Номенклатура: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/counterparties": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Контрагенты",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Контрагенты: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/units": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Единицы измерения",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Единицы измерения: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/warehouses": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Склады",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Склады: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/payment-forms": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Формы оплаты",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Формы оплаты: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/service-kinds": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Виды услуг",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Виды услуг: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/cells": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Ячейки склада (для размещения K2)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Ограничить складом"
+            },
+            "required": false,
+            "description": "Ограничить складом",
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Ограничить зоной"
+            },
+            "required": false,
+            "description": "Ограничить зоной",
+            "name": "zoneId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ячейки с зоной и складом",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "zone": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "warehouse": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "blocked": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "zone",
+                          "warehouse",
+                          "blocked"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/options/{kind}": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Пары «значение — подпись» для выпадающего списка",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "nomenclature",
+                "counterparties",
+                "cells"
+              ]
+            },
+            "required": true,
+            "name": "kind",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Варианты выбора",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "value",
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Нет такого списка (ошибка схемы)"
+          }
+        }
+      }
+    },
+    "/returns": {
+      "get": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Список возвратов",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "client",
+                "supplier",
+                "internal"
+              ],
+              "description": "client / supplier / internal"
+            },
+            "required": false,
+            "description": "client / supplier / internal",
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "accepted",
+                "to_supplier",
+                "closed"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Возвраты",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестный вид или состояние"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Оформить возврат по отмеченным строкам (N3)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "client",
+                      "supplier",
+                      "internal"
+                    ],
+                    "description": "client — от клиента, supplier — поставщику, internal — отказ при получении"
+                  },
+                  "comment": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Возврат оформлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк для возврата"
+          }
+        }
+      }
+    },
+    "/returns/{id}": {
+      "get": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Возврат со строками",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Возврат и его строки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "header",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Возврат не найден"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Отменить возврат (мягкое удаление)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Возврат отменён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "released": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "released"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Возврат не найден"
+          },
+          "409": {
+            "description": "Закрытый возврат отменить нельзя"
+          }
+        }
+      }
+    },
+    "/returns/{id}/accept": {
+      "post": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Принять возврат на склад (K6)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Возврат не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/returns/{id}/supplier": {
+      "post": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Передать возврат поставщику (M16)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Возврат не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/returns/{id}/close": {
+      "post": {
+        "tags": [
+          "returns"
+        ],
+        "summary": "Закрыть возврат (P3)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Возврат не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/shipments": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Список отгрузок",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "shipped",
+                "closed"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отгрузки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестное состояние"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Создать отгрузку по отмеченным строкам (K5)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "carId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Автомобиль отгрузки"
+                  },
+                  "zoneId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Зона склада"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Отгрузка создана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "lines",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк, готовых к отгрузке"
+          }
+        }
+      }
+    },
+    "/shipments/{id}": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Отгрузка со строками",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отгрузка и её строки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "header",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Отгрузка не найдена"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Отменить отгрузку (мягкое удаление)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отгрузка отменена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "released": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "released"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Отгрузка не найдена"
+          },
+          "409": {
+            "description": "Закрытую отгрузку отменить нельзя"
+          }
+        }
+      }
+    },
+    "/shipments/{id}/ship": {
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Отгрузить: товар покинул склад (M12)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Отгрузка не найдена"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/shipments/{id}/close": {
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Закрыть: документы проверены (M15)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Отгрузка не найдена"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/work-orders": {
+      "get": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Список заказ-нарядов",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "in_work",
+                "closed"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказ-наряды",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестное состояние"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Открыть заказ-наряд (G1)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "carId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Автомобиль, поступивший в ремонт"
+                  },
+                  "counterpartyId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "serviceTypeId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  }
+                },
+                "required": [
+                  "carId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Наряд открыт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "number": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Автомобиль не найден"
+          }
+        }
+      }
+    },
+    "/work-orders/{id}": {
+      "get": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Заказ-наряд: работы и запчасти",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Наряд, работы и запчасти",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "labor": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "parts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "header",
+                    "labor",
+                    "parts"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ-наряд не найден"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Отменить заказ-наряд (мягкое удаление)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Наряд отменён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "released": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "released"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ-наряд не найден"
+          },
+          "409": {
+            "description": "Закрытый наряд отменить нельзя"
+          }
+        }
+      }
+    },
+    "/work-orders/{id}/labor": {
+      "post": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Добавить работу в заказ-наряд (нормо-часы)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Название работы"
+                  },
+                  "normHours": {
+                    "type": "string",
+                    "description": "Нормо-часы"
+                  },
+                  "salePrice": {
+                    "type": "string",
+                    "description": "Цена работы"
+                  },
+                  "nomenclatureId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "serviceTypeId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  }
+                },
+                "required": [
+                  "name",
+                  "normHours"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Работа добавлена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lineId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "total": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lineId",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ-наряд не найден"
+          },
+          "409": {
+            "description": "Закрытый наряд не правится"
+          }
+        }
+      }
+    },
+    "/work-orders/{id}/transition": {
+      "post": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Перевести заказ-наряд: в работу / закрыть (G9)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "enum": [
+                      "in_work",
+                      "closed"
+                    ]
+                  }
+                },
+                "required": [
+                  "to"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ-наряд не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/receipts": {
+      "get": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Список приёмок",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "description": "Проведённые или черновики"
+            },
+            "required": false,
+            "description": "Проведённые или черновики",
+            "name": "posted",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Приёмки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Некорректный фильтр"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Создать приёмку по отмеченным строкам (K1)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "comment": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Приёмка создана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "lines",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк, готовых к приёмке"
+          }
+        }
+      }
+    },
+    "/receipts/{id}": {
+      "get": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Приёмка со строками",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Приёмка и её строки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "canPost": {
+                      "type": "boolean",
+                      "description": "Можно ли провести"
+                    }
+                  },
+                  "required": [
+                    "header",
+                    "lines",
+                    "canPost"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Приёмка не найдена"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Отменить приёмку (мягкое удаление)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Приёмка отменена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "released": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "released"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Приёмка не найдена"
+          },
+          "409": {
+            "description": "Проведённую приёмку отменить нельзя"
+          }
+        }
+      }
+    },
+    "/receipts/{id}/post": {
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Провести приёмку: товар поступает на склад (M12)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Приёмка проведена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "posted": {
+                      "type": "boolean"
+                    },
+                    "moved": {
+                      "type": "integer"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "posted",
+                    "moved",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Приёмка не найдена"
+          },
+          "409": {
+            "description": "Уже проведена или нет строк"
+          }
+        }
+      }
+    },
+    "/stock/balance": {
+      "get": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Остатки по номенклатуре и местам хранения",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": false,
+            "name": "nomenclatureId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": false,
+            "name": "warehouseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "description": "Только ненулевой остаток"
+            },
+            "required": false,
+            "description": "Только ненулевой остаток",
+            "name": "onlyPositive",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Остатки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "nomenclature_id": {
+                            "type": "string"
+                          },
+                          "nomenclature": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "article": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "warehouse_id": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "warehouse": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "cell_id": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "cell": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "batch_id": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "on_hand": {
+                            "type": "string"
+                          },
+                          "reserved": {
+                            "type": "string"
+                          },
+                          "available": {
+                            "type": "string",
+                            "description": "Свободный остаток: on_hand − reserved"
+                          }
+                        },
+                        "required": [
+                          "nomenclature_id",
+                          "nomenclature",
+                          "article",
+                          "warehouse_id",
+                          "warehouse",
+                          "cell_id",
+                          "cell",
+                          "batch_id",
+                          "on_hand",
+                          "reserved",
+                          "available"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Некорректный фильтр"
+          }
+        }
+      }
+    },
+    "/stock/moves": {
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Провести движение по складу (инвентаризация, списание)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nomenclatureId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "cellId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "batchId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "receipt",
+                      "expense",
+                      "reserve",
+                      "unreserve",
+                      "shipment",
+                      "return"
+                    ]
+                  },
+                  "quantity": {
+                    "type": "string",
+                    "description": "Количество; для расхода укажите положительное число"
+                  },
+                  "comment": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "nomenclatureId",
+                  "warehouseId",
+                  "kind",
+                  "quantity"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Движение создано",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "moveId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "onHand": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "moveId",
+                    "onHand"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Номенклатура не найдена или количество не число"
+          }
+        }
+      }
+    },
+    "/zones": {
+      "get": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Зоны склада с ячейками",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "purpose",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Зоны и их ячейки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "sort": {
+                            "type": "number"
+                          },
+                          "cells": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "code": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "blocked": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "code",
+                                "blocked"
+                              ]
+                            }
+                          },
+                          "lines": {
+                            "type": "integer",
+                            "description": "Сколько строк сейчас в зоне"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "name",
+                          "purpose",
+                          "sort",
+                          "cells",
+                          "lines"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/{id}/zone": {
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Переместить строку в зону склада",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "zoneId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "cellId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Если не указана — берётся первая свободная ячейка зоны"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Причина перемещения"
+                  }
+                },
+                "required": [
+                  "zoneId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Строка перемещена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "zone": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "cell": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "zone",
+                    "cell",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Зона или ячейка не найдена, либо ячейка не из этой зоны"
+          },
+          "404": {
+            "description": "Строка не найдена"
+          }
+        }
+      }
+    },
+    "/unidentified": {
+      "get": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Позиции, ждущие опознания (K8, A1)",
+        "responses": {
+          "200": {
+            "description": "Неопознанные позиции",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "fact_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "fact_article": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "plate": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "cell": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "status",
+                          "quantity",
+                          "fact_name",
+                          "fact_article",
+                          "plate",
+                          "cell",
+                          "comment"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/{id}/unidentified": {
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Отправить позицию в неопознанные (A1)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "comment": {
+                    "type": "string",
+                    "description": "Что видно: описание, номер фото"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Позиция в зоне неопознанных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "zone": {
+                      "type": "string"
+                    },
+                    "cell": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "zone",
+                    "cell"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Строка не найдена"
+          },
+          "409": {
+            "description": "Позиция уже опознана"
+          }
+        }
+      }
+    },
+    "/lines/{id}/bind": {
+      "post": {
+        "tags": [
+          "warehouse"
+        ],
+        "summary": "Сопоставить позицию с номенклатурой (K8)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nomenclatureId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "zoneId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  }
+                },
+                "required": [
+                  "nomenclatureId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Позиция опознана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "nomenclature": {
+                      "type": "string"
+                    },
+                    "zone": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "cell": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "nomenclature",
+                    "zone",
+                    "cell"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Номенклатура или зона не найдена"
+          },
+          "404": {
+            "description": "Строка не найдена"
+          },
+          "409": {
+            "description": "Позиция уже опознана"
+          }
+        }
+      }
+    },
+    "/supplier-orders": {
+      "get": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Список заказов поставщику",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "confirmed",
+                "received",
+                "cancelled"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестное состояние"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Создать заказ поставщику по отмеченным строкам",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "supplierId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Если не указан — берётся из строки"
+                  },
+                  "receiptDate": {
+                    "type": "string",
+                    "description": "Ожидаемая дата поступления"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Заказ создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "lines",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Нет отмеченных строк, годных к закупке"
+          }
+        }
+      }
+    },
+    "/supplier-orders/{id}": {
+      "get": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Заказ поставщику со строками",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказ и его строки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "header",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Удалить черновик заказа поставщику",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказ удалён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "released": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "released"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Удалять можно только черновик"
+          }
+        }
+      }
+    },
+    "/supplier-orders/{id}/confirm": {
+      "post": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Подтвердить заказ поставщику (P1)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/supplier-orders/{id}/receive": {
+      "post": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Отметить получение товара",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/supplier-orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Отменить заказ у поставщика",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Список заказов покупателя",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sale",
+                "purchase"
+              ],
+              "default": "sale"
+            },
+            "required": false,
+            "name": "operation",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "clientOrderNumber",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Некорректный фильтр"
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Заказ со строками",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказ и его строки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "summary": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Свод по строкам"
+                    },
+                    "canClose": {
+                      "type": "boolean",
+                      "description": "Все ли строки в конечном состоянии"
+                    }
+                  },
+                  "required": [
+                    "header",
+                    "lines",
+                    "summary",
+                    "canClose"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Изменить поле шапки заказа (If-Match: версия)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "field",
+                  "value"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Заказ изменён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Поле не редактируется"
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Конфликт версий"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Удалить заказ вместе со строками (мягко)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказ удалён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "lines"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Есть отгруженные строки — удалять нельзя"
+          }
+        }
+      }
+    },
+    "/orders/{id}/close": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Закрыть заказ: все строки в «Закрыт»",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказ закрыт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "closed": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "closed",
+                    "skipped"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Нет строк или все уже закрыты"
+          }
+        }
+      }
+    }
+  }
+}
