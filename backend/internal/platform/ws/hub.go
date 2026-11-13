@@ -179,7 +179,7 @@ func (h *Hub) NotifyFromPg(payload string) {
 	}
 	role, _ := m["role"].(string)
 	if api, ok := domain.RoleByEnum[role]; ok {
-		role = api
+		role = string(api)
 	}
 	node, _ := m["node"].(string)
 	noticeID, _ := m["noticeId"].(string)

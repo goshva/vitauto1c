@@ -10,7 +10,7 @@ func TestAllowTransition(t *testing.T) {
 	tests := []struct {
 		to     string
 		from   Status
-		role   string
+		role   Role
 		want   Status
 		wantOK bool
 	}{
@@ -55,7 +55,7 @@ func TestAllowTransition(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.to+"_"+string(tt.from)+"_"+tt.role, func(t *testing.T) {
+		t.Run(tt.to+"_"+string(tt.from)+"_"+string(tt.role), func(t *testing.T) {
 			got, err := AllowTransition(tt.to, tt.from, tt.role)
 			if tt.wantOK {
 				if err != nil {
@@ -203,7 +203,7 @@ func TestSupplyRoles(t *testing.T) {
 // ——— Matrix Tests ———
 
 func TestDenyReason(t *testing.T) {
-	mr := MatrixFor("manager")
+	mr := MatrixFor(RoleManager)
 	if len(mr.Columns) == 0 {
 		t.Fatal("matrix has no columns for manager")
 	}
@@ -220,37 +220,37 @@ func TestDenyReason(t *testing.T) {
 	if !found {
 		t.Fatal("manager matrix has no writable column allowed in new")
 	}
-	if deny := DenyReason("manager", col, StatusDraft, false); deny != "" {
+	if deny := DenyReason(RoleManager, col, StatusDraft, false); deny != "" {
 		t.Errorf("DenyReason(manager, col %s, Draft, false) = %q, want empty", col.Field, deny)
 	}
 	// locked status always denied
-	deny := DenyReason("manager", col, StatusLockedBgJob, false)
+	deny := DenyReason(RoleManager, col, StatusLockedBgJob, false)
 	if deny == "" {
 		t.Error("DenyReason should deny for locked status")
 	}
 	// non-writable column always denied
 	ro := MatrixColumn{Field: "ro", Writable: false}
-	if DenyReason("manager", ro, StatusDraft, false) == "" {
+	if DenyReason(RoleManager, ro, StatusDraft, false) == "" {
 		t.Error("DenyReason should deny non-writable column")
 	}
 	// 'c' right: only author
 	cRight := MatrixColumn{Field: "author", Writable: true, Rights: "c" + string(make([]byte, len(mr.Statuses)-1))}
-	if DenyReason("manager", cRight, StatusDraft, false) == "" {
+	if DenyReason(RoleManager, cRight, StatusDraft, false) == "" {
 		t.Error("DenyReason('c', markedByMe=false) should deny")
 	}
-	if DenyReason("manager", cRight, StatusDraft, true) != "" {
+	if DenyReason(RoleManager, cRight, StatusDraft, true) != "" {
 		t.Error("DenyReason('c', markedByMe=true) should allow")
 	}
 }
 
 func TestMatrixFor(t *testing.T) {
 	// unknown role → manager
-	mr := MatrixFor("unknown_role")
+	mr := MatrixFor(Role("unknown_role"))
 	if len(mr.Columns) == 0 {
 		t.Fatal("MatrixFor(unknown_role) should return manager matrix")
 	}
 	// known role
-	mr2 := MatrixFor("storekeeper")
+	mr2 := MatrixFor(RoleStorekeeper)
 	if len(mr2.Columns) == 0 {
 		t.Fatal("MatrixFor(storekeeper) should return columns")
 	}
@@ -265,10 +265,10 @@ func TestMatrixETag(t *testing.T) {
 
 func TestColumnFor(t *testing.T) {
 	// should find at least one column
-	mr := MatrixFor("manager")
+	mr := MatrixFor(RoleManager)
 	found := false
 	for _, c := range mr.Columns {
-		_, ok := ColumnFor("manager", c.Field)
+		_, ok := ColumnFor(RoleManager, Field(c.Field))
 		if ok {
 			found = true
 			break
@@ -278,7 +278,7 @@ func TestColumnFor(t *testing.T) {
 		t.Error("ColumnFor should find at least one column")
 	}
 	// non-existent field
-	_, ok := ColumnFor("manager", "nonexistent_field")
+	_, ok := ColumnFor(RoleManager, Field("nonexistent_field"))
 	if ok {
 		t.Error("ColumnFor should return false for nonexistent field")
 	}

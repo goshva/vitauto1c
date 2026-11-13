@@ -254,5 +254,5 @@ func (a *App) resolveOp(op string) domain.Operation {
 // domainActor — arm.Actor (сессия legacy) → domain.Actor (команды application).
 func domainActor(r *http.Request) domain.Actor {
 	x := actor(r)
-	return domain.Actor{UserID: x.UserID, UserName: x.UserName, Login: x.Login, Role: x.Role}
+	return domain.Actor{UserID: x.UserID, UserName: x.UserName, Login: x.Login, Role: domain.Role(x.Role)}
 }

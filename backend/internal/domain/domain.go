@@ -55,9 +55,9 @@ func TransitionsFor(to string) []*Transition {
 }
 
 // AllowTransition — разрешён ли переход из from ролью role: возвращает целевой статус 1С.
-func AllowTransition(to string, from Status, role string) (Status, error) {
+func AllowTransition(to string, from Status, role Role) (Status, error) {
 	for _, tr := range TransitionsFor(to) {
-		if !contains(tr.Roles, role) {
+		if !contains(tr.Roles, string(role)) {
 			continue
 		}
 		for _, f := range tr.From {

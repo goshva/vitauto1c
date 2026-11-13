@@ -120,15 +120,30 @@ func StatusFromAPICode(code string) (Status, bool) {
 	return "", false
 }
 
+// Role — роль пользователя в API (published language), 7 значений.
+// Введена в Step 2a: матрица прав, FSM и команды агрегата сравнивают роли типом, а не строкой.
+type Role string
+
+const (
+	RoleManager       Role = "manager"
+	RoleSupply        Role = "supply"
+	RoleStorekeeper   Role = "storekeeper"
+	RoleChiefMechanic Role = "chief_mechanic"
+	RoleAdmin         Role = "admin"
+	RoleSupplier      Role = "supplier"
+	RoleClient        Role = "client"
+)
+
 // RoleByEnum — роль интерфейса 1С (Арм_РолиИнтерфейса) → роль API.
-var RoleByEnum = map[string]string{"Менеджер": "manager", "Снабжение": "supply", "Кладовщик": "storekeeper",
-	"ГлавныйМеханик": "chief_mechanic", "Администратор": "admin", "Поставщик": "supplier", "Клиент": "client"}
+// Это перевод между двумя внешними языками: в Step 5a переезжает в adapters/onec.
+var RoleByEnum = map[string]Role{"Менеджер": RoleManager, "Снабжение": RoleSupply, "Кладовщик": RoleStorekeeper,
+	"ГлавныйМеханик": RoleChiefMechanic, "Администратор": RoleAdmin, "Поставщик": RoleSupplier, "Клиент": RoleClient}
 
 // EnumByRole — обратное соответствие.
 var EnumByRole = func() map[string]string {
 	m := map[string]string{}
 	for k, v := range RoleByEnum {
-		m[v] = k
+		m[string(v)] = k
 	}
 	return m
 }()
