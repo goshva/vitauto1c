@@ -141,6 +141,13 @@
       "when": 1794659729903,
       "tag": "0019_chubby_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794660846383,
+      "tag": "0020_loud_shotgun",
+      "breakpoints": true
     }
   ]
 }

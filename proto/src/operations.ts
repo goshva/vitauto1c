@@ -79,7 +79,7 @@ const jobRoute = createRoute({
   responses: {
     200: { description: 'Итог задания', content: { 'application/json': { schema: z.object({
       jobId: uuid, state: z.string(), processed: z.number(), total: z.number(),
-      skipped: z.array(z.string()), supplierOrderId: uuid.nullable(),
+      skipped: z.array(z.string()),
     }) } } },
     409: { description: 'Нет отмеченных строк' },
   },
@@ -101,17 +101,18 @@ async function takeToOrder(line: MarkedForJob): Promise<void> {
   await pool.query(`update line_mark set marked = false where id = $1`, [line.id]);
 }
 
-/** Создаёт заказ поставщику на заказ покупателя. Возвращает его идентификатор. */
-async function createSupplierOrder(orderId: string): Promise<string | null> {
-  const so = await pool.query<{ id: string }>(
-    `insert into supplier_order (number, operation, customer_order_id, counterparty_id, total)
-     values ('ЗП-' || to_char(now(), 'YYYYMMDD-HH24MISS'), 'purchase', $1,
-             (select id from counterparty where is_supplier and deleted_at is null limit 1), 0)
-     returning id`,
-    [orderId],
-  );
-  return so.rows[0]?.id ?? null;
-}
+// АВТОСОЗДАНИЕ ЗАКАЗА ПОСТАВЩИКУ УБРАНО — решение заказчика (14.11.2026):
+// «автосоздание заказа поставщику при проведении „Заказа клиента“ — отключаем
+// полностью». ФТ v2 п. 3 говорит то же: «При проведении „Заказа клиента“ этот
+// документ автоматически не создаётся».
+//
+// Здесь стояла функция `createSupplierOrder`, и «Задание» заводило по заказу
+// поставщику на каждый заказ покупателя. Это и было автосоздание: оператор не
+// просил — документ появлялся. Теперь заказ поставщику делает только явный вызов
+// `POST /supplier-orders` по отмеченным строкам.
+//
+// Убрано именно СОЗДАНИЕ, а не тип документа: заказ поставщику остаётся, иначе
+// снабжению не с чем работать (см. кнопку «Новая закупка» в рабочем месте).
 
 operations.openapi(jobRoute, async (c) => {
   const marked = await pool.query<MarkedForJob>(
@@ -135,26 +136,23 @@ operations.openapi(jobRoute, async (c) => {
   const jobId = job.rows[0]!.id;
 
   const skipped: string[] = [];
-  const orderIds = new Set<string>();
   let processed = 0;
 
   for (const line of marked.rows) {
     if (!JOB_FROM.includes(line.status)) {
       skipped.push(`${line.name}: из статуса «${line.status}» задание не берёт строки`);
       continue;
-    }    await takeToOrder(line);
-    if (line.order_id) orderIds.add(line.order_id);
+    }
+    await takeToOrder(line);
     processed++;
-  }
-
-  let supplierOrderId: string | null = null;
-  for (const orderId of orderIds) {
-    supplierOrderId = await createSupplierOrder(orderId);
   }
 
   await pool.query(`update job set state = 'done', processed = true, finished_at = now() where id = $1`, [jobId]);
 
+  // `supplierOrderId` из ответа УБРАН вместе с автосозданием. Поле, которое
+  // всегда null, хуже отсутствующего: клиент ждёт значение и не понимает, почему
+  // его нет. Заказ поставщику теперь заводится отдельно — `POST /supplier-orders`.
   return c.json({
-    jobId, state: 'done', processed, total: marked.rowCount!, skipped, supplierOrderId,
+    jobId, state: 'done', processed, total: marked.rowCount!, skipped,
   }, 200);
 });

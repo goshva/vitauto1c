@@ -46,6 +46,9 @@ export async function loadLine(id: string): Promise<CurrentLine> {
 const EDITABLE: Record<string, string> = {
   quantity: 'quantity',
   sale_price: 'sale_price',
+  // Коэффициент-множитель (ФТ v2 п. 1). Заказчик уточнил: это МНОЖИТЕЛЬ, а не
+  // «наценка, %» как в матрице legacy — умножают, а не прибавляют процент.
+  coefficient: 'coefficient',
   cost_price: 'cost_price',
   rrc: 'rrc',
   norm_hours: 'norm_hours',
@@ -117,6 +120,46 @@ fields.openapi(patchRoute, async (c) => {
           `Строку изменили: ожидалась версия ${expected}, в базе ${current.version}`),
       );
     }
+  }
+
+  // КОЭФФИЦИЕНТ (ФТ v2 п. 1) — не просто поле: он ДВИГАЕТ цену.
+  //
+  // «При выборе номенклатуры цена подставляется сама: цена = база × коэффициент».
+  // Значит, задав множитель, менеджер ожидает увидеть новую цену, а не строку, где
+  // множитель новый, а цена старая. Считаем здесь же, одной операцией.
+  //
+  // Обратный ход (вписали цену руками) правки не требует: хранимый коэффициент
+  // при этом СБРАСЫВАЕТСЯ, и представление отдаёт расчётный с признаком
+  // «расчётный» — так требует ФТ: «коэффициент пересчитывается сам и
+  // подсвечивается как расчётный».
+  if (field === 'coefficient') {
+    const r = await pool.query(
+      `update line
+          set coefficient = $2::numeric,
+              sale_price = case when cost_price is null or cost_price = 0 then sale_price
+                                else round(cost_price * $2::numeric, 2) end,
+              version = version + 1, updated_at = now()
+        where id = $1 and not deleted
+        returning version::text, sale_price::text`,
+      [id, value],
+    );
+    return c.json({
+      version: Number(r.rows[0]!.version),
+      salePrice: r.rows[0]!.sale_price,
+    }, 200);
+  }
+
+  if (field === 'sale_price') {
+    // Цену вписали руками — множитель больше не задан, он РАСЧЁТНЫЙ.
+    const r = await pool.query(
+      `update line
+          set sale_price = $2, coefficient = null,
+              version = version + 1, updated_at = now()
+        where id = $1 and not deleted
+        returning version::text`,
+      [id, value],
+    );
+    return c.json({ version: Number(r.rows[0]!.version), coefficientCalculated: true }, 200);
   }
 
   const r = await pool.query(

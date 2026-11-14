@@ -101,12 +101,16 @@ describe('line_totals считает суммы строки', () => {
 });
 
 describe('line_view отдаёт контракт списка', () => {
-  test('49 колонок: id + operation + customer_order_id + 46 из 57 именованных', async () => {
+  test('50 колонок: 49 контракта плюс признак «коэффициент расчётный» (ФТ v2 п. 1)', async () => {
     const r = await client.query<{ column_name: string }>(
       `select column_name from information_schema.columns
         where table_schema='public' and table_name='line_view'`,
     );
-    expect(r.rowCount).toBe(49);
+    expect(r.rowCount).toBe(50);
+
+    const names = r.rows.map((x) => x.column_name);
+    expect(names, 'признак расчётного коэффициента пропал').toContain('coefficientCalculated');
+    expect(names, 'коэффициент пропал').toContain('coefficient');
   });
 
   test('отложены ровно 11 колонок документов — и никакие другие', async () => {

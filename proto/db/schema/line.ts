@@ -51,6 +51,18 @@ export const line = pgTable(
     status: text('status'),
     deleted: boolean('deleted').notNull().default(false),
     salePrice: numeric('sale_price', { precision: 15, scale: 2 }),
+    /**
+     * Коэффициент (множитель) — ФТ v2 п. 1.
+     *
+     * Заказчик уточнил (14.11.2026): это КОЭФФИЦИЕНТ-МНОЖИТЕЛЬ, а не «наценка, %»
+     * как в матрице legacy. Разница не в названии: множитель умножают, процент
+     * прибавляют (`цена × (1 + п/100)`), и путаница дала бы цены в 1.25 против 125.
+     *
+     * Поле ХРАНИТСЯ, а не вычисляется: менеджер задаёт его вручную, и цена
+     * подставляется от него. Расчётный коэффициент (когда цену вписали руками)
+     * считает представление `line_view` — это РАЗНЫЕ числа, и путать их нельзя.
+     */
+    coefficient: numeric('coefficient', { precision: 15, scale: 3 }),
     contractId: uuid('contract_id'),
     customerId: uuid('customer_id'),
     comment: text('comment'),

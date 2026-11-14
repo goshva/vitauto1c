@@ -95,7 +95,10 @@ describe('POST /lines/{id}/cell — K2', () => {
 });
 
 describe('POST /sales/jobs — M4/K5, задание без 1С', () => {
-  test('переводит отмеченные строки в «Заказано» и создаёт заказ поставщику', async () => {
+  test('переводит отмеченные строки в «Заказано», НЕ создавая заказ поставщику', async () => {
+    const before = Number((await pool.query<{ n: string }>(
+      `select count(*)::text n from supplier_order`)).rows[0]!.n);
+
     await post(`/lines/b0000000-0000-0000-0000-000000000001/mark`, { marked: true });
 
     const r = await post('/sales/jobs', { allowSplit: false });
@@ -103,7 +106,15 @@ describe('POST /sales/jobs — M4/K5, задание без 1С', () => {
     const b = await json(r);
     expect(b.processed).toBe(1);
     expect(b.state).toBe('done');
-    expect(b.supplierOrderId, 'должен создаться заказ поставщику').toBeTruthy();
+
+    // АВТОСОЗДАНИЕ ОТКЛЮЧЕНО — решение заказчика (14.11.2026), ФТ v2 п. 3:
+    // «При проведении „Заказа клиента“ этот документ автоматически не создаётся».
+    // Раньше «Задание» заводило заказ поставщику само; теперь его делает только
+    // явный вызов `POST /supplier-orders`.
+    const after = Number((await pool.query<{ n: string }>(
+      `select count(*)::text n from supplier_order`)).rows[0]!.n);
+    expect(after, 'заказ поставщику создался сам').toBe(before);
+    expect(b, 'поле автосоздания осталось в ответе').not.toHaveProperty('supplierOrderId');
 
     const line = await json(await app.request(`/lines/b0000000-0000-0000-0000-000000000001`));
     expect(line.status).toBe('ordered');

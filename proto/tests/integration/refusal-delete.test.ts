@@ -58,21 +58,29 @@ beforeEach(async () => {
   await seedProcess('happy');
 });
 
-describe('№15 · право «Удаление» — только администратору', () => {
-  test('менеджер не удаляет строку', async () => {
+describe('№15 · право «Удаление» — админ и менеджер', () => {
+  test('менеджер удаляет — заказчик разрешил (14.11.2026)', async () => {
     const id = await anyLine();
-    const { status, body } = await del(`/lines/${id}`, 'manager');
+    const { status } = await del(`/lines/${id}`, 'manager');
 
-    expect(status).toBe(403);
-    expect(body.code).toBe('forbidden');
-    expect(String(body.message), 'отказ не называет, кому можно').toContain('admin');
-    expect(await lineExists(id), 'строка исчезла, хотя права не было').toBe(true);
+    expect(status, 'менеджер потерял право удаления').toBe(200);
+    const r = await pool.query<{ deleted: boolean }>(
+      `select deleted from line where id = $1`, [id]);
+    expect(r.rows[0]!.deleted).toBe(true);
   });
 
   test('кладовщик не удаляет строку', async () => {
     const id = await anyLine();
     expect((await del(`/lines/${id}`, 'storekeeper')).status).toBe(403);
     expect(await lineExists(id)).toBe(true);
+  });
+
+  test('механик и муниципалитет не удаляют — право узкое', async () => {
+    for (const role of ['mechanic', 'municipality'] as const) {
+      const id = await anyLine();
+      expect((await del(`/lines/${id}`, role)).status, `${role} удалил строку`).toBe(403);
+      expect(await lineExists(id)).toBe(true);
+    }
   });
 
   test('администратор удаляет — право не сломано запретом', async () => {
@@ -90,20 +98,20 @@ describe('№15 · право «Удаление» — только админи
     const id = await anyLine();
     await post(`/lines/${id}/mark`, { marked: true });
 
-    const denied = await post('/lines/bulk-delete', {}, 'manager');
+    const denied = await post('/lines/bulk-delete', {}, 'storekeeper');
     expect(denied.status).toBe(403);
     expect(await lineExists(id)).toBe(true);
 
-    const allowed = await post('/lines/bulk-delete', {}, 'admin');
+    const allowed = await post('/lines/bulk-delete', {}, 'manager');
     expect(allowed.status).toBe(200);
   });
 
-  test('удаление документов тоже только админу', async () => {
+  test('удаление документов тоже закрыто для кладовщика', async () => {
     const { body: order } = await post('/work-orders', { carId: CAR, serviceTypeId: SERVICE });
 
     for (const url of [`/work-orders/${String(order.id)}`, '/orders/00000000-0000-0000-0000-0000000000ff']) {
-      const { status } = await del(url, 'manager');
-      expect(status, `${url}: менеджер удалил документ`).toBe(403);
+      const { status } = await del(url, 'storekeeper');
+      expect(status, `${url}: кладовщик удалил документ`).toBe(403);
     }
   });
 
