@@ -46,6 +46,18 @@ export const stockMove = pgTable(
       .$type<'receipt' | 'expense' | 'write_off' | 'reserve' | 'unreserve' | 'shipment' | 'return'>()
       .notNull(),
     quantity: numeric('quantity', { precision: 15, scale: 3 }).notNull(),
+    /**
+     * Автор движения (ФТ v2 п. 10).
+     *
+     * ФТ: «кнопка „Снять резерв“ активна только для того пользователя, который резерв
+     * поставил — система сверяет автора». Без этой колонки сверять не с чем: резерв
+     * ставил один человек, снимал любой, и «кто взял последнюю деталь» оставалось без
+     * ответа.
+     *
+     * Храним идентификатор УЧЁТНОЙ ЗАПИСИ, а не роль: роль у всех кладовщиков одна,
+     * а автор — конкретный человек.
+     */
+    authorId: uuid('author_id'),
     comment: text('comment'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

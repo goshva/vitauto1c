@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { pool } from './db.ts';
 import { guard } from './auth.ts';
+import { checkAuthor } from './domain/document-rights.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
@@ -53,12 +54,20 @@ ordersEdit.openapi(createRoute({
       `Поле «${field}» не редактируется вручную. Редактируемые: ${allowed}`, field));
   }
 
-  const current = await pool.query<{ version: string }>(
-    `select version::text from customer_order where id = $1 and deleted_at is null`, [id],
+  const current = await pool.query<{ version: string; author_id: string | null }>(
+    `select version::text, author_id from customer_order where id = $1 and deleted_at is null`, [id],
   );
   if (current.rowCount === 0) {
     return problemResponse(c, new Problem(404, 'not_found', `Заказ ${id} не найден`));
   }
+
+  // Права ПО АВТОРУ (ФТ v2 п. 20): «Изменение» — только автору документа,
+  // «Просмотр» — по профилю доступа, администратору — всё.
+  //
+  // Проверка стоит ДО правки и ПОСЛЕ поиска документа: отказ на несуществующем
+  // заказе был бы 403 вместо 404 и запутал бы разбор.
+  const authorDenial = checkAuthor(c, current.rows[0]!.author_id);
+  if (authorDenial) return problemResponse(c, authorDenial);
 
   const version = Number(current.rows[0]!.version);
   if (ifMatch !== undefined && Number.isFinite(Number(ifMatch)) && Number(ifMatch) !== version) {

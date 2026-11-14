@@ -1,5 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi';
-import { guard } from './auth.ts';
+import { guard, userIdOf } from './auth.ts';
 import { createApi } from './api.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
@@ -84,12 +84,14 @@ imports.openapi(route, async (c) => {
     const clientNumber = body.rows[0]?.clientNumber ?? null;
 
     const order = await client.query<{ id: string }>(
+      // Автор документа (ФТ v2 п. 20): «Изменение» — только ему. Без записи автора
+      // правило сверяло бы с пустотой и не работало бы, оставаясь «зелёным» в тестах.
       `insert into customer_order (number, operation, client_order_number,
-                                   counterparty_id, contract_id, organization_id, total)
-       values ($1, $2, $3, $4, $5, $6, 0)
+                                   counterparty_id, contract_id, organization_id, total, author_id)
+       values ($1, $2, $3, $4, $5, $6, 0, $7)
        returning id`,
       [number, body.operation, clientNumber, body.customerId,
-        body.contractId ?? null, body.organizationId ?? null],
+        body.contractId ?? null, body.organizationId ?? null, userIdOf(c)],
     );
     const orderId = order.rows[0]!.id;
 

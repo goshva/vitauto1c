@@ -36,6 +36,8 @@ export const workOrder = pgTable(
      * но не причину, по которой машину пригнали.
      */
     comment: text('comment'),
+    /** Автор документа (ФТ v2 п. 20) — см. комментарий в `doc.ts`. */
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [

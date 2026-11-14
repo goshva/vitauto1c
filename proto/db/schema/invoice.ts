@@ -35,6 +35,8 @@ export const invoice = pgTable(
     /** Дата фактической оплаты — заполняется на переходе в `paid`. */
     paidAt: timestamp('paid_at', { withTimezone: true }),
     comment: text('comment'),
+    /** Автор документа (ФТ v2 п. 20) — см. комментарий в `doc.ts`. */
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [

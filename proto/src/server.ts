@@ -11,6 +11,7 @@ import { supply } from './supply.ts';
 import { print } from './print.ts';
 import { printRepair } from './print-repair-routes.ts';
 import { supplyUi } from './supply-ui.ts';
+import { loginUi } from './login-ui.ts';
 import { purchaseUi } from './purchase-ui.ts';
 import { refs } from './refs.ts';
 import { refCells } from './ref-cells.ts';
@@ -131,6 +132,9 @@ app.route('/', supply);
 app.route('/', printRepair);
 app.route('/', print);
 app.route('/', supplyUi);
+// Вход и выход — рядом с экранами, до API: `/login` не должен попасть под
+// согласование формата, иначе агент получил бы HTML вместо отказа.
+app.route('/', loginUi);
 app.route('/', purchaseUi);
 app.route('/', refs);
 app.route('/', refCells);

@@ -162,6 +162,20 @@
       "when": 1794682538862,
       "tag": "0022_modern_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794692826484,
+      "tag": "0023_long_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794692953446,
+      "tag": "0024_orange_veda",
+      "breakpoints": true
     }
   ]
 }

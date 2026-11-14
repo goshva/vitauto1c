@@ -101,6 +101,9 @@ export async function seedProcess(id: string): Promise<void> {
 /** Справочные данные. Идемпотентно. */
 export async function seedRefs(): Promise<void> {
   await runSqlFile('templates/refs.sql');
+  // Учётные записи — отдельным файлом: хеши паролей зависят от соли, и в шаблоне
+  // справочников их не записать. Файл генерируется `scripts/gen-users.ts`.
+  await runSqlFile('templates/users.sql');
 }
 
 /**

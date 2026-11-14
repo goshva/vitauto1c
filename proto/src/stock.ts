@@ -1,5 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi';
-import { guard } from './auth.ts';
+import { guard, userIdOf } from './auth.ts';
+import { checkAuthor } from './domain/document-rights.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
@@ -124,12 +125,35 @@ stock.openapi(createRoute({
   try {
     await client.query('begin');
 
+    // Снятие резерва — только автором (ФТ v2 п. 10: «система сверяет автора»).
+    //
+    // Проверка ДО вставки: движение, которое всё равно откатят, не должно попадать
+    // в базу даже на мгновение — иначе в журнале остался бы след от отказа.
+    if (body.kind === 'unreserve') {
+      const owner = await client.query<{ author_id: string | null }>(
+        `select author_id from stock_move
+          where kind = 'reserve' and nomenclature_id = $1
+            and warehouse_id is not distinct from $2
+          order by created_at desc limit 1`,
+        [body.nomenclatureId, body.warehouseId],
+      );
+      const denial = checkAuthor(c, owner.rows[0]?.author_id ?? null);
+      if (denial) {
+        await client.query('rollback');
+        return problemResponse(c, denial);
+      }
+    }
+
     const move = await client.query<{ id: string }>(
-      `insert into stock_move (nomenclature_id, warehouse_id, cell_id, batch_id, kind, quantity, comment)
-       values ($1, $2, $3, $4, $5, $6, $7)
+      // Автор движения (ФТ v2 п. 10): без него «снять резерв» не с чем сверять.
+      // Для незалогиненного (демо и тесты по заголовку) остаётся null — и тогда
+      // снять резерв может любой с правом: сверять не с чем, и запрет сломал бы
+      // демонстрацию, ничего не защитив.
+      `insert into stock_move (nomenclature_id, warehouse_id, cell_id, batch_id, kind, quantity, comment, author_id)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
        returning id`,
       [body.nomenclatureId, body.warehouseId, body.cellId ?? null, body.batchId ?? null,
-        body.kind, qty, body.comment ?? null],
+        body.kind, qty, body.comment ?? null, userIdOf(c)],
     );
 
     // Остаток читаем из представления сразу после движения: оператор должен видеть,

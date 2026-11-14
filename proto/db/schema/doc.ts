@@ -49,6 +49,12 @@ export const customerOrder = pgTable(
     refusedAt: timestamp('refused_at', { withTimezone: true }),
     /** Причина отказа. Свободный текст — клиент называет её сам. */
     refusalReason: text('refusal_reason'),
+    /**
+     * Автор документа (ФТ v2 п. 20): «Изменение» — только автору, «Просмотр» — по
+     * профилю доступа, администратору — всё. Колонка есть у каждого документа и у
+     * движения склада; смысл один, поэтому и комментарий один.
+     */
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [index('customer_order_number_idx').on(t.number)],
@@ -75,6 +81,7 @@ export const supplierOrder = pgTable(
     customerOrderId: uuid('customer_order_id'),
     receiptDate: timestamp('receipt_date'),
     total: numeric('total', { precision: 15, scale: 2 }),
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [
@@ -105,6 +112,7 @@ export const receipt = pgTable(
     zoneId: uuid('zone_id'),
     total: numeric('total', { precision: 15, scale: 2 }),
     posted: boolean('posted').notNull().default(false),
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [index('receipt_number_idx').on(t.number)],
@@ -133,6 +141,7 @@ export const shipment = pgTable(
     // (марка, VIN, двигатель), которые в legacy лежали прямо в `arm.line` (47–57).
     carId: uuid('car_id'),
     total: numeric('total', { precision: 15, scale: 2 }),
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [
@@ -167,6 +176,7 @@ export const returnOrder = pgTable(
     organizationId: uuid('organization_id'),
     warehouseId: uuid('warehouse_id'),
     total: numeric('total', { precision: 15, scale: 2 }),
+    authorId: uuid('author_id'),
     ...stamp(),
   },
   (t) => [
