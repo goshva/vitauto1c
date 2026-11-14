@@ -4,7 +4,6 @@ import { pool } from './db.ts';
 import { layout } from './views/html.ts';
 import { linesTable, type Row } from './views/lines.ts';
 import { actionsPanel, type MarkedLine } from './views/actions.ts';
-import { checkTransition, requiresSignedOriginal } from './domain/transition.ts';
 import { Problem, problemResponse } from './problem.ts';
 
 // Экраны АРМ на HTMX.
@@ -111,35 +110,27 @@ linesUi.post('/ui/lines/:id/toggle', async (c) => {
 });
 
 // --- POST /ui/lines/transition — переход по отмеченным --------------------------------
+//
+// ДЕЛЕГИРУЕТ в API, а не повторяет его логику.
+//
+// Здесь стояла ВТОРАЯ КОПИЯ перехода: те же проверки, тот же `update line`, тот же
+// сброс отметок. Две копии одного правила — это ровно тот класс дефектов, от
+// которого проект и уходил (C21: таблица переходов была продублирована четырежды и
+// разошлась). Уведомления АРМ (ФТ v2 п. 17), добавленные в API, в копию не попали бы
+// вовсе — и из интерфейса они бы не создавались.
+//
+// Теперь адрес один. Экран лишь передаёт запрос и перерисовывает панель.
 linesUi.post('/ui/lines/transition', async (c) => {
   const form = await c.req.parseBody();
   const to = String(form.to ?? '');
   const op = operation(typeof form.view === 'string' ? form.view : undefined);
 
-  const marked = await pool.query<{ id: string; status: string; signed_original: boolean; name: string }>(
-    `select l.id, l.status, coalesce(l.signed_original, false) as signed_original,
-            coalesce(f.fact_name, l.id::text) as name
-       from line l
-       join line_mark m on m.id = l.id and m.marked
-       left join line_fact f on f.id = l.id
-      where not l.deleted
-      order by l.order_date, l.id`,
-  );
-
-  const skipped: string[] = [];
-  for (const line of marked.rows) {
-    const denial = checkTransition(to, line.status);
-    if (denial) { skipped.push(denial); continue; }
-    if (requiresSignedOriginal(to, line.status) && !line.signed_original) {
-      skipped.push('не отмечено «Документ подписан оригинал»');
-      continue;
-    }
-    await pool.query(
-      `update line set status = $2, version = version + 1, updated_at = now() where id = $1`,
-      [line.id, to],
-    );
-    await pool.query(`update line_mark set marked = false where id = $1`, [line.id]);
-  }
+  const { app } = await import('./server.ts');
+  await app.request('/lines/transition', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ to }),
+  });
 
   // Панель возвращается целиком: и список, и кнопки пересчитываются на сервере.
   return c.html(await linesPanel(op));

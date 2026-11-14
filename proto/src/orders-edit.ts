@@ -124,6 +124,10 @@ ordersEdit.openapi(createRoute({
   return c.json({ id, closed: toClose.length, skipped }, 200);
 });
 
+// --- DELETE /orders/{id} — мягкое удаление -------------------------------------------
+//
+// Вернулся сюда из `orders-refusal.ts`: при выносе отказа он уехал следом за
+// маркером, хотя относится к правке документа, а не к отказу.
 // --- DELETE /orders/{id} — мягкое удаление --------------------------------------------
 
 ordersEdit.openapi(createRoute({

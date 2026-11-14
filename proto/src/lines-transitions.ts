@@ -3,6 +3,7 @@ import { createApi } from './api.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { STATUSES, statusTitle } from './domain/status.ts';
+import { notifyStatus } from './notices.ts';
 import { checkTransition, requiresSignedOriginal } from './domain/transition.ts';
 import { uuid } from './domain/uuid.ts';
 import { loadLine } from './lines-fields.ts';
@@ -42,9 +43,12 @@ transitions.openapi(transitionRoute, async (c) => {
       `Неизвестный статус «${to}». Допустимые: ${STATUSES.join(', ')}`, 'to'));
   }
 
-  const marked = await pool.query<{ id: string; status: string; signed_original: boolean; name: string }>(
+  const marked = await pool.query<{
+    id: string; status: string; signed_original: boolean; name: string;
+    customer_order_id: string | null;
+  }>(
     `select l.id, l.status, coalesce(l.signed_original, false) as signed_original,
-            coalesce(f.fact_name, l.id::text) as name
+            coalesce(f.fact_name, l.id::text) as name, l.customer_order_id
        from line l
        join line_mark m on m.id = l.id and m.marked
        left join line_fact f on f.id = l.id
@@ -77,6 +81,8 @@ transitions.openapi(transitionRoute, async (c) => {
       [line.id, to],
     );
     await pool.query(`update line_mark set marked = false where id = $1`, [line.id]);
+    // Уведомление АРМ (ФТ v2 п. 17): роль-адресат берётся из карты процессов.
+    await notifyStatus(line.id, to, line.customer_order_id);
     processed++;
   }
 

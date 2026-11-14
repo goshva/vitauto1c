@@ -31,6 +31,24 @@ export const customerOrder = pgTable(
     organizationId: uuid('organization_id'),
     shipDate: timestamp('ship_date'),
     total: numeric('total', { precision: 15, scale: 2 }),
+    /**
+     * Состояние ЗАКАЗА (ФТ v2 п. 15).
+     *
+     * Заказчик уточнил (14.11.2026): «Отменён»/«Отказался» — это состояние ЗАКАЗА,
+     * а не строки. ФТ говорил «в шапке ИЛИ строке», и первая версия поставила его
+     * строке. Разница существенная: клиент отказывается от ЗАКАЗА целиком, и одно
+     * событие на шапке честнее десятка состояний на строках.
+     *
+     * Состояния строк при отказе НЕ переписываются: строка остаётся там, где её
+     * застал отказ, и склад видит, докуда дошёл товар.
+     */
+    status: text('status')
+      .$type<'new' | 'in_work' | 'closed' | 'cancelled' | 'refused'>()
+      .notNull().default('new'),
+    /** Когда клиент отказался: по этой дате считают упущенное и брак. */
+    refusedAt: timestamp('refused_at', { withTimezone: true }),
+    /** Причина отказа. Свободный текст — клиент называет её сам. */
+    refusalReason: text('refusal_reason'),
     ...stamp(),
   },
   (t) => [index('customer_order_number_idx').on(t.number)],

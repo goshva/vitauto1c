@@ -148,6 +148,13 @@
       "when": 1794660846383,
       "tag": "0020_loud_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794681698795,
+      "tag": "0021_parallel_smasher",
+      "breakpoints": true
     }
   ]
 }
