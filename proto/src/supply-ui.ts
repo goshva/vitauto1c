@@ -24,9 +24,10 @@ async function loadRows(): Promise<Row[]> {
   const r = await pool.query<Row>(
     `select "id", "order", "status", "marked", "nomenclature", "factName", "nomenclatureArticle",
             "clientOrderNumber", "quantity", "stockQty", "reserveQty", "customer",
-            "salePrice", "saleSum", "comment"
+            "salePrice", "saleSum", "comment", "urgency"
        from line_view
       where status = any($1)
+      -- Срочность — метка, а не приоритет (ФТ v2 п. 9): на порядок не влияет.
       order by "order"`,
     [SUPPLY_STATUSES],
   );

@@ -26,11 +26,18 @@ export interface Row {
   salePrice: string | null;
   saleSum: string | null;
   comment: string | null;
+  /** Метка «Срочно» (ФТ v2 п. 9). */
+  urgency: string | null;
 }
 
 function row(r: Row): string {
   const checked = r.marked ? ' checked' : '';
-  return `<tr data-testid="row-${esc(r.id)}" data-id="${esc(r.id)}" data-status="${esc(r.status)}">
+  // Срочность — ТОЛЬКО МЕТКА (ФТ v2 п. 9): подсвечивает строку цветом, но НЕ меняет
+  // порядок формирования заказа поставщику. Порядок задаёт `order`, и путать эти
+  // вещи нельзя: иначе «срочные» начнут обгонять уже оплаченные.
+  const urgent = r.urgency ? ' row-urgent' : '';
+  return `<tr class="line-row${urgent}" data-testid="row-${esc(r.id)}" data-id="${esc(r.id)}" data-status="${esc(r.status)}"${
+    r.urgency ? ` data-urgency="${esc(r.urgency)}"` : ''}>
   <td class="c-mark">
     <input type="checkbox" data-testid="mark-${esc(r.id)}"${checked}
            hx-post="/ui/lines/${esc(r.id)}/toggle"
@@ -38,6 +45,8 @@ function row(r: Row): string {
   </td>
   <td class="c-num">${cell(r.order)}</td>
   <td data-testid="status-${esc(r.id)}" class="c-status s-${esc(r.status)}">${esc(statusTitle(r.status))}</td>
+  <td data-testid="urgency-${esc(r.id)}">${
+    r.urgency ? `<span class="chip warn">Срочно</span>` : ''}</td>
   <td class="c-code" data-testid="client-number-${esc(r.id)}">${cell(r.clientOrderNumber)}</td>
   <td>${cell(r.factName ?? r.nomenclature)}</td>
   <td class="c-code">${cell(r.nomenclatureArticle)}</td>
@@ -67,6 +76,7 @@ export function linesTable(rows: Row[], view: string): string {
       <th class="c-mark"><span class="vh">Отметка</span></th>
       <th class="c-num">№</th>
       <th>Статус</th>
+      <th>Срочно</th>
       <th>Заказ клиента</th>
       <th>Наименование</th>
       <th>Артикул</th>

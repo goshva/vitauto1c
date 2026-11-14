@@ -47,9 +47,12 @@ async function loadNomenclature(): Promise<Option[]> {
 /** Зоны, куда можно положить опознанную позицию. */
 async function loadZones(): Promise<Option[]> {
   const r = await pool.query<{ id: string; title: string }>(
+    // Предопределённые зоны идут первыми (sort 1–6) — их и выбирают в обычной
+    // работе. Фильтровать по `purpose` нельзя: там теперь название из схемы
+    // («Мелкие детали»), а не машинный код.
     `select id, name as title from warehouse_zone
-      where deleted_at is null and purpose in ('storage', 'assembly', 'repair')
-      order by sort`,
+      where deleted_at is null
+      order by sort, name`,
   );
   return r.rows;
 }

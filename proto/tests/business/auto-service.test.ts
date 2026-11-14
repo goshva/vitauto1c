@@ -278,7 +278,7 @@ describe('C. Работы', () => {
     expect(item.warehouse).toBeTruthy();
 
     const zones = await get('/zones');
-    expect((zones.body.items as unknown[]).length).toBe(12);
+    expect((zones.body.items as unknown[]).length).toBe(11);
   });
 
   test('C2 ✅ переместить запчасть в ремонтную зону', async () => {
@@ -290,7 +290,7 @@ describe('C. Работы', () => {
 
     const zone = await pool.query<{ purpose: string }>(
       `select purpose from warehouse_zone where id=$1`, [ZONE_REP]);
-    expect(zone.rows[0]!.purpose).toBe('repair');
+    expect(zone.rows[0]!.purpose).toBe('Заказ-наряды, механик');
   });
 
   test('C3 ✅ выполнить работу в нормо-часах', async () => {

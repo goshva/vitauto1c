@@ -23,12 +23,16 @@ zones.openapi(createRoute({
   path: '/zones',
   tags: ['warehouse'],
   summary: 'Зоны склада с ячейками',
-  request: { query: z.object({ purpose: z.string().optional() }) },
+  // Фильтр по `predefined`, а не по `purpose`: в `purpose` теперь описание из
+  // утверждённой схемы («Мелкие детали»), и фильтровать по нему нельзя.
+  // `predefined=true` — ровно шесть зон из схемы (ФТ v2 п. 7).
+  request: { query: z.object({ predefined: z.enum(['true', 'false']).optional() }) },
   responses: {
     200: { description: 'Зоны и их ячейки', content: { 'application/json': { schema: z.object({
       items: z.array(z.object({
         id: z.string(), code: z.string().nullable(), name: z.string(),
         purpose: z.string().nullable(), sort: z.number(),
+        predefined: z.boolean().describe('Зона из утверждённой схемы (ФТ v2 п. 7)'),
         cells: z.array(z.object({ id: z.string(), code: z.string().nullable(), blocked: z.boolean() })),
         lines: z.number().int().describe('Сколько строк сейчас в зоне'),
       })),
@@ -36,17 +40,18 @@ zones.openapi(createRoute({
     }) } } },
   },
 }), async (c) => {
-  const { purpose } = c.req.valid('query');
+  const { predefined } = c.req.valid('query');
   const params: unknown[] = [];
   let where = 'where z.deleted_at is null';
-  if (purpose) { params.push(purpose); where += ` and z.purpose = $${params.length}`; }
+  if (predefined) { params.push(predefined === 'true'); where += ` and z.predefined = $${params.length}`; }
 
   const r = await pool.query<{
     id: string; code: string | null; name: string; purpose: string | null; sort: number;
+    predefined: boolean;
     cells: { id: string; code: string | null; blocked: boolean }[];
     lines: string;
   }>(
-    `select z.id, z.code, z.name, z.purpose, z.sort,
+    `select z.id, z.code, z.name, z.purpose, z.sort, z.predefined,
             coalesce(json_agg(json_build_object('id', c.id, 'code', c.code, 'blocked', c.blocked)
                      order by c.code) filter (where c.id is not null), '[]') as cells,
             (select count(*) from line l where l.zone_id = z.id and not l.deleted) as lines

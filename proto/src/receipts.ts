@@ -120,6 +120,8 @@ receipts.openapi(createRoute({
   summary: 'Создать приёмку по отмеченным строкам (K1)',
   request: { body: { content: { 'application/json': { schema: z.object({
     comment: z.string().optional(),
+    /** Зона размещения (ФТ v2 п. 7). По умолчанию — приёмка. */
+    zoneId: uuid.optional().describe('Зона, куда кладовщик размещает товар'),
   }) } } } },
   responses: {
     201: { description: 'Приёмка создана', content: { 'application/json': { schema: z.object({
@@ -128,6 +130,7 @@ receipts.openapi(createRoute({
     409: { description: 'Нет отмеченных строк, готовых к приёмке' },
   },
 }), async (c) => {
+  const { zoneId } = c.req.valid('json');
   const marked = await pool.query<{ id: string; status: string; supplier_id: string | null; name: string }>(
     `select l.id, l.status, l.supplier_id,
             coalesce(f.fact_name, l.id::text) as name
@@ -157,12 +160,15 @@ receipts.openapi(createRoute({
     const number = `ПР-${String(seq.rows[0]!.n).padStart(4, '0')}`;
 
     const head = await client.query<{ id: string }>(
-      `insert into receipt (number, operation, counterparty_id, warehouse_id, posted)
+      `insert into receipt (number, operation, counterparty_id, warehouse_id, zone_id, posted)
        values ($1, 'purchase',
                (select supplier_id from line where id = $2),
-               '44444444-4444-4444-4444-444444444401', false)
+               '44444444-4444-4444-4444-444444444401', $3, false)
        returning id`,
-      [number, ready[0]!.id],
+      // По умолчанию — ЗОНА ПРИЁМКИ: товар только что выгрузили, и раскладывать его
+      // по складу будет отдельный шаг (K2). Пустая зона означала бы «неизвестно где»,
+      // а это ровно тот дефект, из-за которого разъезжался остаток при списании.
+      [number, ready[0]!.id, zoneId ?? '99999999-9999-9999-9999-999999999901'],
     );
     const receiptId = head.rows[0]!.id;
 

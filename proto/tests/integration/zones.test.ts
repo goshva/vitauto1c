@@ -52,8 +52,13 @@ describe('GET /zones — зоны склада', () => {
     const { status, body } = await get('/zones');
     expect(status).toBe(200);
 
-    const items = body.items as { code: string; cells: unknown[]; lines: number }[];
-    expect(items.length, 'не все зоны попали в справочник').toBe(12);
+    const items = body.items as {
+      code: string; cells: unknown[]; lines: number; predefined: boolean;
+    }[];
+    // Одиннадцать: шесть из УТВЕРЖДЁННОЙ схемы плюс пять служебных.
+    // «Неопознанные» и «Возвраты» — одна зона Z5 по схеме, они слиты.
+    expect(items.length, 'не все зоны попали в справочник').toBe(11);
+    expect(items.filter((z) => z.predefined).length, 'предопределённых не шесть').toBe(6);
 
     // Зоны, которых не хватало: они и были последним незакрытым пунктом.
     const codes = items.map((z) => z.code);
@@ -64,18 +69,32 @@ describe('GET /zones — зоны склада', () => {
     expect(items[0]!.cells.length).toBeGreaterThan(0);
   });
 
-  test('фильтр по назначению зоны', async () => {
+  test('фильтр «предопределённые» отдаёт ровно шесть из схемы (ФТ v2 п. 7)', async () => {
     const all = await get('/zones');
-    const repair = await get('/zones?purpose=repair');
-    expect((repair.body.items as unknown[]).length).toBe(1);
-    expect((repair.body.items as { code: string }[])[0]!.code).toBe('REP');
-    expect((repair.body.items as unknown[]).length).toBeLessThan((all.body.items as unknown[]).length);
+    const predefined = await get('/zones?predefined=true');
+
+    // Шесть по утверждённой схеме: приёмки, малый, большой, «неопознанные и
+    // возвраты», ремонтная, укомплектованных.
+    const codes = (predefined.body.items as { code: string }[]).map((z) => z.code).sort();
+    expect(codes).toEqual(['BG', 'PACK', 'REC', 'REP', 'SM', 'UNK']);
+    expect((predefined.body.items as unknown[]).length)
+      .toBeLessThan((all.body.items as unknown[]).length);
+  });
+
+  test('служебные зоны в предопределённые не попадают', async () => {
+    const { body } = await get('/zones?predefined=false');
+    const codes = (body.items as { code: string }[]).map((z) => z.code);
+    for (const service of ['ASM', 'SHP', 'ADM', 'WO']) {
+      expect(codes, `служебная зона ${service} попала в утверждённую шестёрку`).toContain(service);
+    }
+    expect(codes).not.toContain('RET');
   });
 
   test('зона сообщает, сколько строк в ней лежит', async () => {
     await post(`/lines/${HAPPY}/zone`, { zoneId: ZONE_REP });
-    const { body } = await get('/zones?purpose=repair');
-    expect((body.items as { lines: number }[])[0]!.lines).toBe(1);
+    const { body } = await get('/zones?predefined=true');
+    const rep = (body.items as { code: string; lines: number }[]).find((z) => z.code === 'REP');
+    expect(rep!.lines).toBe(1);
   });
 });
 

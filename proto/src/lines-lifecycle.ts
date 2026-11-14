@@ -1,5 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { pool } from './db.ts';
+import { guard } from './auth.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
@@ -34,6 +35,9 @@ linesLifecycle.openapi(createRoute({
     409: { description: 'Отгруженную строку удалять нельзя' },
   },
 }), async (c) => {
+  const noRight = guard(c, 'data.delete');
+  if (noRight) return problemResponse(c, noRight);
+
   const { id } = c.req.valid('param');
 
   const line = await pool.query<{ status: string }>(
@@ -100,6 +104,9 @@ linesLifecycle.openapi(createRoute({
     409: { description: 'Нет отмеченных строк' },
   },
 }), async (c) => {
+  const noRight = guard(c, 'data.delete');
+  if (noRight) return problemResponse(c, noRight);
+
   const marked = await pool.query<{ id: string; status: string }>(
     `select l.id, l.status from line l
        join line_mark m on m.id = l.id and m.marked

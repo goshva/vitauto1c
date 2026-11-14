@@ -120,6 +120,20 @@
       "when": 1794647958359,
       "tag": "0016_broken_joseph",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794655200291,
+      "tag": "0017_real_proudstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794655366134,
+      "tag": "0018_rapid_morlun",
+      "breakpoints": true
     }
   ]
 }

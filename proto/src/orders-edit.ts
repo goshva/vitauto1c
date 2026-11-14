@@ -1,5 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { pool } from './db.ts';
+import { guard } from './auth.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
@@ -139,6 +140,9 @@ ordersEdit.openapi(createRoute({
     409: { description: 'Есть отгруженные строки — удалять нельзя' },
   },
 }), async (c) => {
+  const noRight = guard(c, 'data.delete');
+  if (noRight) return problemResponse(c, noRight);
+
   const { id } = c.req.valid('param');
 
   const exists = await pool.query(`select 1 from customer_order where id = $1 and deleted_at is null`, [id]);

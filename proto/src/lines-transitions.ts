@@ -2,7 +2,7 @@ import { createRoute, z } from '@hono/zod-openapi';
 import { createApi } from './api.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
-import { STATUSES } from './domain/status.ts';
+import { STATUSES, statusTitle } from './domain/status.ts';
 import { checkTransition, requiresSignedOriginal } from './domain/transition.ts';
 import { uuid } from './domain/uuid.ts';
 import { loadLine } from './lines-fields.ts';
@@ -78,6 +78,16 @@ transitions.openapi(transitionRoute, async (c) => {
     );
     await pool.query(`update line_mark set marked = false where id = $1`, [line.id]);
     processed++;
+  }
+
+  // Ничего не перешло — это ОШИБКА, а не успех.
+  //
+  // В legacy «Обработано 0 из 1» выглядело как успешный ответ: оператор нажимал
+  // кнопку, получал 200 и не понимал, почему строка не двинулась (C21). Причины
+  // уже собраны в `skipped` — отдаём их в отказе.
+  if (processed === 0) {
+    return problemResponse(c, new Problem(409, 'nothing_transitioned',
+      `Ни одна строка не перешла в «${statusTitle(to)}». ${skipped.join('; ')}`, 'to'));
   }
 
   return c.json({ processed, total: marked.rowCount!, skipped }, 200);

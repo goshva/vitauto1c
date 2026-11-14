@@ -1,4 +1,4 @@
-import type { Status } from './status.ts';
+import { statusTitle, type Status } from './status.ts';
 
 // Переходы процесса. ЕДИНСТВЕННЫЙ источник: в legacy таблица была продублирована
 // четырежды (Go-бэкенд, `matrix.json`, `LinesView.vue`, `process.html`), и они разошлись —
@@ -34,6 +34,19 @@ export const TRANSITIONS: Transition[] = [
     from: ['shipped', 'ordered', 'paid', 'in_transit', 'to_stock', 'closed'] },
   { to: 'closed', title: 'Закрыть', node: 'M15 · K7 · G9',
     from: ['shipped', 'ready_to_ship', 'return', 'assembly'] },
+
+  // Отказ клиента (ФТ v2 п. 15). Отдельного документа отмены нет: состояние
+  // ставится прямо строке — так требует ФТ, и так это было в legacy, где отмена
+  // была «просто кнопкой».
+  //
+  // Два состояния, а не одно: «Отменён» — клиент отказался до выдачи, «Отказался» —
+  // при получении. Разница важна складу: в первом случае товар ещё не уехал,
+  // во втором он возвращается. Одно состояние скрыло бы это различие.
+  { to: 'cancelled', title: 'Отменить', node: 'N2a · M15',
+    from: ['new', 'in_work', 'ordered', 'paid', 'in_transit', 'acceptance',
+      'to_stock', 'reserve', 'assembly'] },
+  { to: 'refused', title: 'Клиент отказался', node: 'N2b',
+    from: ['ready_to_ship', 'shipped'] },
 ];
 
 /** Переходы, допустимые из статуса строки. Из этого списка строятся кнопки. */
@@ -53,9 +66,11 @@ export function checkTransition(to: string, status: string): string | null {
   }
   if (!t.from.includes(status as Status)) {
     const allowed = allowedFrom(status).map((x) => x.title);
+    // Название состояния — СЛОВАМИ. Оператор не должен видеть `cancelled`:
+    // в списке он видит «Отменён», и отказ обязан называть то же самое.
     return allowed.length
-      ? `Из статуса «${status}» переход «${t.title}» недоступен. Доступно: ${allowed.join(', ')}`
-      : `Из статуса «${status}» переходов нет`;
+      ? `Из состояния «${statusTitle(status)}» переход «${t.title}» недоступен. Доступно: ${allowed.join(', ')}`
+      : `Из состояния «${statusTitle(status)}» переходов нет`;
   }
   return null;
 }

@@ -177,11 +177,14 @@ describe('POST /lines/transition', () => {
       body: JSON.stringify({ to: 'ready_to_ship' }),
     });
     const b = await json(r);
-    expect(b.processed).toBe(0);
-    const skipped = b.skipped as string[];
-    expect(skipped.length).toBe(1);
-    expect(skipped[0], 'причина должна называть статус и доступные переходы')
-      .toContain('Из статуса «reserve»');
+
+    // «Обработано 0 из 1» — ОШИБКА, а не успех: в legacy такой ответ выглядел
+    // успешным, и оператор не понимал, почему кнопка не сработала (C21).
+    expect(r.status, 'нулевой результат отдан как успех').toBe(409);
+    expect(b.code).toBe('nothing_transitioned');
+    // Название состояния — словами: оператор видит «Резерв», а не `reserve`.
+    expect(String(b.message), 'причина должна называть состояние и доступные переходы')
+      .toContain('Из состояния «Резерв»');
   });
 
   test('неизвестный переход → 400 со списком допустимых', async () => {
@@ -208,8 +211,10 @@ describe('POST /lines/transition', () => {
       body: JSON.stringify({ to: 'closed' }),
     });
     const b = await json(r);
-    expect(b.processed, 'без галки закрывать нельзя').toBe(0);
-    expect((b.skipped as string[])[0]).toContain('Документ подписан оригинал');
+    // Ноль обработанных — отказ, а не успех с пояснением (C21/C22).
+    expect(r.status, 'нулевой результат отдан как успех').toBe(409);
+    expect(String(b.message), 'без галки закрывать нельзя')
+      .toContain('Документ подписан оригинал');
 
     // С галкой — закрывается.
     await pool.query(`update line set signed_original = true where id = $1`, [HAPPY]);

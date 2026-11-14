@@ -16,7 +16,9 @@ export type Action =
   | 'work.execute'
   | 'stock.issue'
   | 'fleet.edit'
-  | 'invoice.manage';
+  | 'invoice.manage'
+  /** Удаление документов и строк (ФТ v2 п. 15). */
+  | 'data.delete';
 
 /**
  * Кто что может.
@@ -35,6 +37,11 @@ const ALLOWED: Record<Action, Role[]> = {
   'stock.issue': ['storekeeper', 'admin'],
   'fleet.edit': ['manager', 'admin'],
   'invoice.manage': ['manager', 'admin'],
+  // Удаление — ТОЛЬКО администратор (ФТ v2 п. 15: «право „Удаление“ снято для всех
+  // профилей кроме администратора»). Это не ослабление модели, а требование:
+  // менеджер и кладовщик правят документы, но не уничтожают их. Восстановление
+  // (мягкое удаление) остаётся — но и оно не должно быть доступно всем.
+  'data.delete': ['admin'],
 };
 
 const ALL_ROLES: Role[] = ['admin', 'municipality', 'manager', 'mechanic', 'storekeeper'];

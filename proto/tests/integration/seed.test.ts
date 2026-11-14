@@ -28,7 +28,7 @@ describe('справочники', () => {
     expect(await count('contract')).toBe(2);
     expect(await count('organization')).toBe(1);
     expect(await count('warehouse')).toBe(1);
-    expect(await count('warehouse_zone')).toBe(12);
+    expect(await count('warehouse_zone')).toBe(11);
     expect(await count('storage_cell')).toBe(12);
     expect(await count('payment_form')).toBe(2);
     expect(await count('service_kind')).toBe(2);

@@ -27,9 +27,11 @@ export function wantsHtml(c: Context): boolean {
 
 const LIST_SQL = `
   select "id", "order", "status", "marked", "nomenclature", "factName", "nomenclatureArticle", "clientOrderNumber",
-         "quantity", "stockQty", "reserveQty", "customer", "salePrice", "saleSum", "comment"
+         "quantity", "stockQty", "reserveQty", "customer", "salePrice", "saleSum", "comment", "urgency"
     from line_view
    where operation = $1
+   -- Порядок задаётся номером строки, а НЕ срочностью: срочность — только метка
+   -- (ФТ v2 п. 9). Иначе «срочные» обгоняли бы уже оплаченные.
    order by "order"
    limit $2`;
 

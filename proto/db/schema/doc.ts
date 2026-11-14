@@ -77,6 +77,14 @@ export const receipt = pgTable(
     contractId: uuid('contract_id'),
     organizationId: uuid('organization_id'),
     warehouseId: uuid('warehouse_id'),
+    /**
+     * Зона, в которую кладовщик размещает товар при приёмке (ФТ v2 п. 7).
+     *
+     * Поле зоны должно быть В ДОКУМЕНТЕ приёмки, а не только у строки: кладовщик
+     * разгружает машину и сразу решает, куда положить — до того, как открыл
+     * строку. Одно решение на весь приход, а не выбор для каждой позиции.
+     */
+    zoneId: uuid('zone_id'),
     total: numeric('total', { precision: 15, scale: 2 }),
     posted: boolean('posted').notNull().default(false),
     ...stamp(),

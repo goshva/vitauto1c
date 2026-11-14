@@ -1,5 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import { pool } from './db.ts';
+import { guard } from './auth.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
@@ -110,6 +111,9 @@ returnsFlow.openapi(createRoute({
     409: { description: 'Закрытый возврат отменить нельзя' },
   },
 }), async (c) => {
+  const noRight = guard(c, 'data.delete');
+  if (noRight) return problemResponse(c, noRight);
+
   const { id } = c.req.valid('param');
 
   let head: ReturnHead;

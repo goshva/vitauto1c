@@ -9,6 +9,9 @@ export const STATUSES = [
   'new', 'in_work', 'partially_ordered', 'ordered', 'paid', 'in_transit',
   'acceptance', 'to_stock', 'reserve', 'assembly', 'ready_to_ship',
   'shipped', 'return', 'closed',
+  // Отказ клиента (ФТ v2 п. 15): отдельного документа отмены нет — состояние
+  // ставится прямо строке. «Отменён» — до выдачи, «Отказался» — при получении.
+  'cancelled', 'refused',
 ] as const;
 
 export type Status = (typeof STATUSES)[number];
@@ -29,6 +32,8 @@ export const STATUS_TITLES: Record<string, string> = {
   shipped: 'Отгружен',
   return: 'Возврат',
   closed: 'Закрыт',
+  cancelled: 'Отменён',
+  refused: 'Отказался',
 };
 
 export const statusTitle = (s: string): string => STATUS_TITLES[s] ?? s;

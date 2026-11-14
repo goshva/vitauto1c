@@ -246,6 +246,12 @@ table.docs, table.fleet, table.invoices, table.stats, table.lines {
   border: 1px solid var(--line); border-radius: var(--r-m); overflow: hidden;
 }
 
+/* Срочность — ТОЛЬКО МЕТКА (ФТ v2 п. 9): подсвечивает строку цветом, но не меняет
+ * порядок формирования заказа поставщику. Правило идёт ПОСЛЕ `tbody tr:hover`,
+ * иначе подсветка пропадала бы при наведении — а по ней метку и ищут. */
+tr.row-urgent td { background: var(--marked); }
+tr.row-urgent:hover td { background: color-mix(in srgb, var(--marked) 75%, var(--surface-3)); }
+
 /* ---------- дашборд ---------- */
 .dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .dash-card {
