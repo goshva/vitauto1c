@@ -84,11 +84,18 @@ export async function loadRepairDoc(workOrderId: string): Promise<RepairDoc | nu
     id: string; norm_hours: string | null; quantity: string | null; sale_price: string | null;
     status: string | null; article: string | null; name: string | null;
     fact_name: string | null; fact_article: string | null; unit: string | null;
-    executor: string | null;
+    executor: string | null; ext_code: string | null;
   }>(
     `select l.id, l.norm_hours::text, l.quantity::text, l.sale_price::text, l.status,
-            n.article, n.name, f.fact_name, f.fact_article, u.name as unit,
-            e.full_name as executor
+            n.article, f.fact_name, f.fact_article, u.name as unit,
+            e.full_name as executor,
+            -- Наименование ДЛЯ ПЕЧАТИ (ФТ v2 п. 19): в бланк идёт полное имя, а
+            -- короткое остаётся для списков. COALESCE — потому что печатное имя
+            -- необязательно, и пустая ячейка в документе недопустима.
+            coalesce(n.full_name, n.name) as name,
+            -- Код поставщика: по нему позицию находят у поставщика, и в документах
+            -- для снабжения он нужен рядом с нашим артикулом.
+            n.ext_code
        from line l
        left join nomenclature n on n.id = l.nomenclature_id and n.deleted_at is null
        left join unit u on u.id = n.unit_id and u.deleted_at is null

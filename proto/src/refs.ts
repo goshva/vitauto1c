@@ -21,13 +21,33 @@ interface RefSpec {
   /** По каким колонкам работает поиск `?q=`. */
   search: string[];
   title: string;
+  /**
+   * Присоединение справочника: нужно там, где карточка показывает НАЗВАНИЕ связи,
+   * а не её идентификатор (бренд номенклатуры — ФТ v2 п. 19).
+   */
+  join?: string;
+  /** Псевдоним основной таблицы, если колонки пишутся с префиксом. */
+  alias?: string;
 }
 
 const REFS: RefSpec[] = [
   {
     path: 'nomenclature', table: 'nomenclature', title: 'Номенклатура',
-    columns: 'id, code, name, article, full_name, unit_id, kind, price',
-    search: ['name', 'article', 'code'],
+    // Карточка номенклатуры (ФТ v2 п. 19): бренд, код поставщика и наименование
+    // для печати. Раньше `brand_id` в схеме был, а в ответе — нет: поле выглядело
+    // заполненным, но выбрать бренд было негде.
+    columns: `n.id, n.code, n.name, n.article, n.full_name, n.unit_id, n.kind, n.price,
+              n.brand_id, b.name as brand, n.ext_code`,
+    // Поиск и по коду поставщика: оператор ищет позицию по накладной поставщика,
+    // где стоит ЕГО код, а не наш артикул. Без этого поле бесполезно на практике.
+    search: ['name', 'article', 'code', 'ext_code'],
+    join: 'left join brand b on b.id = n.brand_id and b.deleted_at is null',
+    alias: 'n',
+  },
+  {
+    path: 'brands', table: 'brand', title: 'Бренды',
+    columns: 'id, code, name, country',
+    search: ['name', 'code'],
   },
   {
     path: 'counterparties', table: 'counterparty', title: 'Контрагенты',
@@ -97,17 +117,25 @@ function addRef(spec: RefSpec): void {
   refs.openapi(route, async (c) => {
     const query = c.req.valid('query');
     const params: unknown[] = [];
-    let where = 'where deleted_at is null';
+    // С псевдонимом колонки надо уточнять: после присоединения справочника
+    // `name` и `deleted_at` есть в ОБЕИХ таблицах, и запрос падает на
+    // неоднозначности — причём только у одного справочника из семи.
+    const p = (col: string): string => (spec.alias ? `${spec.alias}.${col}` : col);
+    let where = `where ${p('deleted_at')} is null`;
 
     if (query.q && spec.search.length > 0) {
       params.push(likeArg(query.q));
       const n = params.length;
-      where += ` and (${spec.search.map((col) => `${col} ilike $${n}`).join(' or ')})`;
+      where += ` and (${spec.search.map((col) => `${p(col)} ilike $${n}`).join(' or ')})`;
     }
 
     params.push(query.limit ?? 100);
     const r = await pool.query(
-      `select ${spec.columns} from ${spec.table} ${where} order by name limit $${params.length}`,
+      `select ${spec.columns}
+         from ${spec.table} ${spec.alias ?? ''}
+         ${spec.join ?? ''}
+         ${where}
+        order by ${p('name')} limit $${params.length}`,
       params,
     );
     return c.json({ items: r.rows as never[], total: r.rowCount ?? 0 }, 200);

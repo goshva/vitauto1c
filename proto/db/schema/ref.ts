@@ -25,10 +25,28 @@ export const nomenclature = pgTable(
     code: text('code'),
     name: text('name').notNull(),
     article: text('article'),
+    /**
+     * Наименование ДЛЯ ПЕЧАТИ (ФТ v2 п. 19).
+     *
+     * Колонка была с самого начала, но печатные формы её не использовали: в бланк
+     * шло короткое `name`. Смысл разделения в том, что в списке удобно короткое
+     * («Фильтр масляный»), а в документе нужно полное, с артикулом и объёмом.
+     */
     fullName: text('full_name'),
-    unitId: uuid('unit_id'),
+    /**
+     * Единица хранения. По умолчанию — ШТУКИ (ФТ v2 п. 19), но БЕЗ жёсткого
+     * запрета смены: литры, комплекты и нормо-часы бывают нужны. Поле остаётся
+     * необязательным, и связь с `unit` держит его осмысленным.
+     */
+    unitId: uuid('unit_id').references(() => unit.id),
     kind: text('kind').$type<'good' | 'service'>(),
-    brandId: uuid('brand_id'),
+    brandId: uuid('brand_id').references(() => brand.id),
+    /**
+     * Код поставщика (ФТ v2 п. 19). В legacy — `ref.nomenclature.ext_code`:
+     * артикул производителя, по которому поставщик находит позицию. Не совпадает
+     * с нашим `article`, и путать их нельзя — иначе заказ уйдёт не с тем кодом.
+     */
+    extCode: text('ext_code'),
     price: numeric('price', { precision: 15, scale: 2 }),
     priceTypeId: uuid('price_type_id'),
     comment: text('comment'),
@@ -38,8 +56,23 @@ export const nomenclature = pgTable(
     index('nomenclature_code_idx').on(t.code),
     index('nomenclature_article_idx').on(t.article),
     index('nomenclature_name_idx').on(t.name),
+    index('nomenclature_ext_code_idx').on(t.extCode),
   ],
 );
+
+/**
+ * Бренды переехали в `brand.ts`: в этом файле пять экспортов, и шестой упирается
+ * в предел из §12 задания.
+ */
+import { brand } from './brand.ts';
+
+/**
+ * Бренды номенклатуры (ФТ v2 п. 19). В legacy — `ref.brand` (миграция 0013).
+ *
+ * Колонка `nomenclature.brand_id` существовала, а САМОЙ ТАБЛИЦЫ НЕ БЫЛО: висячий
+ * UUID без связи. Бренд нельзя было ни выбрать, ни проверить — поле выглядело
+ * заполненным, но ни на что не ссылалось.
+ */
 
 export const unit = pgTable('unit', {
   id: uuid('id').primaryKey().defaultRandom(),

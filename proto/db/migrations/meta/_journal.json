@@ -134,6 +134,13 @@
       "when": 1794655366134,
       "tag": "0018_rapid_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794659729903,
+      "tag": "0019_chubby_pride",
+      "breakpoints": true
     }
   ]
 }

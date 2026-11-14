@@ -11,6 +11,7 @@ export * from './doc.ts';
 export * from './invoice.ts';
 export * from './work.ts';
 export * from './ref.ts';
+export * from './brand.ts';
 export * from './ref-stock.ts';
 export * from './ref-auto.ts';
 export * from './fleet.ts';
