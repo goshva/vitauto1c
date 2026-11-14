@@ -124,6 +124,12 @@ tasks:
     cmds:
       - bun run db/seed.ts --off
 
+  proto:coverage:
+    desc: 'Прототип: покрытие — на каждом узле каждого процесса есть заказ'
+    dir: proto
+    cmds:
+      - bun run scripts/coverage.ts
+
   proto:seed:gen:
     desc: 'Прототип: перегенерировать сиды 11 процессов из таблицы'
     dir: proto
