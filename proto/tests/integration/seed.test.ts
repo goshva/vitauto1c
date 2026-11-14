@@ -22,7 +22,7 @@ const STOCK_LINE = 'b0000000-0000-0000-0000-000000000002';
 describe('справочники', () => {
   test('применяются и дают объявленное число строк', async () => {
     await seedRefs();
-    expect(await count('nomenclature')).toBe(8);
+    expect(await count('nomenclature')).toBe(9);
     expect(await count('counterparty')).toBe(5);
     expect(await count('unit')).toBe(2);
     expect(await count('contract')).toBe(2);

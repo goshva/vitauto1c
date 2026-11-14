@@ -154,7 +154,11 @@ describe('каждый процесс двигается через интерф
 });
 
 describe('статические списки интерфейса не разошлись с базой', () => {
-  const src = readFileSync('src/views/actions.ts', 'utf8');
+  // Списки живут в `chain.ts` — там действия цепочки, зоны и ячейки. Тест читает
+  // ОБА файла: перенос списка в другой модуль не должен превращать проверку в
+  // пустую (искать зоны в файле, где их больше нет, — и «находить» ноль расхождений).
+  const src = readFileSync('src/views/chain.ts', 'utf8')
+    + readFileSync('src/views/actions.ts', 'utf8');
 
   const grab = (name: string): { id: string; title: string }[] => {
     const at = src.indexOf(`const ${name} = [`);

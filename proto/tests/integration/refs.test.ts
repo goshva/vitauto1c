@@ -67,6 +67,14 @@ describe('поиск', () => {
 
   test('поиск работает по артикулу', async () => {
     const found = await items('/refs/nomenclature?q=FLT-OIL');
+    // Два масляных фильтра: основной и его аналог (ФТ v2 п. 16). Поиск по общей
+    // части артикула обязан находить ОБА — иначе аналог не нашёлся бы в работе.
+    expect(found.length).toBe(2);
+    expect(found.map((x) => x.article).sort()).toEqual(['FLT-OIL-001', 'FLT-OIL-002']);
+  });
+
+  test('поиск по ПОЛНОМУ артикулу находит ровно одну позицию', async () => {
+    const found = await items('/refs/nomenclature?q=FLT-OIL-001');
     expect(found.length).toBe(1);
     expect(found[0]!.article).toBe('FLT-OIL-001');
   });

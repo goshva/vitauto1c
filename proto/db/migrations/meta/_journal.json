@@ -155,6 +155,13 @@
       "when": 1794681698795,
       "tag": "0021_parallel_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794682538862,
+      "tag": "0022_modern_ben_parker",
+      "breakpoints": true
     }
   ]
 }
