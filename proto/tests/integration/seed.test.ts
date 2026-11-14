@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { pool } from '../../src/db.ts';
-import { processIds, seedProcess, seedRefs } from '../../db/seed.ts';
+import { processIds, resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 
 // Гейт этапа 1 (prototype-spec.md §2.3): сид воспроизводим.
 //
@@ -57,7 +57,11 @@ describe('сиды процессов', () => {
 
   test('happy: одна строка в new, без остатка — путь идёт через закупку', async () => {
     await seedRefs();
-    await seedProcess('happy');
+    // `resetTo`, а не `seedProcess`: нужен ЧИСТЫЙ старт. `seedProcess` добавляет
+    // состояние БЕЗ очистки (это его назначение — два процесса сразу), и остатки
+    // от предыдущих файлов накапливались бы. Проверка «остатка нет» на грязной
+    // базе проходит или падает случайно — смотря какой файл отработал до неё.
+    await resetTo('happy');
 
     const r = await pool.query<{ status: string; quantity: string }>(
       `select status, quantity::text from line where id = $1`,
@@ -72,7 +76,9 @@ describe('сиды процессов', () => {
 
   test('stock: одна строка в new И остаток на складе — путь идёт через резерв', async () => {
     await seedRefs();
-    await seedProcess('stock');
+    // Чистый старт: остаток проверяется РАВНЫМ десяти, и остатки от других файлов
+    // делали бы эту проверку случайной.
+    await resetTo('stock');
 
     const r = await pool.query<{ status: string }>(`select status from line where id = $1`, [STOCK_LINE]);
     expect(r.rowCount, 'строка stock не создана').toBe(1);
@@ -123,7 +129,7 @@ describe('сид виден через представления', () => {
 
   test('line_totals считает суммы засеянной строки', async () => {
     await seedRefs();
-    await seedProcess('stock');
+    await resetTo('stock');
     const r = await pool.query<{ sale_sum: string }>(
       `select sale_sum from line_totals where line_id = $1`,
       [STOCK_LINE],

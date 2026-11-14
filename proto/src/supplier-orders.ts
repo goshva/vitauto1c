@@ -4,6 +4,8 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { SUPPLIER_ORDER_STATUSES } from './domain/supplier-order-state.ts';
+import { hideColumns } from './domain/columns.ts';
+import { roleOf } from './auth.ts';
 
 // Заказ поставщику: список, карточка, создание (3 операции).
 //
@@ -54,7 +56,12 @@ supplierOrders.openapi(createRoute({
        ${where} order by s.date desc, s.number limit $${params.length}`,
     params,
   );
-  return c.json({ items: r.rows as never[], total: r.rowCount ?? 0 }, 200);
+  return c.json({
+    // Сумма заказа — это цена закупки, и кладовщику она закрыта (ФТ v2 п. 5).
+    // Сам заказ при этом виден: кладовщик принимает товар по нему (K1).
+    items: hideColumns(roleOf(c), r.rows) as never[],
+    total: r.rowCount ?? 0,
+  }, 200);
 });
 
 // --- GET /supplier-orders/{id} --------------------------------------------------------
@@ -96,7 +103,10 @@ supplierOrders.openapi(createRoute({
       order by l.id`,
     [id],
   );
-  return c.json({ header: head.rows[0] as never, lines: lines.rows as never[] }, 200);
+  return c.json({
+    header: hideColumns(roleOf(c), [head.rows[0] as Record<string, unknown>])[0] as never,
+    lines: hideColumns(roleOf(c), lines.rows) as never[],
+  }, 200);
 });
 
 // --- POST /supplier-orders — создание заказа ------------------------------------------

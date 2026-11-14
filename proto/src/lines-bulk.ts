@@ -2,6 +2,8 @@ import { createRoute, z } from '@hono/zod-openapi';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
+import { hideColumns } from './domain/columns.ts';
+import { roleOf } from './auth.ts';
 
 // Строки: свод, массовые операции, удаление и экспорт (6 операций).
 //
@@ -137,14 +139,19 @@ linesBulk.openapi(createRoute({
 
   // Разделитель — точка с запятой, кодировка с BOM: иначе Excel в русской
   // локали складывает весь файл в одну колонку и ломает кириллицу.
-  const headers = Object.keys(r.rows[0] ?? { order: '', status: '' });
+  //
+  // Закрытые колонки убираются и здесь (ФТ v2 п. 5). Сейчас в выборке цен закупки
+  // нет, но выгрузка — самый простой способ обойти закрытие: одна новая колонка в
+  // SELECT, и себестоимость уедет файлом.
+  const rows = hideColumns(roleOf(c), r.rows) as Record<string, unknown>[];
+  const headers = Object.keys(rows[0] ?? { order: '', status: '' });
   const escape = (v: unknown): string => {
     const s = v === null || v === undefined ? '' : String(v);
     return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const csv = [
     headers.join(';'),
-    ...r.rows.map((row) => headers.map((h) => escape((row as Record<string, unknown>)[h])).join(';')),
+    ...rows.map((row) => headers.map((h) => escape(row[h])).join(';')),
   ].join('\r\n');
 
   return c.body(`\uFEFF${csv}`, 200, {

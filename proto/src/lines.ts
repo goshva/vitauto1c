@@ -4,6 +4,8 @@ import { pool } from './db.ts';
 import { Problem, problemResponse, ProblemSchema } from './problem.ts';
 import { STATUSES } from './domain/status.ts';
 import { uuid } from './domain/uuid.ts';
+import { hideColumns } from './domain/columns.ts';
+import { roleOf } from './auth.ts';
 
 // Чтение строк. Источник — представление `line_view` (48 колонок), а не таблица:
 // список АРМ показывает данные документа и справочников, которых в строке нет.
@@ -108,7 +110,13 @@ lines.openapi(listRoute, async (c) => {
   );
 
   const next = cursor + rows.rowCount! < Number(total.rows[0]!.n) ? cursor + rows.rowCount! : null;
-  return c.json({ items: rows.rows as never[], nextCursor: next, total: Number(total.rows[0]!.n) }, 200);
+  // Закрытые колонки убираются ПЕРЕД отдачей (ФТ v2 п. 5): кладовщик законно
+  // открывает список строк, но себестоимости в ответе быть не должно.
+  return c.json({
+    items: hideColumns(roleOf(c), rows.rows) as never[],
+    nextCursor: next,
+    total: Number(total.rows[0]!.n),
+  }, 200);
 });
 
 const getRoute = createRoute({
@@ -133,5 +141,7 @@ lines.openapi(getRoute, async (c) => {
   if (r.rowCount === 0) {
     return problemResponse(c, new Problem(404, 'not_found', `Строка ${id} не найдена`));
   }
-  return c.json(r.rows[0]!, 200);
+  // То же и на одиночной строке: закрывать колонки только в списке значило бы
+  // оставить открытую дверь рядом.
+  return c.json(hideColumns(roleOf(c), r.rows)[0]!, 200);
 });

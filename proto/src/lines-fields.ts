@@ -3,6 +3,8 @@ import { createApi } from './api.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { uuid } from './domain/uuid.ts';
+import { deniedColumn } from './domain/columns.ts';
+import { roleOf } from './auth.ts';
 
 // Правка полей строки. Вынесено из `lines-mutations.ts`: файл перевалил за 200 строк,
 // а правило «≤ 200 строк» существует потому, что в большом файле теряется контекст.
@@ -95,6 +97,13 @@ fields.openapi(patchRoute, async (c) => {
       new Problem(400, 'field_readonly',
         `Поле «${field}» не редактируется вручную. Редактируемые: ${allowed}`, field),
     );
+  }
+
+  // Закрытые колонки (ФТ v2 п. 5): кладовщик и механик не правят себестоимость.
+  // Проверка стоит ДО работы с данными — отказ не должен оставлять следов.
+  const denied = deniedColumn(roleOf(c), field);
+  if (denied) {
+    return problemResponse(c, new Problem(403, 'forbidden', denied, field));
   }
 
   const current = await loadLine(id);
