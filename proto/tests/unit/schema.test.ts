@@ -42,12 +42,15 @@ const LEGACY = [
  *
  * `return_id`  — связь «возврат ↔ строки» (в legacy — таблица `doc.return_line`).
  * `work_order_id` — связь «заказ-наряд ↔ строки» (в legacy — `doc.work_order_labor`).
+ * `executor_id` — кто выполнил работу (Q3 заказчика: подпись в акте и сдельная
+ *   выработка требуют конкретного человека, а не роли).
+ * `issued_by_id` — кто выдал запчасть со склада, для требования-накладной.
  *
  * Прототип держит ссылки на документы в самой строке: она их накапливает по мере
  * движения товара, и отдельная таблица ради одной связи не нужна.
  */
 const ADDITIONS: Record<string, string[]> = {
-  line: ['return_id', 'work_order_id'],
+  line: ['return_id', 'work_order_id', 'executor_id', 'issued_by_id'],
 };
 
 const documented = (table: string): string[] => ADDITIONS[table] ?? [];
@@ -67,9 +70,9 @@ describe('карта 82 столбцов', () => {
 });
 
 describe('line — столбцы по метке L плюс задокументированные добавления', () => {
-  test('36 из карты + 2 добавленных = 38', () => {
+  test('36 из карты + 4 добавленных = 40', () => {
     expect(names(line).length).toBe(byMark('L').length + documented('line').length);
-    expect(names(line).length).toBe(38);
+    expect(names(line).length).toBe(40);
   });
 
   test('имена = метка L карты + ровно задокументированные добавления', () => {

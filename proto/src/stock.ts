@@ -1,4 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi';
+import { guard } from './auth.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
@@ -13,7 +14,7 @@ import { uuid } from './domain/uuid.ts';
 
 export const stock = createApi();
 
-const MOVE_KINDS = ['receipt', 'expense', 'reserve', 'unreserve', 'shipment', 'return'] as const;
+const MOVE_KINDS = ['receipt', 'expense', 'write_off', 'reserve', 'unreserve', 'shipment', 'return'] as const;
 
 // --- GET /stock/balance ---------------------------------------------------------------
 
@@ -102,6 +103,9 @@ stock.openapi(createRoute({
   },
 }), async (c) => {
   const body = c.req.valid('json');
+  const denial = guard(c, 'stock.issue');
+  if (denial) return problemResponse(c, denial);
+
 
   const qty = Number(body.quantity.replace(',', '.'));
   if (!Number.isFinite(qty) || qty <= 0) {

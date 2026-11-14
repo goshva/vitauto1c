@@ -53,6 +53,7 @@ async function supplyPanel(): Promise<string> {
 supplyUi.get('/supply', async (c) =>
   c.html(
     layout({
+      active: 'supply',
       title: 'Снабжение',
       testId: 'page-supply',
       body: `<p class="hint" data-testid="supply-hint">

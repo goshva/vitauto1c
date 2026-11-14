@@ -89,6 +89,7 @@ function page(kind: DocKind, rows: DocumentRow[]): string {
   ).join('\n      ');
 
   return layout({
+    active: 'documents',
     title: kind.title,
     testId: `page-documents-${kind.key}`,
     body: `<nav class="tabs" data-testid="doc-tabs">
@@ -105,6 +106,7 @@ documentsUi.get('/documents/:kind', async (c) => {
   if (!kind) {
     return c.html(
       layout({
+        active: 'documents',
         title: 'Документы',
         testId: 'page-documents',
         body: '<p>Выберите вид документа из списка выше</p>',

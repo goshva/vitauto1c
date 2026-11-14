@@ -124,17 +124,36 @@ describe('B. Запчасти: наличие и закупка', () => {
     expect(Number(items[0]!.available), 'не показан свободный остаток с учётом резерва').toBe(5);
   });
 
-  test('B3 ❌ добавить ЗАПЧАСТЬ в заказ-наряд нечем — есть только работа', async () => {
-    // Карточка наряда умеет показывать `parts`, но создать строку-запчасть
-    // с `work_order_id` не может НИ ОДНА операция.
-    const partPaths = pathList.filter((p) => p.includes('work-order') && /part|detail|zapchast/.test(p));
-    expect(partPaths, 'появилась операция добавления запчасти — обновите вердикт B3').toEqual([]);
+  // ВЕРДИКТ ОБНОВЛЁН (Q4): пробел B3 закрыт — запчасть в наряд добавляется,
+  // и автосписание при закрытии наряда работает. Проверяется ПОДДЕРЖКА, а не пробел.
+  test('B3 ✅ добавить запчасть в заказ-наряд и списать её при закрытии', async () => {
+    const partPaths = pathList.filter((p) => p.includes('work-order') && /part/.test(p));
+    expect(partPaths, 'операция добавления запчасти пропала').toContain('/work-orders/{id}/part');
 
-    // И в коде строка с `work_order_id` создаётся ровно в одном месте — в работах.
-    const flow = readFileSync(resolve(ROOT, 'src/work-orders-flow.ts'), 'utf8');
-    const inserts = flow.match(/insert into line \(work_order_id/g) ?? [];
-    expect(inserts.length, 'появилось второе место создания строки наряда').toBe(1);
-    expect(flow).toContain('is_labor');
+    const { body: order } = await post('/work-orders', { carId: CAR, serviceTypeId: SERVICE });
+    const orderId = String(order.id);
+
+    await post('/stock/moves', {
+      nomenclatureId: NOM, warehouseId: WH, cellId: CELL_SM, kind: 'receipt', quantity: '10',
+    });
+
+    const part = await post(`/work-orders/${orderId}/part`, {
+      nomenclatureId: NOM, quantity: '3', salePrice: '900',
+    });
+    expect(part.status, 'запчасть не добавилась').toBe(201);
+
+    const { body: card } = await get(`/work-orders/${orderId}`);
+    expect((card.parts as unknown[]).length).toBe(1);
+    expect((card.labor as unknown[]).length, 'запчасть попала в работы').toBe(0);
+
+    // Закрытие списывает запчасть: остаток уменьшается (Q4).
+    const before = Number(((await get(`/stock/balance?nomenclatureId=${NOM}`))
+      .body.items as { on_hand: string }[]).reduce((s, x) => s + Number(x.on_hand), 0));
+    await post(`/work-orders/${orderId}/transition`, { to: 'closed' });
+    const after = Number(((await get(`/stock/balance?nomenclatureId=${NOM}`))
+      .body.items as { on_hand: string }[]).reduce((s, x) => s + Number(x.on_hand), 0));
+
+    expect(after, 'списание по наряду не уменьшило остаток').toBe(before - 3);
   });
 
   test('B2 ⚠️ заказать отсутствующую запчасть можно только по строке — а строки-запчасти нет', async () => {
@@ -177,18 +196,33 @@ describe('B. Запчасти: наличие и закупка', () => {
     expect((await post(`/lines/${lineId}/zone`, { zoneId: ZONE_SM })).status).toBe(200);
   });
 
-  test('B6 ⚠️ резерв под наряд: статус есть, связи с нарядом нет', async () => {
-    await post('/stock/moves', { nomenclatureId: NOM, warehouseId: WH, kind: 'reserve', quantity: '1' });
+  // ВЕРДИКТ ОБНОВЛЁН (Q4): пробел B6 закрыт — движение склада знает, к какому
+  // наряду оно относится. Проверяется ПОДДЕРЖКА, а не пробел.
+  test('B6 ✅ движение склада связано с нарядом', async () => {
+    await post('/stock/moves', {
+      nomenclatureId: NOM, warehouseId: WH, cellId: CELL_SM, kind: 'reserve', quantity: '1',
+    });
 
     // Резерв меняет свободный остаток — механика работает.
     const { body } = await get(`/stock/balance?nomenclatureId=${NOM}`);
-    const item = (body.items as { reserved: string; available: string }[])[0]!;
+    const item = (body.items as { reserved: string }[])[0]!;
     expect(Number(item.reserved)).toBe(1);
 
-    // Но резерв не знает, ДЛЯ ЧЕГО он сделан.
     const moveCols = await columnsOf('stock_move');
-    expect(moveCols, 'появилась связь резерва с нарядом — обновите вердикт B6')
-      .not.toContain('work_order_id');
+    expect(moveCols, 'связь движения с нарядом пропала').toContain('work_order_id');
+
+    // И списание по наряду эту связь действительно заполняет.
+    const { body: order } = await post('/work-orders', { carId: CAR, serviceTypeId: SERVICE });
+    const orderId = String(order.id);
+    await post('/stock/moves', {
+      nomenclatureId: NOM, warehouseId: WH, cellId: CELL_SM, kind: 'receipt', quantity: '5',
+    });
+    await post(`/work-orders/${orderId}/part`, { nomenclatureId: NOM, quantity: '1', salePrice: '900' });
+    await post(`/work-orders/${orderId}/transition`, { to: 'closed' });
+
+    const linked = await pool.query<{ n: string }>(
+      `select count(*)::text n from stock_move where work_order_id = $1`, [orderId]);
+    expect(Number(linked.rows[0]!.n), 'списание не привязано к наряду').toBe(1);
   });
 
   test('B7 ✅ вернуть ошибочную запчасть поставщику', async () => {
@@ -258,7 +292,7 @@ describe('C. Работы', () => {
   });
 
   test('C4 ❌ списание по наряду НЕ уменьшает остаток', async () => {
-    await pool.query(`update line set nomenclature_id=$2, quantity=2 where not deleted`, [NOM]);
+    await pool.query(`update line set nomenclature_id=$1, quantity=2 where not deleted`, [NOM]);
     await post('/stock/moves', {
       nomenclatureId: NOM, warehouseId: WH, cellId: CELL_SM, kind: 'receipt', quantity: '10',
     });

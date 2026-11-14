@@ -26,13 +26,26 @@ async function runSqlFile(rel: string): Promise<void> {
 }
 
 /**
- * Редко нужные операции сида: витрина и полная очистка транзакций.
+ * Внепроцессные узлы: пример на каждый из девяти узлов модели, не входящих ни в
+ * один процесс (НСИ и опознание у администратора, создание номенклатуры,
+ * отдельные шаги ремонта).
+ *
+ * Отдельно от `--all`: у этих узлов нет цепочки переходов, и в состояниях строк
+ * они не выражаются. Смешивать их с процессами значило бы сломать проверку
+ * «строк ровно по числу состояний».
+ */
+async function seedOffProcess(): Promise<void> {
+  await runSqlFile('off-process.sql');
+}
+
+/**
+ * Редко нужные операции сида: витрина, внепроцессные узлы и очистка транзакций.
  *
  * Собраны в один экспорт, чтобы файл держал не больше пяти: частые операции
  * (`seedRefs`, `seedProcess`, `resetTo`, `processIds`) остаются отдельными —
  * их импортируют по двадцать файлов.
  */
-export const seedExtra = { showcase: seedShowcase, clear: clearTransactions };
+export const seedExtra = { showcase: seedShowcase, offProcess: seedOffProcess, clear: clearTransactions };
 
 /** Идентификаторы процессов, для которых есть сид. */
 export function processIds(): string[] {
@@ -52,9 +65,16 @@ export function processIds(): string[] {
 async function clearTransactions(): Promise<void> {
   await pool.query(
     `truncate table line_mark, line_fact, stock_move, line, customer_order, supplier_order,
-                    receipt, shipment, return_order, work_order, notice, job, idempotency_key
+                    receipt, shipment, return_order, work_order, invoice, notice, job,
+                    idempotency_key
      cascade`,
   );
+
+  // Внепроцессные узлы пишут в СПРАВОЧНИК (`nomenclature`), и truncate их не убирает:
+  // справочники — не транзакции. Но и оставлять нельзя: тест справочников считает
+  // строки, и три «внепроцессные» номенклатуры сломали бы «залито ровно восемь».
+  // Убираем адресно — по метке, которую ставит их сид.
+  await pool.query(`delete from nomenclature where comment like '%: внепроцессный узел%'`);
 }
 
 /**
@@ -112,6 +132,9 @@ if (import.meta.main) {
   } else if (arg === '--showcase') {
     await seedShowcase();
     console.log('витрина: по строке на каждый этап каждого процесса');
+  } else if (arg === '--off') {
+    await seedOffProcess();
+    console.log('внепроцессные узлы: по примеру на каждый из девяти');
   } else if (arg) {
     await seedProcess(arg);
     console.log(`процесс ${arg}: состояние применено`);

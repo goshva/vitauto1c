@@ -62,6 +62,14 @@ export const line = pgTable(
     costPrice: numeric('cost_price', { precision: 15, scale: 2 }),
     signedOriginal: boolean('signed_original'),
     normHours: numeric('norm_hours', { precision: 15, scale: 2 }),
+    /**
+     * Кто выполнил работу (Q3). Ссылка на сотрудника, а не на роль: роль даёт
+     * права, а подпись в акте и сдельная выработка требуют конкретного человека.
+     * Заполняется у работ (`norm_hours` не пуст), у запчастей остаётся пустым.
+     */
+    executorId: uuid('executor_id'),
+    /** Кто выдал запчасть со склада — у запчастей, для требования-накладной. */
+    issuedById: uuid('issued_by_id'),
     rrc: numeric('rrc', { precision: 15, scale: 2 }),
     comment2: text('comment2'),
 

@@ -1,4 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi';
+import { guard } from './auth.ts';
 import { createApi } from './api.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
@@ -57,6 +58,11 @@ const route = createRoute({
 });
 
 imports.openapi(route, async (c) => {
+  // Заявку заводит заказчик (муниципалитет) или менеджер, принявший лист.
+  // Механик и кладовщик заявок не создают — им приносят готовую работу.
+  const noRight = guard(c, 'request.create');
+  if (noRight) return problemResponse(c, noRight);
+
   const body = c.req.valid('json');
 
   const customer = await pool.query(`select 1 from counterparty where id = $1 and deleted_at is null`, [body.customerId]);

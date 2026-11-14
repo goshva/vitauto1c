@@ -61,10 +61,18 @@ export function processScheme(process: Process, counts: StatusCount[]): string {
       const status = s.status
         ? `<span class="c-status s-${esc(s.status)}" data-testid="step-status-${s.n}">${esc(statusTitle(s.status))}</span>`
         : '<span class="empty">—</span>';
+      // Число рядом со шагом — СКОЛЬКО СТРОК СЕЙЧАС В ЭТОМ СОСТОЯНИИ. Это и делает
+      // схему живой: без него карта остаётся картинкой из ТЗ.
+      //
+      // Подпись и ссылка обязательны: без пояснения «7» читается как номер, а не
+      // как счётчик, и непонятно, откуда он взялся. По клику открывается список
+      // этих же строк — от схемы сразу к делу.
       const counter = count === null
         ? ''
-        : `<span class="step-count${count > 0 ? ' step-count-live' : ''}"
-             data-testid="step-count-${s.n}">${count}</span>`;
+        : `<a class="step-count${count > 0 ? ' step-count-live' : ''}"
+             href="/lines?status=${esc(s.status ?? '')}"
+             title="Сейчас в состоянии «${esc(s.status ? statusTitle(s.status) : '')}»: ${count}. Открыть список"
+             data-testid="step-count-${s.n}">${count}</a>`;
 
       return `<li class="step" data-testid="step-${s.n}">
         <span class="step-n">${s.n}</span>
@@ -81,6 +89,9 @@ export function processScheme(process: Process, counts: StatusCount[]): string {
   return `<div id="process-panel" data-testid="process-panel" data-process="${esc(process.id)}">
     <h2 data-testid="process-title">${esc(process.title)}</h2>
     <p class="hint">Шагов: <strong>${process.steps.length}</strong> · узлов: <strong>${new Set(process.steps.flatMap((s) => s.nodes)).size}</strong></p>
+    <p class="hint" data-testid="scheme-legend">Число у шага — <strong>сколько строк сейчас
+      в этом состоянии</strong>. Синее — есть строки, серое — ни одной.
+      Нажмите число, чтобы открыть список.</p>
     <ol class="scheme" data-testid="process-scheme">${steps}</ol>
   </div>`;
 }

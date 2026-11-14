@@ -123,11 +123,57 @@ insert into batch (id, code, name, batch_no, supplier_id, status) values
   ('dd000000-0000-0000-0000-000000000002', 'П-02', 'Партия ДеталиОпт 02.2026',   '02.2026', '66666666-6666-6666-6666-666666666605', 'active')
 on conflict (id) do update set code = excluded.code, name = excluded.name, batch_no = excluded.batch_no;
 
--- Автомобиль и его атрибуты: в legacy семь значений (марка, модель, агрегат,
--- госномер, шасси, VIN, двигатель) лежали прямо в строке заказа.
-insert into car (id, code, name, vin, year, engine_no, chassis_no, color) values
-  ('cccccccc-cccc-cccc-cccc-cccccccccc01', 'АВТ-001', 'Масло моторное 5W-30', 'XTC210530M0123456', 2021, 'ENG-123456', 'CHS-654321', 'Белый')
-on conflict (id) do update set code = excluded.code, name = excluded.name, vin = excluded.vin;
+-- Подразделения муниципалитета: за ними закреплены ТС и сотрудники (Q2).
+insert into department (id, code, name) values
+  ('dddddddd-dddd-dddd-dddd-dddddddddd01', 'ТЦ',  'Транспортный цех'),
+  ('dddddddd-dddd-dddd-dddd-dddddddddd02', 'ХОЗ', 'Хозяйственный отдел'),
+  ('dddddddd-dddd-dddd-dddd-dddddddddd03', 'СЭ',  'Служба эксплуатации')
+on conflict (id) do update set code = excluded.code, name = excluded.name;
+
+-- Сотрудники: пять ролей (Q7). Логин живёт отдельно (auth), здесь — кадровые
+-- данные и подпись. `can_sign` — признак «может подписывать акт».
+insert into employee (id, full_name, role, department_id, position, phone, email, can_sign) values
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01', 'Смирнов А. В.',  'admin',        'dddddddd-dddd-dddd-dddd-dddddddddd03', 'Администратор',  '+7 900 000-00-01', 'admin@vitauto.local',    false),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02', 'Козлов Д. И.',   'municipality', 'dddddddd-dddd-dddd-dddd-dddddddddd02', 'Специалист',     '+7 900 000-00-02', 'zakaz@vitauto.local',    true),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee03', 'Иванов И. И.',   'manager',      'dddddddd-dddd-dddd-dddd-dddddddddd03', 'Менеджер',       '+7 900 000-00-03', 'manager@vitauto.local',  true),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee04', 'Петров П. С.',   'mechanic',     'dddddddd-dddd-dddd-dddd-dddddddddd01', 'Механик',        '+7 900 000-00-04', 'mechanic@vitauto.local', true),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeee05', 'Сидоров Н. П.',  'storekeeper',  'dddddddd-dddd-dddd-dddd-dddddddddd01', 'Кладовщик',      '+7 900 000-00-05', 'store@vitauto.local',    true)
+on conflict (id) do update set full_name = excluded.full_name, role = excluded.role,
+  department_id = excluded.department_id, position = excluded.position, can_sign = excluded.can_sign;
+
+-- Правила регламентного ТО (Q2). Интервал по пробегу — главный триггер.
+insert into maintenance_rule (id, code, name, car_model_id, mileage_interval, day_interval, norm_hours) values
+  ('ab000000-0000-0000-0000-000000000001', 'ТО-10', 'ТО каждые 10 000 км или год', null, 10000, 365, 2.5),
+  ('ab000000-0000-0000-0000-000000000002', 'ТО-15', 'ТО каждые 15 000 км',         null, 15000, null, 3.0),
+  -- Правило-заглушка: без интервалов никого не поднимает. Нужна, чтобы проверять
+  -- именно это поведение, а не только срабатывание.
+  ('ab000000-0000-0000-0000-000000000003', 'БЕЗ',   'Без регламента',             null, null,  null, null)
+on conflict (id) do update set name = excluded.name, mileage_interval = excluded.mileage_interval,
+  day_interval = excluded.day_interval, norm_hours = excluded.norm_hours;
+
+-- Автопарк: четыре ТС в разных состояниях, чтобы список ТО был непустым и
+-- показывал все три причины («по пробегу», «по сроку», «ТО не делали»).
+--
+-- В legacy семь значений (марка, модель, агрегат, госномер, шасси, VIN, двигатель)
+-- лежали прямо в строке заказа — здесь они в `car` и `car_attribute`.
+insert into car (id, code, name, vin, year, engine_no, chassis_no, color,
+                 mileage, mileage_at_service, last_service_at, status, department_id) values
+  -- Просрочено по КАЛЕНДАРЮ: пробег дошёл только до 100 000, а год с ТО истёк.
+  ('cccccccc-cccc-cccc-cccc-cccccccccc01', 'АВТ-001', 'LADA Vesta, А123ВС777', 'XTC210530M0123456', 2021, 'ENG-123456', 'CHS-654321', 'Белый',
+   100000, 95000, '2025-01-01', 'on_line', 'dddddddd-dddd-dddd-dddd-dddddddddd01'),
+  -- Не требует ТО: до пробега 5 000 км, до срока 350 дней.
+  ('cccccccc-cccc-cccc-cccc-cccccccccc02', 'АВТ-002', 'ГАЗель Next, В456ЕК777', 'X96386410M0987654', 2022, 'ENG-777001', 'CHS-777002', 'Синий',
+   45000, 40000, '2026-11-01', 'on_line', 'dddddddd-dddd-dddd-dddd-dddddddddd02'),
+  -- ПРОСРОЧЕНО ПО ПРОБЕГУ: 12 000 км сверх интервала. В ремонте.
+  ('cccccccc-cccc-cccc-cccc-cccccccccc03', 'АВТ-003', 'УАЗ Profi, С789МН777', 'XTT374195M0556677', 2020, 'ENG-555001', 'CHS-555002', 'Серый',
+   131000, 119000, '2026-11-01', 'in_repair', 'dddddddd-dddd-dddd-dddd-dddddddddd01'),
+  -- ТО НЕ ДЕЛАЛИ НИ РАЗУ: попадает в список сразу, хотя пробег детский.
+  ('cccccccc-cccc-cccc-cccc-cccccccccc04', 'АВТ-004', 'LADA Granta, Е321ОР777', 'XTC219060N0778899', 2023, 'ENG-333001', 'CHS-333002', 'Красный',
+   500, null, null, 'on_line', 'dddddddd-dddd-dddd-dddd-dddddddddd03')
+on conflict (id) do update set code = excluded.code, name = excluded.name, vin = excluded.vin,
+  mileage = excluded.mileage, mileage_at_service = excluded.mileage_at_service,
+  last_service_at = excluded.last_service_at, status = excluded.status,
+  department_id = excluded.department_id;
 
 insert into car_attribute (id, car_id, attr_kind, value_type, value_value) values
   ('12121212-1212-1212-1212-121212121201', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 'brand',     'string', 'LADA'),
@@ -136,5 +182,11 @@ insert into car_attribute (id, car_id, attr_kind, value_type, value_value) value
   ('12121212-1212-1212-1212-121212121204', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 'plate',     'string', 'А123ВС777'),
   ('12121212-1212-1212-1212-121212121205', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 'chassis',   'string', 'CHS-654321'),
   ('12121212-1212-1212-1212-121212121206', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 'vin',       'string', 'XTC210530M0123456'),
-  ('12121212-1212-1212-1212-121212121207', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 'engine',    'string', 'ENG-123456')
+  ('12121212-1212-1212-1212-121212121207', 'cccccccc-cccc-cccc-cccc-cccccccccc01', 'engine',    'string', 'ENG-123456'),
+  ('12121212-1212-1212-1212-121212121208', 'cccccccc-cccc-cccc-cccc-cccccccccc02', 'brand',     'string', 'ГАЗ'),
+  ('12121212-1212-1212-1212-121212121209', 'cccccccc-cccc-cccc-cccc-cccccccccc02', 'plate',     'string', 'В456ЕК777'),
+  ('12121212-1212-1212-1212-121212121210', 'cccccccc-cccc-cccc-cccc-cccccccccc03', 'brand',     'string', 'УАЗ'),
+  ('12121212-1212-1212-1212-121212121211', 'cccccccc-cccc-cccc-cccc-cccccccccc03', 'plate',     'string', 'С789МН777'),
+  ('12121212-1212-1212-1212-121212121212', 'cccccccc-cccc-cccc-cccc-cccccccccc04', 'brand',     'string', 'LADA'),
+  ('12121212-1212-1212-1212-121212121213', 'cccccccc-cccc-cccc-cccc-cccccccccc04', 'plate',     'string', 'Е321ОР777')
 on conflict (id) do update set value_value = excluded.value_value, attr_kind = excluded.attr_kind;

@@ -45,6 +45,7 @@ processesUi.get('/processes', async (c) => {
 
   return c.html(
     layout({
+      active: 'processes',
       title: 'Карта процессов',
       testId: 'page-processes',
       body: `${mapSummary()}
@@ -84,6 +85,7 @@ processesUi.get('/processes/:id', async (c) => {
     const list = PROCESSES.map((p) => p.id).join(', ');
     return c.html(
       layout({
+        active: 'processes',
         title: 'Процесс не найден',
         testId: 'page-process-missing',
         body: `<p data-testid="process-error">Процесса «${id}» нет. Есть: ${list}</p>
@@ -96,6 +98,7 @@ processesUi.get('/processes/:id', async (c) => {
   const counts = await statusCounts();
   return c.html(
     layout({
+      active: 'processes',
       title: process.title,
       testId: `page-process-${process.id}`,
       body: `${mapSummary()}

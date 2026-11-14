@@ -33,8 +33,12 @@ describe('справочники', () => {
     expect(await count('payment_form')).toBe(2);
     expect(await count('service_kind')).toBe(2);
     expect(await count('batch')).toBe(2);
-    expect(await count('car')).toBe(1);
-    expect(await count('car_attribute')).toBe(7);
+    expect(await count('car')).toBe(4);
+    expect(await count('car_attribute')).toBe(13);
+    // Автопарк (Q2) и сотрудники (Q3, Q7).
+    expect(await count('department')).toBe(3);
+    expect(await count('employee')).toBe(5);
+    expect(await count('maintenance_rule')).toBe(3);
   });
 
   test('идемпотентны: повторный запуск не удваивает строки', async () => {

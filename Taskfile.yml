@@ -43,6 +43,119 @@ tasks:
       - go run ./cmd/migrator reconcile --checks ALL
 
   e2e:
-    desc: Сквозные сценарии (этап 4+); BACKEND=go|odata, ONLY=фильтр
+    desc: e2e UI через Playwright (REST, вход администратором); нужен стенд PWA_URL
+    dir: pwa
     cmds:
-      - echo "e2e на Go-бэкенде появляется на этапе 4 (BACKEND={{.BACKEND}} ONLY={{.ONLY}})" && exit 1
+      - npx playwright test --grep-invert @mutation
+
+  e2e:ui:
+    desc: Playwright в режиме UI (интерактивная отладка); PWA_URL задать заранее
+    dir: pwa
+    cmds:
+      - npx playwright test --ui --grep-invert @mutation
+
+  e2e:target:
+    desc: Диагностика цели — что отдаёт PWA_URL (запускать первым при непонятных падениях)
+    dir: pwa
+    cmds:
+      - npm run e2e:target
+
+  e2e:mutation:
+    desc: Мутации FSM через Playwright — только изолированный стенд (E2E_MUTATIONS=1)
+    dir: pwa
+    cmds:
+      - npx playwright test --grep @mutation --workers=1
+
+  e2e:coverage:
+    desc: Гейт полноты e2e по модели (все процессы и узлы покрыты)
+    dir: pwa
+    cmds:
+      - npm run e2e:coverage
+
+  e2e:catalog:
+    desc: Сгенерировать docs/e2e/catalog.md из модели (детерминированно)
+    dir: pwa
+    cmds:
+      - npm run e2e:catalog
+
+  e2e:odata:
+    desc: Легаси e2e через OData (vitest, Node); выводится из эксплуатации, не расширяется
+    dir: pwa
+    cmds:
+      - npx vitest run -c vitest.e2e.config.js
+
+  # --- Прототип (proto/) на Bun + Hono + Drizzle + Zod + HTMX -------------------
+  # Отдельная база vitauto_proto и порт 18190: ручной стенд (vitauto_app, 18180)
+  # не трогаем до приёмки прототипа — prototype-spec.md §13.1 (Q6).
+
+  proto:dev:
+    desc: 'Прототип: сервер разработки (порт 18190)'
+    dir: proto
+    cmds:
+      - bun run dev
+
+  proto:test:
+    desc: 'Прототип: тесты (unit + integration), нужна база vitauto_proto'
+    dir: proto
+    cmds:
+      - bun run test
+
+  proto:migrate:
+    desc: 'Прототип: применить миграции (идемпотентно)'
+    dir: proto
+    cmds:
+      - bun run db:migrate
+
+  proto:seed:
+    desc: 'Прототип: сид. PROCESS=happy|stock|--all (по умолчанию только справочники)'
+    dir: proto
+    cmds:
+      - bun run db/seed.ts {{.PROCESS}}
+
+  proto:seed:showcase:
+    desc: 'Прототип: витрина — по строке на каждый этап каждого процесса (61 строка)'
+    dir: proto
+    cmds:
+      - bun run db/seed.ts --showcase
+
+  proto:seed:off:
+    desc: 'Прототип: примеры для девяти внепроцессных узлов модели'
+    dir: proto
+    cmds:
+      - bun run db/seed.ts --off
+
+  proto:seed:gen:
+    desc: 'Прототип: перегенерировать сиды 11 процессов из таблицы'
+    dir: proto
+    cmds:
+      - bun run scripts/gen-process-seeds.ts
+
+  proto:reset:
+    desc: 'Прототип: сброс базы (снести схему → миграции → справочники)'
+    dir: proto
+    cmds:
+      - bun run db:reset
+
+  proto:e2e:
+    desc: 'Прототип: e2e в реальном браузере (Playwright, системный Chrome)'
+    dir: proto
+    cmds:
+      - bunx playwright test
+
+  proto:typecheck:
+    desc: 'Прототип: проверка типов (tsc --noEmit). bun build типы НЕ проверяет'
+    dir: proto
+    cmds:
+      - bun run typecheck
+
+  proto:arch:
+    desc: 'Прототип: архитектурные гейты §12 (размер, экспорты, вложенность)'
+    dir: proto
+    cmds:
+      - bun run arch
+
+  proto:openapi:
+    desc: 'Прототип: перегенерировать openapi.json из Zod-схем'
+    dir: proto
+    cmds:
+      - bun run openapi

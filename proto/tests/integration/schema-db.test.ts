@@ -34,12 +34,20 @@ describe('миграция применилась к vitauto_proto', () => {
     expect(r.rows.map((x) => x.table_name)).toEqual(['line', 'line_fact', 'line_mark']);
   });
 
-  test('line в БД — 38 столбцов: 36 из карты §4.2 + 2 связи с документами', async () => {
+  test('line в БД — 40 столбцов: 36 из карты §4.2 + 4 задокументированных', async () => {
     const cols = await columnsOf('line');
-    expect(cols.length).toBe(38);
-    // Сверяем с картой, а не с числом: 36 столбцов из §4.2 плюс ДВА
-    // задокументированных добавления — связи с возвратом и заказ-нарядом.
-    expect(cols).toEqual([...byMark('L'), 'return_id', 'work_order_id'].sort());
+    expect(cols.length).toBe(40);
+    // Сверяем с картой, а не с числом: 36 столбцов из §4.2 плюс ЧЕТЫРЕ
+    // задокументированных добавления.
+    //
+    //   return_id, work_order_id — связи с документами (в legacy жили в
+    //     отдельные таблицы `doc.return_line`, `doc.work_order_labor`);
+    //   executor_id, issued_by_id — кто выполнил работу и кто выдал запчасть
+    //     (Q3 заказчика: подпись в акте и сдельная выработка требуют человека,
+    //     а не роль).
+    expect(cols).toEqual(
+      [...byMark('L'), 'return_id', 'work_order_id', 'executor_id', 'issued_by_id'].sort(),
+    );
   });
 
   test('line_fact — 7, line_mark — 3', async () => {

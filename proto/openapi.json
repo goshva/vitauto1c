@@ -2809,6 +2809,11 @@
                   "serviceTypeId": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "executorId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Исполнитель — сотрудник с ролью механика"
                   }
                 },
                 "required": [
@@ -2842,6 +2847,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Исполнитель не найден или не механик"
           },
           "404": {
             "description": "Заказ-наряд не найден"
@@ -2923,6 +2931,93 @@
           },
           "409": {
             "description": "Недопустимый переход"
+          }
+        }
+      }
+    },
+    "/work-orders/{id}/part": {
+      "post": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "Добавить запчасть в заказ-наряд (B3)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nomenclatureId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "quantity": {
+                    "type": "string",
+                    "description": "Количество"
+                  },
+                  "salePrice": {
+                    "type": "string",
+                    "description": "Цена продажи"
+                  },
+                  "costPrice": {
+                    "type": "string",
+                    "description": "Себестоимость — для расчёта затрат"
+                  },
+                  "comment": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "nomenclatureId",
+                  "quantity"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Запчасть добавлена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lineId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "total": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lineId",
+                    "total"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Номенклатура не найдена"
+          },
+          "404": {
+            "description": "Заказ-наряд не найден"
+          },
+          "409": {
+            "description": "Закрытый наряд не правится"
           }
         }
       }
@@ -3392,6 +3487,7 @@
                     "enum": [
                       "receipt",
                       "expense",
+                      "write_off",
                       "reserve",
                       "unreserve",
                       "shipment",
@@ -3861,6 +3957,1325 @@
           },
           "409": {
             "description": "Позиция уже опознана"
+          }
+        }
+      }
+    },
+    "/fleet": {
+      "get": {
+        "tags": [
+          "fleet"
+        ],
+        "summary": "Автопарк: ТС с пробегом, состоянием и подразделением",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": false,
+            "name": "departmentId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "on_line",
+                "in_repair",
+                "written_off"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список ТС",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "vin": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "year": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "mileage": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "mileageAtService": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "statusTitle": {
+                            "type": "string"
+                          },
+                          "department": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "plate": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "due": {
+                            "type": "object",
+                            "properties": {
+                              "due": {
+                                "type": "boolean"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "mileage | days | never"
+                              },
+                              "remainingKm": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Отрицательное — просрочено"
+                              },
+                              "remainingDays": {
+                                "type": "number",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "due",
+                              "reason",
+                              "remainingKm",
+                              "remainingDays"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "name",
+                          "vin",
+                          "year",
+                          "mileage",
+                          "mileageAtService",
+                          "status",
+                          "statusTitle",
+                          "department",
+                          "plate",
+                          "due"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/maintenance": {
+      "get": {
+        "tags": [
+          "fleet"
+        ],
+        "summary": "ТС, которым пора на регламентное ТО, с причиной",
+        "responses": {
+          "200": {
+            "description": "Список ТО",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "department": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "mileage": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "reasonTitle": {
+                            "type": "string"
+                          },
+                          "remainingKm": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "remainingDays": {
+                            "type": "number",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "name",
+                          "department",
+                          "mileage",
+                          "reason",
+                          "reasonTitle",
+                          "remainingKm",
+                          "remainingDays"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fleet/{id}": {
+      "get": {
+        "tags": [
+          "fleet"
+        ],
+        "summary": "Карточка ТС: пробег, срок ТО, история нарядов",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Карточка ТС",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "car": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "vin": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "year": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "mileage": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "mileageAtService": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "statusTitle": {
+                          "type": "string"
+                        },
+                        "department": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "plate": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "vin",
+                        "year",
+                        "mileage",
+                        "mileageAtService",
+                        "status",
+                        "statusTitle",
+                        "department",
+                        "plate"
+                      ]
+                    },
+                    "maintenance": {
+                      "type": "object",
+                      "properties": {
+                        "due": {
+                          "type": "boolean"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "remainingKm": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "remainingDays": {
+                          "type": "number",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "due",
+                        "reason",
+                        "remainingKm",
+                        "remainingDays"
+                      ]
+                    },
+                    "workOrders": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "date": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "total": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "date",
+                          "status",
+                          "total"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "car",
+                    "maintenance",
+                    "workOrders"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ТС не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "fleet"
+        ],
+        "summary": "Пробег, состояние и подразделение ТС; отметка о выполненном ТО",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mileage": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "on_line",
+                      "in_repair",
+                      "written_off"
+                    ]
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "nullable": true,
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "serviceDone": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ТС обновлено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "vin": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "year": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "mileage": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "mileageAtService": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "statusTitle": {
+                      "type": "string"
+                    },
+                    "department": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "plate": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "name",
+                    "vin",
+                    "year",
+                    "mileage",
+                    "mileageAtService",
+                    "status",
+                    "statusTitle",
+                    "department",
+                    "plate"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Пустое тело или недопустимое состояние",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ТС не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Пробег меньше текущего",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees": {
+      "get": {
+        "tags": [
+          "staff"
+        ],
+        "summary": "Сотрудники: ФИО, роль, подразделение, право подписи",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "role",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": false,
+            "name": "departmentId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "canSign",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список сотрудников",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "roleTitle": {
+                            "type": "string",
+                            "description": "Название роли для оператора"
+                          },
+                          "roleDuty": {
+                            "type": "string",
+                            "description": "Что роль делает — для отчёта о правах"
+                          },
+                          "departmentId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "department": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "position": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "phone": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "email": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "canSign": {
+                            "type": "boolean",
+                            "description": "Может подписывать акт выполненных работ"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fullName",
+                          "role",
+                          "roleTitle",
+                          "roleDuty",
+                          "departmentId",
+                          "department",
+                          "position",
+                          "phone",
+                          "email",
+                          "canSign"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "role": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "duty": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "role",
+                          "title",
+                          "duty"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total",
+                    "roles"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices": {
+      "get": {
+        "tags": [
+          "invoice"
+        ],
+        "summary": "Счета со статусом оплаты",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "sent",
+                "paid"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "incoming",
+                "outgoing"
+              ]
+            },
+            "required": false,
+            "name": "kind",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список счетов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "date": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "statusTitle": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "amount": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "counterparty": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "paidAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "canPay": {
+                            "type": "boolean",
+                            "description": "Счёт отправлен и ждёт оплаты"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "date",
+                          "status",
+                          "statusTitle",
+                          "kind",
+                          "amount",
+                          "counterparty",
+                          "comment",
+                          "paidAt",
+                          "canPay"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "unpaidTotal": {
+                      "type": "string",
+                      "description": "Сумма неоплаченных — «сколько ещё не пришло»"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total",
+                    "unpaidTotal"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "invoice"
+        ],
+        "summary": "Выставить счёт: по заказу или вручную",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customerOrderId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "supplierOrderId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "incoming",
+                      "outgoing"
+                    ]
+                  },
+                  "amount": {
+                    "type": "string"
+                  },
+                  "counterpartyId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "comment": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Счёт выставлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "statusTitle": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "counterparty": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "comment": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "canPay": {
+                      "type": "boolean",
+                      "description": "Счёт отправлен и ждёт оплаты"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "date",
+                    "status",
+                    "statusTitle",
+                    "kind",
+                    "amount",
+                    "counterparty",
+                    "comment",
+                    "paidAt",
+                    "canPay"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Не указана сумма и нет заказа",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/{id}/transition": {
+      "post": {
+        "tags": [
+          "invoice"
+        ],
+        "summary": "Перевести счёт: черновик → отправлен → оплачен",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "to"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Состояние изменено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "statusTitle": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "counterparty": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "comment": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "canPay": {
+                      "type": "boolean",
+                      "description": "Счёт отправлен и ждёт оплаты"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "date",
+                    "status",
+                    "statusTitle",
+                    "kind",
+                    "amount",
+                    "counterparty",
+                    "comment",
+                    "paidAt",
+                    "canPay"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неизвестное состояние",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Счёт не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Недопустимый переход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Машинный код: version_conflict, nothing_marked, field_readonly …"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 400,
+                      "maximum": 599
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Текст для человека"
+                    },
+                    "field": {
+                      "type": "string",
+                      "description": "Поле, из-за которого ошибка"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "status",
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }

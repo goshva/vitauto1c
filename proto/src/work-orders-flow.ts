@@ -1,11 +1,13 @@
 import { createRoute, z } from '@hono/zod-openapi';
+import { guard } from './auth.ts';
 import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
-import { WORK_ORDER_STATES, checkWorkOrderTransition } from './domain/work-order-state.ts';
+import { canExecuteWork } from './domain/roles.ts';
 
-// Движение заказ-наряда: добавить работу, перевести в состояние, закрыть (G9).
+// Движение заказ-наряда: добавление работы (G3). Перевод состояния — в
+// `work-orders-status.ts`, отмена — в `work-orders-cancel.ts`.
 // Вынесено из `work-orders.ts` — на группу из 5–7 операций один файл не влезает
 // (та же закономерность, что у возвратов и отгрузки).
 
@@ -57,18 +59,24 @@ workOrdersFlow.openapi(createRoute({
       salePrice: z.string().optional().describe('Цена работы'),
       nomenclatureId: uuid.optional(),
       serviceTypeId: uuid.optional(),
+      /** Кто выполнил работу (Q3). Необязателен: наряд бывает и без назначения. */
+      executorId: uuid.optional().describe('Исполнитель — сотрудник с ролью механика'),
     }) } } },
   },
   responses: {
     201: { description: 'Работа добавлена', content: { 'application/json': { schema: z.object({
       lineId: uuid, total: z.string(),
     }) } } },
+    400: { description: 'Исполнитель не найден или не механик' },
     404: { description: 'Заказ-наряд не найден' },
     409: { description: 'Закрытый наряд не правится' },
   },
 }), async (c) => {
   const { id } = c.req.valid('param');
   const body = c.req.valid('json');
+  const denial = guard(c, 'work.execute');
+  if (denial) return problemResponse(c, denial);
+
 
   const loaded = await loadOrProblem(id);
   if ('problem' in loaded) return problemResponse(c, loaded.problem);
@@ -76,6 +84,25 @@ workOrdersFlow.openapi(createRoute({
   if (loaded.head!.status === 'closed') {
     return problemResponse(c, new Problem(409, 'bad_transition',
       'Закрытый заказ-наряд не правится: работы уже выполнены и предъявлены.'));
+  }
+
+  // Исполнитель проверяется ДО транзакции: незачем открывать её ради отказа.
+  if (body.executorId) {
+    const ex = await pool.query<{ full_name: string; role: string }>(
+      `select full_name, role from employee where id = $1 and deleted_at is null`,
+      [body.executorId],
+    );
+    if (ex.rowCount === 0) {
+      return problemResponse(c, new Problem(400, 'bad_request',
+        `Сотрудник ${body.executorId} не найден`, 'executorId'));
+    }
+    // Записать работу на кладовщика или менеджера нельзя: тогда выработка
+    // механиков перестанет что-либо значить.
+    if (!canExecuteWork(ex.rows[0]!.role)) {
+      return problemResponse(c, new Problem(400, 'bad_request',
+        `«${ex.rows[0]!.full_name}» не механик (роль ${ex.rows[0]!.role}). Работу можно записать только на механика.`,
+        'executorId'));
+    }
   }
 
   const client = await pool.connect();
@@ -86,11 +113,12 @@ workOrdersFlow.openapi(createRoute({
     // ровно как это делал legacy, разделяя работы и запчасти в печатной форме.
     const line = await client.query<{ id: string }>(
       `insert into line (work_order_id, operation, status, quantity, nomenclature_id,
-                         service_type_id, norm_hours, sale_price, order_date, comment)
-       values ($1, 'sale', 'new', 1, $2, $3, $4, $5, current_date, $6)
+                         service_type_id, norm_hours, sale_price, executor_id,
+                         order_date, comment)
+       values ($1, 'sale', 'new', 1, $2, $3, $4, $5, $6, current_date, $7)
        returning id`,
       [id, body.nomenclatureId ?? null, body.serviceTypeId ?? null,
-        body.normHours, body.salePrice ?? null, body.name],
+        body.normHours, body.salePrice ?? null, body.executorId ?? null, body.name],
     );
     const lineId = line.rows[0]!.id;
 
@@ -120,63 +148,6 @@ workOrdersFlow.openapi(createRoute({
 
     await client.query('commit');
     return c.json({ lineId, total: total.rows[0]!.t }, 201);
-  } catch (e) {
-    await client.query('rollback');
-    throw e;
-  } finally {
-    client.release();
-  }
-});
-
-// --- POST /work-orders/{id}/transition — перевод состояния ---------------------------
-
-workOrdersFlow.openapi(createRoute({
-  method: 'post',
-  path: '/work-orders/{id}/transition',
-  tags: ['repair'],
-  summary: 'Перевести заказ-наряд: в работу / закрыть (G9)',
-  request: {
-    params: z.object({ id: uuid }),
-    body: { content: { 'application/json': { schema: z.object({
-      to: z.enum(['in_work', 'closed']),
-    }) } } },
-  },
-  responses: {
-    200: { description: 'Состояние изменено', content: { 'application/json': { schema: z.object({
-      id: uuid, status: z.string(), lines: z.number().int(),
-    }) } } },
-    404: { description: 'Заказ-наряд не найден' },
-    409: { description: 'Недопустимый переход' },
-  },
-}), async (c) => {
-  const { id } = c.req.valid('param');
-  const { to } = c.req.valid('json');
-
-  const loaded = await loadOrProblem(id);
-  if ('problem' in loaded) return problemResponse(c, loaded.problem);
-
-  const denial = checkWorkOrderTransition(loaded.head!.status, to);
-  if (denial) return problemResponse(c, new Problem(409, 'bad_transition', denial));
-
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(
-      `update work_order set status = $2, version = version + 1, updated_at = now() where id = $1`,
-      [id, to],
-    );
-
-    const lineStatus = WORK_ORDER_STATES[to].lineStatus;
-    const lines = lineStatus
-      ? await client.query(
-          `update line set status = $2, version = version + 1, updated_at = now()
-            where work_order_id = $1 and not deleted`,
-          [id, lineStatus],
-        )
-      : { rowCount: 0 };
-
-    await client.query('commit');
-    return c.json({ id, status: to, lines: lines.rowCount ?? 0 }, 200);
   } catch (e) {
     await client.query('rollback');
     throw e;

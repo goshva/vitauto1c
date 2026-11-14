@@ -57,6 +57,7 @@ export async function linesPanel(operation: string): Promise<string> {
 /** Страница целиком. */
 async function linesPage(operation: string): Promise<string> {
   return layout({
+    active: 'lines',
     title: 'Строки заказов',
     testId: 'page-lines',
     body: `<details class="import" data-testid="import-panel">

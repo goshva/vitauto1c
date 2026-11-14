@@ -86,13 +86,18 @@ workOrders.openapi(createRoute({
 
   // Работа отличается от запчасти наличием нормо-часов: это и есть признак,
   // по которому legacy делил строки на работы и запчасти.
+  //
+  // Исполнитель подтягивается именем, а не идентификатором (Q3): в акте стоит
+  // «Петров П. С.», и клиент не должен видеть UUID.
   const lines = await pool.query(
     `select l.id, l.status, l.quantity, l.norm_hours, l.sale_price, l.service_type_id,
             n.name as nomenclature, f.fact_name,
+            l.executor_id, e.full_name as executor,
             (l.norm_hours is not null) as is_labor
        from line l
        left join nomenclature n on n.id = l.nomenclature_id
        left join line_fact f on f.id = l.id
+       left join employee e on e.id = l.executor_id and e.deleted_at is null
       where l.work_order_id = $1 and not l.deleted
       order by l.id`,
     [id],

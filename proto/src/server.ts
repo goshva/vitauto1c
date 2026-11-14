@@ -1,6 +1,7 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { serveStatic } from 'hono/bun';
 import { health } from './health.ts';
+import { dashboardUi } from './dashboard-ui.ts';
 import { lines } from './lines.ts';
 import { fields } from './lines-fields.ts';
 import { transitions } from './lines-transitions.ts';
@@ -8,6 +9,7 @@ import { imports } from './imports.ts';
 import { operations } from './operations.ts';
 import { supply } from './supply.ts';
 import { print } from './print.ts';
+import { printRepair } from './print-repair-routes.ts';
 import { supplyUi } from './supply-ui.ts';
 import { refs } from './refs.ts';
 import { refCells } from './ref-cells.ts';
@@ -17,6 +19,8 @@ import { shipments } from './shipments.ts';
 import { shipmentsFlow } from './shipments-flow.ts';
 import { workOrders } from './work-orders.ts';
 import { workOrdersFlow } from './work-orders-flow.ts';
+import { workOrdersStatus } from './work-orders-status.ts';
+import { workOrdersParts } from './work-orders-parts.ts';
 import { workOrdersCancel } from './work-orders-cancel.ts';
 import { receipts } from './receipts.ts';
 import { receiptsFlow } from './receipts-flow.ts';
@@ -24,6 +28,14 @@ import { stock } from './stock.ts';
 import { zones } from './zones.ts';
 import { unidentified } from './unidentified.ts';
 import { processesUi } from './processes-ui.ts';
+import { fleet } from './fleet.ts';
+import { fleetUi, fleetPage, loadFleet, fleetCardPage, fleetMissingPage } from './fleet-ui.ts';
+import { invoicesUi, invoicesPage } from './invoices-ui.ts';
+import { stockUi } from './stock-ui.ts';
+import { fleetCard } from './fleet-card.ts';
+import { staff } from './staff.ts';
+import { invoices } from './invoices.ts';
+import { invoicesFlow } from './invoices-flow.ts';
 import { supplierOrders } from './supplier-orders.ts';
 import { supplierOrdersFlow } from './supplier-orders-flow.ts';
 import { linesBulk } from './lines-bulk.ts';
@@ -73,6 +85,23 @@ app.get('/lines', async (c, next) => {
   return c.html(await linesPage(view === 'purchases' ? 'purchase' : 'sale'));
 });
 
+// То же для новых экранов: `/fleet` и `/invoices` — адреса ЭКРАНОВ, а не только
+// API. Браузер получает страницу, агент — данные. Без этого браузер видел бы JSON,
+// а отдельный адрес для экрана разошёлся бы с API.
+app.get('/fleet', async (c, next) => {
+  if (!wantsHtml(c)) return next();
+  const q = c.req.query();
+  return c.html(fleetPage(await loadFleet(q), { status: q.status }));
+});
+
+app.get('/invoices', async (c, next) => {
+  if (!wantsHtml(c)) return next();
+  return c.html(await invoicesPage());
+});
+
+// Дашборд — домашний экран администратора: GET /. Монтируется ПЕРЕД остальными,
+// иначе / перехватил бы кто-то другой.
+app.route('/', dashboardUi);
 app.route('/', health);
 // linesBulk монтируется ДО lines: иначе /lines/{id} перехватил бы /lines/summary.
 app.route('/', linesBulk);
@@ -88,6 +117,9 @@ app.route('/', transitions);
 app.route('/', imports);
 app.route('/', operations);
 app.route('/', supply);
+// Документные формы ремонта — ДО построчных: иначе /print/{kind} перехватил бы
+// /print/work_order и ответил «формы нет».
+app.route('/', printRepair);
 app.route('/', print);
 app.route('/', supplyUi);
 app.route('/', refs);
@@ -98,6 +130,8 @@ app.route('/', shipments);
 app.route('/', shipmentsFlow);
 app.route('/', workOrders);
 app.route('/', workOrdersFlow);
+app.route('/', workOrdersStatus);
+app.route('/', workOrdersParts);
 app.route('/', workOrdersCancel);
 app.route('/', receipts);
 app.route('/', receiptsFlow);
@@ -105,6 +139,21 @@ app.route('/', stock);
 app.route('/', zones);
 app.route('/', unidentified);
 app.route('/', processesUi);
+app.route('/', fleet);
+app.route('/', fleetUi);
+
+app.get('/fleet/:id', async (c, next) => {
+  if (!wantsHtml(c)) return next();
+  const id = c.req.param('id');
+  const page = await fleetCardPage(id);
+  return page ? c.html(page) : c.html(fleetMissingPage(id), 404);
+});
+app.route('/', invoicesUi);
+app.route('/', stockUi);
+app.route('/', fleetCard);
+app.route('/', staff);
+app.route('/', invoices);
+app.route('/', invoicesFlow);
 app.route('/', supplierOrders);
 app.route('/', supplierOrdersFlow);
 app.route('/', orders);
