@@ -85,12 +85,28 @@ describe('A. Приём авто и оформление', () => {
     expect(Number(kinds.rows[0]!.n), 'атрибутов авто меньше семи').toBeGreaterThanOrEqual(7);
   });
 
-  test('A3 ⚠️ описание неисправности у НАРЯДА негде хранить', async () => {
+  // ВЕРДИКТ ОБНОВЛЁН (P2 №21): пробел закрыт — у наряда есть поле описания,
+  // оно сохраняется при открытии и печатается в обеих формах.
+  test('A3 ✅ заявленная неисправность хранится и печатается', async () => {
     const cols = await columnsOf('work_order');
-    // У наряда есть только вид услуги; свободного описания нет.
-    expect(cols).toContain('service_type_id');
-    expect(cols.filter((c) => ['comment', 'description', 'note'].includes(c)),
-      'у заказ-наряда появилось поле описания — обновите вердикт A3').toEqual([]);
+    expect(cols, 'поле описания пропало').toContain('comment');
+
+    const created = await post('/work-orders', {
+      carId: CAR, serviceTypeId: SERVICE, comment: 'Стучит спереди справа',
+    });
+    expect(created.status).toBe(201);
+
+    const r = await pool.query<{ comment: string | null }>(
+      `select comment from work_order where id = $1`, [String(created.body.id)]);
+    expect(r.rows[0]!.comment, 'описание не сохранилось').toBe('Стучит спереди справа');
+
+    // И оно попадает на бумагу: печатные формы умели выводить примечание,
+    // но брать его было негде.
+    const printed = await app.request(
+      `/print/work_order?workOrderId=${String(created.body.id)}`,
+      { headers: { accept: 'text/html' } },
+    );
+    expect(await printed.text()).toContain('Стучит спереди справа');
   });
 
   test('A4 ✅ вид услуги (ТО / Ремонт) указывается', async () => {

@@ -80,6 +80,10 @@ ${req.map((l) => `<p class="req">${l}</p>`).join('\n')}
 
 ${doc.total > 0 ? `<p class="grand">Итого: ${money(doc.total)}</p>` : ''}
 
+${doc.comment
+    ? `<p data-testid="wo-comment"><strong>Заявленная неисправность:</strong> ${esc(doc.comment)}</p>`
+    : ''}
+
 <div data-testid="wo-signs">
   <p class="sign">Принял в ремонт ____________________ / ____________________</p>
   <p class="sign">Выполнил ____________________ / ____________________</p>

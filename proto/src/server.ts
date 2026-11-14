@@ -32,6 +32,7 @@ import { fleet } from './fleet.ts';
 import { fleetUi, fleetPage, loadFleet, fleetCardPage, fleetMissingPage } from './fleet-ui.ts';
 import { invoicesUi, invoicesPage } from './invoices-ui.ts';
 import { stockUi } from './stock-ui.ts';
+import { unidentifiedUi, unidentifiedPage } from './unidentified-ui.ts';
 import { fleetCard } from './fleet-card.ts';
 import { staff } from './staff.ts';
 import { invoices } from './invoices.ts';
@@ -94,6 +95,11 @@ app.get('/fleet', async (c, next) => {
   return c.html(fleetPage(await loadFleet(q), { status: q.status }));
 });
 
+app.get('/unidentified', async (c, next) => {
+  if (!wantsHtml(c)) return next();
+  return c.html(await unidentifiedPage());
+});
+
 app.get('/invoices', async (c, next) => {
   if (!wantsHtml(c)) return next();
   return c.html(await invoicesPage());
@@ -150,6 +156,7 @@ app.get('/fleet/:id', async (c, next) => {
 });
 app.route('/', invoicesUi);
 app.route('/', stockUi);
+app.route('/', unidentifiedUi);
 app.route('/', fleetCard);
 app.route('/', staff);
 app.route('/', invoices);

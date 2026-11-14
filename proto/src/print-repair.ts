@@ -61,11 +61,11 @@ const num = (v: string | null): number => (v === null ? 0 : Number(v));
  */
 export async function loadRepairDoc(workOrderId: string): Promise<RepairDoc | null> {
   const head = await pool.query<{
-    id: string; number: string | null; date: Date; status: string;
+    id: string; number: string | null; date: Date; status: string; comment: string | null;
     counterparty: string | null; organization: string | null;
     car: string | null; vin: string | null; department: string | null;
   }>(
-    `select w.id, w.number, w.date, w.status,
+    `select w.id, w.number, w.date, w.status, w.comment,
             k.name as counterparty, o.name as organization,
             c.name as car, c.vin, d.name as department
        from work_order w
@@ -152,7 +152,7 @@ export async function loadRepairDoc(workOrderId: string): Promise<RepairDoc | nu
     car: h.car,
     vin: h.vin,
     department: h.department,
-    comment: null,
+    comment: h.comment,
     labor,
     parts,
     laborSum,

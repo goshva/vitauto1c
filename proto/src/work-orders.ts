@@ -122,6 +122,7 @@ workOrders.openapi(createRoute({
     carId: uuid.describe('Автомобиль, поступивший в ремонт'),
     counterpartyId: uuid.optional(),
     serviceTypeId: uuid.optional(),
+    comment: z.string().optional().describe('Заявленная неисправность или примечание'),
   }) } } } },
   responses: {
     201: { description: 'Наряд открыт', content: { 'application/json': { schema: z.object({
@@ -130,7 +131,7 @@ workOrders.openapi(createRoute({
     400: { description: 'Автомобиль не найден' },
   },
 }), async (c) => {
-  const { carId, counterpartyId, serviceTypeId } = c.req.valid('json');
+  const { carId, counterpartyId, serviceTypeId, comment } = c.req.valid('json');
 
   const car = await pool.query(`select 1 from car where id = $1 and deleted_at is null`, [carId]);
   if (car.rowCount === 0) {
@@ -145,10 +146,11 @@ workOrders.openapi(createRoute({
   const number = `ЗН-${String(seq.rows[0]!.n).padStart(4, '0')}`;
 
   const r = await pool.query<{ id: string }>(
-    `insert into work_order (number, status, car_id, counterparty_id, organization_id, service_type_id)
-     values ($1, 'new', $2, $3, '55555555-5555-5555-5555-555555555501', $4)
+    `insert into work_order (number, status, car_id, counterparty_id, organization_id,
+                             service_type_id, comment)
+     values ($1, 'new', $2, $3, '55555555-5555-5555-5555-555555555501', $4, $5)
      returning id`,
-    [number, carId, counterpartyId ?? null, serviceTypeId ?? null],
+    [number, carId, counterpartyId ?? null, serviceTypeId ?? null, comment ?? null],
   );
   return c.json({ id: r.rows[0]!.id, number }, 201);
 });

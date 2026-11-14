@@ -141,6 +141,67 @@ describe('заказ-наряд — перенос формы из legacy', () =
   });
 });
 
+describe('заявленная неисправность печатается (P2 №21)', () => {
+  // Печатные формы умели выводить примечание, но брать его было негде: колонки
+  // не существовало, и в форме всегда стояла пустота. Проверяется весь путь:
+  // приняли при создании наряда → сохранилось → попало на бумагу.
+
+  test('описание сохраняется при открытии наряда', async () => {
+    const { body } = await post('/work-orders', {
+      carId: CAR, counterpartyId: CUSTOMER, serviceTypeId: SERVICE,
+      comment: 'Стучит спереди справа на неровностях',
+    });
+    const r = await pool.query<{ comment: string | null }>(
+      `select comment from work_order where id = $1`, [String(body.id)]);
+    expect(r.rows[0]!.comment).toBe('Стучит спереди справа на неровностях');
+  });
+
+  test('описание видно в заказ-наряде', async () => {
+    const { body: order } = await post('/work-orders', {
+      carId: CAR, counterpartyId: CUSTOMER, serviceTypeId: SERVICE,
+      comment: 'Течь antifreeze у патрубка',
+    });
+    const { body } = await html(`/print/work_order?workOrderId=${String(order.id)}`);
+
+    expect(body).toContain('data-testid="wo-comment"');
+    expect(body).toContain('Течь antifreeze у патрубка');
+  });
+
+  test('описание видно в акте выполненных работ', async () => {
+    const { body: order } = await post('/work-orders', {
+      carId: CAR, counterpartyId: CUSTOMER, serviceTypeId: SERVICE,
+      comment: 'Не греет печка на холостых',
+    });
+    const { body } = await html(`/print/work_act?workOrderId=${String(order.id)}`);
+
+    expect(body).toContain('data-testid="act-comment"');
+    expect(body).toContain('Не греет печка на холостых');
+  });
+
+  test('без описания блок не печатается — пустой строки на бумаге нет', async () => {
+    const { body: order } = await post('/work-orders', {
+      carId: CAR, counterpartyId: CUSTOMER, serviceTypeId: SERVICE,
+    });
+    const wo = await html(`/print/work_order?workOrderId=${String(order.id)}`);
+    const act = await html(`/print/work_act?workOrderId=${String(order.id)}`);
+
+    expect(wo.body).not.toContain('data-testid="wo-comment"');
+    expect(act.body).not.toContain('data-testid="act-comment"');
+  });
+
+  test('описание экранируется: угловая скобка не ломает документ', async () => {
+    const { body: order } = await post('/work-orders', {
+      carId: CAR, counterpartyId: CUSTOMER, serviceTypeId: SERVICE,
+      comment: 'Скрип <b>жирный</b> и амперсанд &',
+    });
+    const { body } = await html(`/print/work_order?workOrderId=${String(order.id)}`);
+
+    expect(body, 'угловые скобки не экранированы').toContain('&lt;b&gt;');
+    expect(body).toContain('&amp;');
+    expect(body, 'сырой тег просочился в документ').not.toContain('<b>жирный</b>');
+  });
+});
+
 describe('акт выполненных работ — новая форма', () => {
   test('печатается и содержит стороны, основание и подписи', async () => {
     const id = await orderWithWork();

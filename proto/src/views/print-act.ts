@@ -70,6 +70,10 @@ ${doc.car ? `<p class="req"><strong>Объект работ:</strong> ${esc(doc.
 <p class="grand" data-testid="act-total">Всего к оплате: ${money(doc.total)}</p>
 <p class="muted">НДС не облагается.</p>
 
+${doc.comment
+    ? `<p data-testid="act-comment"><strong>Заявленная неисправность:</strong> ${esc(doc.comment)}</p>`
+    : ''}
+
 <p>Работы выполнены в полном объёме, претензий по качеству и срокам не имеется.</p>
 
 <div data-testid="act-signs">

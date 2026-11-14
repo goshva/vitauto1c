@@ -31,6 +31,8 @@ const PATHS: Record<string, string> = {
   collapse: '<path d="M2 3v10"/><path d="M13 8H6"/><path d="M9 5l-3 3 3 3"/>',
   // Сменить тему: половина залита — «день и ночь».
   theme: '<circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 0 0 12z" fill="currentColor"/>',
+  // Неопознанные: лупа — «розыск позиции».
+  unidentified: '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/>',
 };
 
 /**

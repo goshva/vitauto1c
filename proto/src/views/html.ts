@@ -40,6 +40,7 @@ const NAV: { key: string; href: string; title: string; icon: string; testId: str
   { key: 'documents', href: '/documents/returns', title: 'Документы', icon: 'documents', testId: 'nav-documents' },
   { key: 'fleet', href: '/fleet', title: 'Автопарк', icon: 'fleet', testId: 'nav-fleet' },
   { key: 'stock', href: '/stock', title: 'Склад', icon: 'stock', testId: 'nav-stock' },
+  { key: 'unidentified', href: '/unidentified', title: 'Неопознанные', icon: 'unidentified', testId: 'nav-unidentified' },
   { key: 'invoices', href: '/invoices', title: 'Счета', icon: 'invoices', testId: 'nav-invoices' },
   { key: 'processes', href: '/processes', title: 'Карта процессов', icon: 'processes', testId: 'nav-process' },
 ];
