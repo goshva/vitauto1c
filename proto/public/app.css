@@ -293,6 +293,28 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .step-count { min-width: 24px; padding: 1px 8px; text-align: center; font-weight: 600; color: var(--fg-2); background: var(--surface-3); border-radius: 11px; }
 .step-count-live { color: var(--accent-fg); background: var(--accent); }
 
+/* ---------- вставка заявки (ФТ v2 п. 8) ----------
+ * Поле вставки большое и моноширинное: в него вставляют ТАБЛИЦУ, и в пропорциональном
+ * шрифте колонки не выстроить — оператор не увидит, что вставилось криво.
+ */
+#paste-panel:empty { display: none; }
+#paste-panel { margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+.paste-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.paste-field textarea {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px; line-height: 1.5; white-space: pre;
+  width: 100%; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--surface); color: var(--fg); resize: vertical;
+}
+.paste-hint pre {
+  margin: 6px 0; padding: 8px 10px; overflow-x: auto;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px; line-height: 1.5;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-s);
+}
+#paste-panel ul { margin: 4px 0 0; padding-left: 18px; }
+
 /* ---------- форма закупки (ФТ v2 п. 16) ----------
  * «У кого и по какой цене» и «Аналоги» стоят РЯДОМ с выбором поставщика: снабженец
  * решает по ним, и разносить их по разным местам экрана значило бы заставить его

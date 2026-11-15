@@ -51,6 +51,7 @@ import { ordersEdit } from './orders-edit.ts';
 import { ordersRefusal } from './orders-refusal.ts';
 import { linesPage, linesUi, wantsHtml } from './lines-ui.ts';
 import { linesUiActions } from './lines-ui-actions.ts';
+import { importPaste } from './import-paste.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { requestId } from './request-id.ts';
@@ -177,6 +178,7 @@ app.route('/', ordersEdit);
 app.route('/', ordersRefusal);
 app.route('/', linesUi);
 app.route('/', linesUiActions);
+app.route('/', importPaste);
 app.route('/', linesUiWarehouse);
 
 export type App = typeof app;

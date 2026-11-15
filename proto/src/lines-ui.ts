@@ -63,6 +63,13 @@ async function linesPage(operation: string): Promise<string> {
     testId: 'page-lines',
     body: `<details class="import" data-testid="import-panel">
       <summary>Загрузить лист клиента (N1 → M1)</summary>
+
+      <p class="hint">Вставить заявку таблицей из Excel —
+        <a href="/ui/lines/paste-form" data-testid="paste-open"
+           hx-get="/ui/lines/paste-form" hx-target="#paste-panel" hx-swap="outerHTML">открыть
+        вставку из буфера</a>: скачайте шаблон, заполните и вставьте целиком.</p>
+      <div id="paste-panel" data-testid="paste-panel"></div>
+
       <form data-testid="import-form" hx-post="/ui/lines/import"
             hx-target="#lines-panel" hx-swap="outerHTML">
         <label>Наименование <input name="name" data-testid="import-name" required></label>
