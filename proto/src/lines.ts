@@ -6,6 +6,7 @@ import { STATUSES } from './domain/status.ts';
 import { uuid } from './domain/uuid.ts';
 import { hideColumns } from './domain/columns.ts';
 import { roleOf } from './auth.ts';
+import { buildFilter, LineFilters } from './lines-filters.ts';
 
 // Чтение строк. Источник — представление `line_view` (48 колонок), а не таблица:
 // список АРМ показывает данные документа и справочников, которых в строке нет.
@@ -45,12 +46,6 @@ export const LineRowSchema = z
   .passthrough()
   .openapi('LineRow');
 
-const ListQuery = z.object({
-  view: z.enum(['sales', 'purchases']).optional().default('sales'),
-  status: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(500).optional().default(100),
-  cursor: z.coerce.number().int().min(0).optional().default(0),
-});
 
 export const lines = createApi();
 
@@ -59,7 +54,7 @@ const listRoute = createRoute({
   path: '/lines',
   tags: ['lines'],
   summary: 'Список строк',
-  request: { query: ListQuery },
+  request: { query: LineFilters },
   responses: {
     200: {
       description: 'Строки и курсор продолжения',
@@ -81,7 +76,8 @@ const listRoute = createRoute({
 });
 
 lines.openapi(listRoute, async (c) => {
-  const { view, status, limit, cursor } = c.req.valid('query');
+  const filters = c.req.valid('query');
+  const { status, limit, cursor } = filters;
 
   if (status && !STATUSES.includes(status as (typeof STATUSES)[number])) {
     return problemResponse(
@@ -91,12 +87,9 @@ lines.openapi(listRoute, async (c) => {
     );
   }
 
-  const params: unknown[] = [view === 'sales' ? 'sale' : 'purchase'];
-  let where = 'where operation = $1';
-  if (status) {
-    params.push(status);
-    where += ` and status = $${params.length}`;
-  }
+  // Отбор по каждому полю (ФТ v2 п. 14) собирается в одном месте — `lines-filters.ts`.
+  // Здесь только подстановка: условия и нумерация параметров живут там.
+  const { where, params } = buildFilter(filters);
 
   const total = await pool.query<{ n: string }>(
     `select count(*)::text as n from line_view ${where}`,

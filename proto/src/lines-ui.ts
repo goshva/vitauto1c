@@ -4,6 +4,8 @@ import { pool } from './db.ts';
 import { layout } from './views/html.ts';
 import { linesTable, type Row } from './views/lines.ts';
 import { actionsPanel, type MarkedLine } from './views/actions.ts';
+import { filtersPanel, type FilterValues } from './views/filters.ts';
+import { buildFilter, filterCount, type LineFilters } from './lines-filters.ts';
 import { Problem, problemResponse } from './problem.ts';
 
 // Экраны АРМ на HTMX.
@@ -28,14 +30,36 @@ const LIST_SQL = `
   select "id", "order", "status", "marked", "nomenclature", "factName", "nomenclatureArticle", "clientOrderNumber",
          "quantity", "stockQty", "reserveQty", "customer", "salePrice", "saleSum", "comment", "urgency"
     from line_view
-   where operation = $1
+   %WHERE%
    -- Порядок задаётся номером строки, а НЕ срочностью: срочность — только метка
    -- (ФТ v2 п. 9). Иначе «срочные» обгоняли бы уже оплаченные.
    order by "order"
-   limit $2`;
+   limit %LIMIT%`;
 
-async function loadRows(operation: string, limit = 100): Promise<Row[]> {
-  const r = await pool.query<Row>(LIST_SQL, [operation, limit]);
+/**
+ * Строки списка с отбором по каждому полю (ФТ v2 п. 14).
+ *
+ * Условия собирает `buildFilter` — тот же, что и в API. Две копии правил отбора
+ * разошлись бы, и экран показывал бы не то, что отдаёт API на том же адресе.
+ *
+ * `where` из `buildFilter` НИКОГДА не пуст: условие по операции там обязательное.
+ * Поэтому подстановка простая — без ветки «а если отбора нет».
+ */
+async function loadRows(operation: string, filters: FilterValues = {}, limit = 100): Promise<Row[]> {
+  const all = {
+    ...filters,
+    view: operation === 'purchase' ? 'purchases' : 'sales',
+    limit,
+    cursor: 0,
+  } as LineFilters;
+
+  const { where, params } = buildFilter(all);
+  params.push(limit);
+  const sql = LIST_SQL
+    .replace('%WHERE%', where)
+    .replace('%LIMIT%', `$${params.length}`);
+
+  const r = await pool.query<Row>(sql, params);
   return r.rows;
 }
 
@@ -47,10 +71,19 @@ async function loadMarked(): Promise<MarkedLine[]> {
 }
 
 /** Панель целиком: действия + таблица. HTMX подменяет её после каждого действия. */
-export async function linesPanel(operation: string): Promise<string> {
-  const [rows, marked] = await Promise.all([loadRows(operation), loadMarked()]);
-  return `<div id="lines-panel" data-testid="lines-panel">
+export async function linesPanel(
+  operation: string,
+  filters: FilterValues = {},
+): Promise<string> {
+  const [rows, marked] = await Promise.all([loadRows(operation, filters), loadMarked()]);
+  return `<div id="lines-panel" data-testid="lines-panel" data-rows="${rows.length}">
   ${actionsPanel(marked)}
+  ${rows.length === 0 && filterCount({ ...filters, view: 'sales' } as LineFilters) > 0
+    ? `<p class="hint" data-testid="lines-filtered-empty">
+         Под заданный отбор не подходит ни одна строка.
+         <a href="/lines">Сбросить отбор</a>.
+       </p>`
+    : ''}
   ${linesTable(rows, operation)}
 </div>`;
 }
@@ -88,16 +121,35 @@ async function linesPage(operation: string): Promise<string> {
         ${operation === 'purchase' ? 'checked' : ''}
         hx-get="/ui/lines/panel" hx-vals='{"view":"purchases"}' hx-target="#lines-panel" hx-swap="outerHTML"> Закупки</label>
     </form>
+    ${filtersPanel({}, { operation, active: 0 })}
     ${await linesPanel(operation)}`,
   });
 }
 
 const operation = (view: string | undefined): string => (view === 'purchases' ? 'purchase' : 'sale');
 
+/** Значения отбора из строки запроса. Пустые не переносим — «не задано» и «пусто» одно. */
+function filtersOf(query: Record<string, string | undefined>): FilterValues {
+  const keys: (keyof FilterValues)[] = [
+    'status', 'number', 'name', 'article', 'clientNumber', 'customer', 'supplier',
+    'urgency', 'base', 'plate', 'comment', 'dateFrom', 'dateTo', 'marked',
+  ];
+  const out: Record<string, unknown> = {};
+  for (const k of keys) if (query[k]) out[k] = query[k];
+  for (const k of ['qtyFrom', 'qtyTo'] as const) {
+    const v = query[k];
+    if (v !== undefined && v !== '' && Number.isFinite(Number(v))) out[k] = Number(v);
+  }
+  return out as FilterValues;
+}
+
 // --- GET /lines/panel — фрагмент (обновление списка и фильтра) -------------------------
+//
+// Один адрес и для смены раздела, и для отбора: два адреса разошлись бы, и отбор
+// терялся бы при переключении «Продажи / Закупки».
 linesUi.get('/ui/lines/panel', async (c) => {
-  const html = await linesPanel(operation(c.req.query('view')));
-  return c.html(html);
+  const op = operation(c.req.query('view'));
+  return c.html(await linesPanel(op, filtersOf(c.req.query())));
 });
 
 // --- POST /lines/{id}/toggle — отметка переключателем ---------------------------------

@@ -293,6 +293,27 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .step-count { min-width: 24px; padding: 1px 8px; text-align: center; font-weight: 600; color: var(--fg-2); background: var(--surface-3); border-radius: 11px; }
 .step-count-live { color: var(--accent-fg); background: var(--accent); }
 
+/* ---------- панель отбора (ФТ v2 п. 14) ----------
+ * Поля идут СТРОКОЙ с переносом: «панель отбора по каждому полю сверху» — значит все
+ * поля видны сразу, а не спрятаны за кнопкой «фильтр». Прятать пришлось бы только
+ * потому, что их много; перенос решает это честнее.
+ */
+.filters {
+  margin: 10px 0; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface-2);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.filters-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; }
+.filters .f { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--fg-2); }
+.filters .f.wide { flex: 1 1 200px; }
+.filters input, .filters select {
+  padding: 5px 7px; font-size: 13px; min-width: 96px;
+  border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--surface); color: var(--fg);
+}
+.filters .f.wide input { width: 100%; min-width: 0; }
+.filters-actions { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+
 /* ---------- вставка заявки (ФТ v2 п. 8) ----------
  * Поле вставки большое и моноширинное: в него вставляют ТАБЛИЦУ, и в пропорциональном
  * шрифте колонки не выстроить — оператор не увидит, что вставилось криво.
