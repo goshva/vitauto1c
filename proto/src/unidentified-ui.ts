@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { pool } from './db.ts';
 import { layout } from './views/html.ts';
 import { unidentifiedSummary, unidentifiedTable, type Option, type UnidentifiedRow } from './views/unidentified.ts';
+import { matchingPanelBody } from './matching-routes.ts';
 
 // Экран неопознанных: список и привязка номенклатуры (2 маршрута).
 //
@@ -58,13 +59,14 @@ async function loadZones(): Promise<Option[]> {
 }
 
 async function panel(message?: string): Promise<string> {
-  const [rows, nomenclatures, zones] = await Promise.all([
-    loadUnidentified(), loadNomenclature(), loadZones(),
+  const [rows, nomenclatures, zones, matches] = await Promise.all([
+      loadUnidentified(), loadNomenclature(), loadZones(), matchingPanelBody(),
   ]);
 
   return `<div id="unidentified-panel" data-testid="unidentified-panel">
     ${message ? `<p class="hint-partial" data-testid="unidentified-message">${message}</p>` : ''}
     ${unidentifiedSummary(rows)}
+      ${matches}
     ${unidentifiedTable(rows, nomenclatures, zones)}
   </div>`;
 }
