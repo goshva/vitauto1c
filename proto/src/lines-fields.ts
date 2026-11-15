@@ -5,6 +5,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { uuid } from './domain/uuid.ts';
 import { deniedColumn } from './domain/columns.ts';
 import { roleOf } from './auth.ts';
+import { recordField, snapshot } from './audit-line.ts';
 
 // Правка полей строки. Вынесено из `lines-mutations.ts`: файл перевалил за 200 строк,
 // а правило «≤ 200 строк» существует потому, что в большом файле теряется контекст.
@@ -122,17 +123,14 @@ fields.openapi(patchRoute, async (c) => {
     }
   }
 
-  // КОЭФФИЦИЕНТ (ФТ v2 п. 1) — не просто поле: он ДВИГАЕТ цену.
-  //
-  // «При выборе номенклатуры цена подставляется сама: цена = база × коэффициент».
-  // Значит, задав множитель, менеджер ожидает увидеть новую цену, а не строку, где
-  // множитель новый, а цена старая. Считаем здесь же, одной операцией.
-  //
-  // Обратный ход (вписали цену руками) правки не требует: хранимый коэффициент
-  // при этом СБРАСЫВАЕТСЯ, и представление отдаёт расчётный с признаком
-  // «расчётный» — так требует ФТ: «коэффициент пересчитывается сам и
-  // подсвечивается как расчётный».
+  // КОЭФФИЦИЕНТ (ФТ v2 п. 1) — не просто поле: он ДВИГАЕТ цену. «Цена = база ×
+  // коэффициент», значит задав множитель, менеджер ждёт новую цену, а не строку с
+  // новым множителем и старой ценой. Обратный ход правки не требует: при ручном
+  // вводе цены хранимый коэффициент СБРАСЫВАЕТСЯ, а представление отдаёт расчётный
+  // с признаком «расчётный» — так и требует ФТ.
   if (field === 'coefficient') {
+    const before = await snapshot(id, ['coefficient', 'sale_price']);
+
     const r = await pool.query(
       `update line
           set coefficient = $2::numeric,
@@ -143,6 +141,18 @@ fields.openapi(patchRoute, async (c) => {
         returning version::text, sale_price::text`,
       [id, value],
     );
+
+    // Цена поехала следом за множителем — это видно в `extra`: при разборе важно,
+    // что цена изменилась РАСЧЁТОМ, а не вручную.
+    await recordField(c, {
+      id, field: 'coefficient',
+      before: before.coefficient ?? null, after: value,
+      details: {
+        salePriceBefore: before.sale_price ?? null,
+        salePriceAfter: r.rows[0]!.sale_price,
+      },
+    });
+
     return c.json({
       version: Number(r.rows[0]!.version),
       salePrice: r.rows[0]!.sale_price,
@@ -150,6 +160,8 @@ fields.openapi(patchRoute, async (c) => {
   }
 
   if (field === 'sale_price') {
+    const before = await snapshot(id, ['sale_price']);
+
     // Цену вписали руками — множитель больше не задан, он РАСЧЁТНЫЙ.
     const r = await pool.query(
       `update line
@@ -159,8 +171,17 @@ fields.openapi(patchRoute, async (c) => {
         returning version::text`,
       [id, value],
     );
+
+    await recordField(c, {
+      id, field: 'sale_price',
+      before: before.sale_price ?? null, after: value,
+      comment: 'цена введена вручную; коэффициент сброшен и стал расчётным',
+    });
+
     return c.json({ version: Number(r.rows[0]!.version), coefficientCalculated: true }, 200);
   }
+
+  const before = await snapshot(id, [field]);
 
   const r = await pool.query(
     `update line set ${column} = $2, version = version + 1, updated_at = now()
@@ -168,5 +189,10 @@ fields.openapi(patchRoute, async (c) => {
       returning version::text`,
     [id, value],
   );
+
+  await recordField(c, {
+    id, field, before: Object.values(before)[0] ?? null, after: value,
+  });
+
   return c.json({ version: Number(r.rows[0]!.version) }, 200);
 });

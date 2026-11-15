@@ -5,6 +5,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { WORK_ORDER_STATUSES } from './domain/work-order-state.ts';
 import { userIdOf } from './auth.ts';
+import { record } from './audit.ts';
 
 // Заказ-наряд (ремонт, G1–G9): список, карточка, открытие (3 операции).
 //
@@ -153,5 +154,10 @@ workOrders.openapi(createRoute({
      returning id`,
     [number, carId, counterpartyId ?? null, serviceTypeId ?? null, comment ?? null, userIdOf(c)],
   );
+  // Журнал: без этой записи история наряда начиналась бы с удаления.
+  await record(c, {
+    entity: 'work_order', entityId: r.rows[0]!.id, action: 'create',
+    newValue: number,
+  });
   return c.json({ id: r.rows[0]!.id, number }, 201);
 });

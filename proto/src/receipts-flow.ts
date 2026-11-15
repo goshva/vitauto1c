@@ -5,6 +5,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { checkDocAuthor } from './doc-author.ts';
+import { record } from './audit.ts';
 
 // Проведение приёмки (M12) и её отмена. Вынесено из `receipts.ts` (лимит 200 строк).
 //
@@ -168,6 +169,13 @@ receiptsFlow.openapi(createRoute({
       [id],
     );
     await client.query('commit');
+
+    // Журнал: удаление должно быть видно. `author_id` говорит, кто СОЗДАЛ;
+    // до этой правки д��кумент исчезал из списков бесследно.
+    await record(c, {
+      entity: 'receipt', entityId: id, action: 'delete',
+      comment: 'документ удалён',
+    });
     return c.json({ id, released: lines.rowCount ?? 0 }, 200);
   } catch (e) {
     await client.query('rollback');

@@ -54,6 +54,8 @@ import { linesPage, linesUi, wantsHtml } from './lines-ui.ts';
 import { linesUiActions } from './lines-ui-actions.ts';
 import { importPaste } from './import-paste.ts';
 import { returnsFind } from './returns-find.ts';
+import { auditApi } from './audit-api.ts';
+import { auditUi } from './audit-ui.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { requestId } from './request-id.ts';
@@ -68,8 +70,7 @@ app.use('*', requestId);
 app.use('*', idempotency);
 
 // Статика: HTMX и таблица стилей лежат локально. Прототип обязан работать
-// без сети — иначе «1С вне контура» превращается в «CDN вне контура».
-//
+// без сети — иначе «1С вне контура» превращается в «CDN вне контура». 
 // rewriteRequestPath обязателен: без него `/static/app.css` ищется как
 // `public/static/app.css` и отдаётся 404 (проверено).
 app.use(
@@ -120,14 +121,14 @@ app.route('/', health);
 app.route('/', linesBulk);
 app.route('/', linesLifecycle);
 app.route('/', documentsUi);
-// Экраны возврата монтируются ДО API `returns`: иначе `/returns/{id}` перехватил бы
-// `/returns/find` и ответил «id: Ожидается UUID». Тот же порядок, что у `linesBulk`.
+app.route('/', auditUi);
 app.route('/', returnsFind);
 
 // Тестовые хуки: только при PROTO_TEST_HOOKS=1. В обычном запуске адресов,
 // меняющих данные в обход API, не должно быть.
 if (Bun.env.PROTO_TEST_HOOKS === '1') app.route('/', testHooks);
 app.route('/', lines);
+app.route('/', auditApi);
 app.route('/', fields);
 app.route('/', transitions);
 app.route('/', imports);

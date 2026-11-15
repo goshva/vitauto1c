@@ -5,6 +5,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { SHIPMENT_STATUSES } from './domain/shipment-state.ts';
 import { userIdOf } from './auth.ts';
+import { record } from './audit.ts';
 
 // Отгрузка: список, карточка и создание (3 операции).
 //
@@ -175,6 +176,11 @@ shipments.openapi(createRoute({
     await client.query('commit');
     const skipped = marked.rows.filter((l) => !SHIPPABLE.includes(l.status))
       .map((l) => `${l.name}: из статуса «${l.status}» отгрузка не создаётся`);
+    // Журнал: без этой записи история документа начиналась бы с удаления.
+    await record(c, {
+      entity: 'shipment', entityId: shipmentId, action: 'create',
+      newValue: number,
+    });
     return c.json({ id: shipmentId, number, lines: ready.length, skipped }, 201);
   } catch (e) {
     await client.query('rollback');

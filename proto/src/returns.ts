@@ -5,6 +5,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { RETURN_KINDS, RETURN_STATUSES } from './domain/return-state.ts';
 import { userIdOf, guard } from './auth.ts';
+import { record } from './audit.ts';
 
 // Возвраты: список, карточка и оформление (3 операции).
 //
@@ -162,6 +163,11 @@ returns.openapi(createRoute({
     }
 
     await client.query('commit');
+    // Журнал: без этой записи история документа начиналась бы с удаления.
+    await record(c, {
+      entity: 'return_order', entityId: returnId, action: 'create',
+      newValue: number,
+    });
     return c.json({ id: returnId, number, lines: marked.rowCount! }, 201);
   } catch (e) {
     await client.query('rollback');

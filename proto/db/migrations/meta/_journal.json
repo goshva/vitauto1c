@@ -190,6 +190,20 @@
       "when": 1794737317385,
       "tag": "0026_offer_links",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794747142263,
+      "tag": "0027_known_spitfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794747392209,
+      "tag": "0028_audit_details",
+      "breakpoints": true
     }
   ]
 }

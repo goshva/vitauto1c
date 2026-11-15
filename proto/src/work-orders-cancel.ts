@@ -6,6 +6,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { loadOrProblem } from './work-orders-flow.ts';
 import { checkDocAuthor } from './doc-author.ts';
+import { record } from './audit.ts';
 
 // Отмена заказ-наряда. Вынесено из `work-orders-flow.ts`: файл перевалил за лимит
 // в 200 строк. Отмена — отдельная забота: она не МЕНЯЕТ состояние наряда,
@@ -62,6 +63,13 @@ workOrdersCancel.openapi(createRoute({
       [id],
     );
     await client.query('commit');
+
+    // Журнал: удаление должно быть видно. `author_id` говорит, кто СОЗДАЛ;
+    // до этой правки д��кумент исчезал из списков бесследно.
+    await record(c, {
+      entity: 'work_order', entityId: id, action: 'delete',
+      comment: 'документ удалён',
+    });
     return c.json({ id, released: lines.rowCount ?? 0 }, 200);
   } catch (e) {
     await client.query('rollback');

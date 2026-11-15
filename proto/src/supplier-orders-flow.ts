@@ -10,6 +10,7 @@ import {
   type SupplierOrderStatus,
 } from './domain/supplier-order-state.ts';
 import { checkDocAuthor } from './doc-author.ts';
+import { record } from './audit.ts';
 
 // Движение заказа поставщику: подтвердить (P1), отменить, получить.
 // Вынесено из `supplier-orders.ts` — на группу из 5–7 операций один файл не влезает
@@ -163,6 +164,13 @@ supplierOrdersFlow.openapi(createRoute({
       [id],
     );
     await client.query('commit');
+
+    // Журнал: удаление должно быть видно. `author_id` говорит, кто СОЗДАЛ;
+    // до этой правки д��кумент исчезал из списков бесследно.
+    await record(c, {
+      entity: 'supplier_order', entityId: id, action: 'delete',
+      comment: 'документ удалён',
+    });
     return c.json({ id, released: lines.rowCount ?? 0 }, 200);
   } catch (e) {
     await client.query('rollback');

@@ -12,6 +12,7 @@ export * from './invoice.ts';
 export * from './work.ts';
 export * from './ref.ts';
 export * from './user.ts';
+export * from './audit.ts';
 export * from './offer.ts';
 export * from './brand.ts';
 export * from './ref-stock.ts';

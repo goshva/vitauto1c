@@ -7,6 +7,7 @@ import { notifyStatus } from './notices.ts';
 import { checkTransition, requiresSignedOriginal } from './domain/transition.ts';
 import { uuid } from './domain/uuid.ts';
 import { loadLine } from './lines-fields.ts';
+import { record } from './audit.ts';
 
 // Переход процесса и отметка строки. Вынесено из `lines-mutations.ts` (было 211 строк).
 //
@@ -80,6 +81,12 @@ transitions.openapi(transitionRoute, async (c) => {
       `update line set status = $2, version = version + 1, updated_at = now() where id = $1`,
       [line.id, to],
     );
+    // Журнал: смена состояния — не правка поля, поэтому отдельный вид действия.
+    // «Кто перевёл строку в „Заказан“» — второй вопрос после «кто изменил цену».
+    await record(c, {
+      entity: 'line', entityId: line.id, action: 'transition',
+      field: 'status', oldValue: line.status, newValue: to,
+    });
     await pool.query(`update line_mark set marked = false where id = $1`, [line.id]);
     // Уведомление АРМ (ФТ v2 п. 17): роль-адресат берётся из карты процессов.
     await notifyStatus(line.id, to, line.customer_order_id);

@@ -6,6 +6,7 @@ import { uuid } from './domain/uuid.ts';
 import { SUPPLIER_ORDER_STATUSES } from './domain/supplier-order-state.ts';
 import { hideColumns } from './domain/columns.ts';
 import { roleOf, userIdOf } from './auth.ts';
+import { record } from './audit.ts';
 
 // Заказ поставщику: список, карточка, создание (3 операции).
 //
@@ -181,6 +182,11 @@ supplierOrders.openapi(createRoute({
     await client.query('commit');
     const skipped = marked.rows.filter((l) => !ORDERABLE.includes(l.status))
       .map((l) => `${l.name}: из статуса «${l.status}» заказ поставщику не создаётся`);
+    // Журнал: без этой записи история документа начиналась бы с удаления.
+    await record(c, {
+      entity: 'supplier_order', entityId: orderId, action: 'create',
+      newValue: number,
+    });
     return c.json({ id: orderId, number, lines: ready.length, skipped }, 201);
   } catch (e) {
     await client.query('rollback');

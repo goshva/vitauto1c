@@ -6,6 +6,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { SHIPMENT_STATES, checkShipmentTransition } from './domain/shipment-state.ts';
 import { checkDocAuthor } from './doc-author.ts';
+import { record } from './audit.ts';
 
 // Движение отгрузки: отгрузить (M12, N4) и закрыть (M15). Плюс отмена.
 // Вынесено из `shipments.ts` (лимит 200 строк на файл).
@@ -145,6 +146,13 @@ shipmentsFlow.openapi(createRoute({
       [id],
     );
     await client.query('commit');
+
+    // Журнал: удаление должно быть видно. `author_id` говорит, кто СОЗДАЛ;
+    // до этой правки д��кумент исчезал из списков бесследно.
+    await record(c, {
+      entity: 'shipment', entityId: id, action: 'delete',
+      comment: 'документ удалён',
+    });
     return c.json({ id, released: lines.rowCount ?? 0 }, 200);
   } catch (e) {
     await client.query('rollback');

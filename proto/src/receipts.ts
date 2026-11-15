@@ -4,6 +4,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { userIdOf } from './auth.ts';
+import { record } from './audit.ts';
 
 // Приёмка: список, карточка, создание (3 операции).
 //
@@ -186,6 +187,8 @@ receipts.openapi(createRoute({
     await client.query('commit');
     const skipped = marked.rows.filter((l) => !RECEIVABLE.includes(l.status))
       .map((l) => `${l.name}: из статуса «${l.status}» приёмка не создаётся`);
+    // Журнал: без этой записи история документа начиналась бы с удаления.
+    await record(c, { entity: 'receipt', entityId: receiptId, action: 'create', newValue: number });
     return c.json({ id: receiptId, number, lines: ready.length, skipped }, 201);
   } catch (e) {
     await client.query('rollback');
