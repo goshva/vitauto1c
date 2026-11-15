@@ -47,6 +47,17 @@ export const line = pgTable(
     nomenclatureId: uuid('nomenclature_id'),
     quantity: numeric('quantity', { precision: 10, scale: 2 }),
     supplierId: uuid('supplier_id'),
+    /**
+     * Выбранный вариант поставки (ФТ v2 п. 12).
+     *
+     * Ссылка на ПРЕДЛОЖЕНИЕ, а не на поставщика: у одного поставщика бывает
+     * несколько предложений по разным ценам и срокам, и «выбрал Иванова» не
+     * говорит, по какой цене.
+     *
+     * Цена выбранного варианта попадает в `cost_price`: снабженец выбирает не
+     * «поставщика вообще», а конкретную цену — и она должна быть видна в строке.
+     */
+    supplierOfferId: uuid('supplier_offer_id'),
     batchId: uuid('batch_id'),
     status: text('status'),
     deleted: boolean('deleted').notNull().default(false),

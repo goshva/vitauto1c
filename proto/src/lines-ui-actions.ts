@@ -137,3 +137,39 @@ linesUiActions.post('/ui/lines/import', async (c) => {
 
   return c.html(await linesPanel(op));
 });
+
+// --- POST /ui/lines/{id}/offer — выбрать вариант поставки (ФТ v2 п. 12) ---------------
+//
+// Делегирует в API: цена выбранного варианта переносится в строку, и это правило
+// должно жить в одном месте. Копия здесь разошлась бы — и экран показывал бы одну
+// цену, а заказ поставщику уходил бы с другой. Ровно этот класс дефектов и был
+// поводом убрать вторую копию перехода из `lines-ui.ts`.
+linesUiActions.post('/ui/lines/:id/offer', async (c) => {
+  const id = c.req.param('id');
+  const form = await c.req.parseBody();
+  const offerId = String(form.offerId ?? '');
+  const op = opOf(form.view);
+
+  // Пустой выбор — это «снять вариант»: оператор вернул список в исходное. Ошибкой
+  // не считаем, иначе случайное движение мышью давало бы красное сообщение.
+  if (offerId !== '') {
+    const { app } = await import('./server.ts');
+    const res = await app.request(`/lines/${id}/supply-option`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ offerId }),
+    });
+    if (!res.ok) {
+      const problem = (await res.json()) as { message?: string };
+      return c.html(
+        `<div id="lines-panel" data-testid="lines-panel">
+          <p class="hint-partial" data-testid="offer-error">${
+          problem.message ?? 'Вариант не выбран'}</p>
+        </div>`,
+        res.status as 400,
+      );
+    }
+  }
+
+  return c.html(await linesPanel(op));
+});

@@ -105,3 +105,26 @@ export function buildFilter(f: LineFilters): { where: string; params: unknown[] 
 export const filterCount = (f: LineFilters): number =>
   Object.entries(f).filter(([k, v]) =>
     !['view', 'limit', 'cursor'].includes(k) && v !== undefined && v !== '').length;
+
+/** Поля, которые экран передаёт в отбор. Порядок — порядок панели. */
+const FORM_KEYS = [
+  'status', 'number', 'name', 'article', 'clientNumber', 'customer', 'supplier',
+  'urgency', 'base', 'plate', 'comment', 'dateFrom', 'dateTo', 'marked',
+] as const;
+
+/**
+ * Значения отбора из строки запроса.
+ *
+ * Пустые не переносим: «не задано» и «пусто» — одно и то же, и пустая строка в
+ * условии сузила бы список до пустого. Числовые поля приводим к числу здесь, а не
+ * в SQL: строка «12abc» должна стать «не задано», а не сломать запрос.
+ */
+export function filtersOf(query: Record<string, string | undefined>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of FORM_KEYS) if (query[k]) out[k] = query[k];
+  for (const k of ['qtyFrom', 'qtyTo'] as const) {
+    const v = query[k];
+    if (v !== undefined && v !== '' && Number.isFinite(Number(v))) out[k] = Number(v);
+  }
+  return out;
+}

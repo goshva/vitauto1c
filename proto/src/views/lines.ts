@@ -28,6 +28,64 @@ export interface Row {
   comment: string | null;
   /** Метка «Срочно» (ФТ v2 п. 9). */
   urgency: string | null;
+  /**
+   * Варианты поставки (ФТ v2 п. 12). Пусто — выбирать не из чего: либо у позиции
+   * одно предложение, либо она ещё не опознана.
+   */
+  offers: SupplyOffer[] | null;
+  /** Выбранный вариант, если снабженец уже выбрал. */
+  chosenOffer: string | null;
+}
+
+/** Вариант поставки: у кого, по какой цене и в какой срок. */
+interface SupplyOffer {
+  id: string;
+  supplier: string;
+  price: string;
+  days: number | null;
+}
+
+/**
+ * Подпись срока: ноль — «со склада», пусто — «срок не указан».
+ *
+ * Разница настоящая: ноль — это «забрать сегодня», а NULL — «продавец не назвал
+ * срок». Показать их одинаково значило бы выдать неизвестное за быстрое.
+ */
+const daysLabel = (days: number | null): string =>
+  days === null ? 'срок не указан' : days === 0 ? 'со склада' : `${days} дн.`;
+
+/**
+ * Поле выбора варианта — В САМОЙ СТРОКЕ, как требует ФТ.
+ *
+ * Показываем его только когда есть из чего выбирать (два предложения и больше):
+ * выпадающий список с единственным пунктом выглядит как выбор, которого нет.
+ * Когда выбор уже сделан — видно, какой именно: цена и срок написаны рядом, потому
+ * что «выбрал АвтооптТорг» без цены ничего не решает.
+ */
+function offerCell(r: Row): string {
+  const offers = r.offers ?? [];
+  if (offers.length === 0) return '<td class="c-offer"></td>';
+
+  if (offers.length === 1) {
+    const o = offers[0]!;
+    return `<td class="c-offer" data-testid="offer-single-${esc(r.id)}">
+      <span class="offer-one">${esc(o.supplier)} · ${esc(o.price)} ₽ · ${esc(daysLabel(o.days))}</span>
+    </td>`;
+  }
+
+  const options = offers.map((o) => `<option value="${esc(o.id)}"${
+    o.id === r.chosenOffer ? ' selected' : ''}>${esc(o.supplier)} · ${esc(o.price)} ₽ · ${
+    esc(daysLabel(o.days))}</option>`).join('\n          ');
+
+  return `<td class="c-offer">
+    <select data-testid="offer-${esc(r.id)}"
+            hx-post="/ui/lines/${esc(r.id)}/offer"
+            hx-include="this" hx-target="#lines-panel" hx-swap="outerHTML"
+            name="offerId">
+      <option value="">— выберите —</option>
+      ${options}
+    </select>
+  </td>`;
 }
 
 function row(r: Row): string {
@@ -50,6 +108,7 @@ function row(r: Row): string {
   <td class="c-code" data-testid="client-number-${esc(r.id)}">${cell(r.clientOrderNumber)}</td>
   <td>${cell(r.factName ?? r.nomenclature)}</td>
   <td class="c-code">${cell(r.nomenclatureArticle)}</td>
+  ${offerCell(r)}
   <td class="c-num">${cell(r.quantity)}</td>
   <td class="c-num" data-testid="stock-${esc(r.id)}">${cell(r.stockQty)}</td>
   <td class="c-num">${cell(r.reserveQty)}</td>
@@ -80,6 +139,7 @@ export function linesTable(rows: Row[], view: string): string {
       <th>Заказ клиента</th>
       <th>Наименование</th>
       <th>Артикул</th>
+      <th>Поставка</th>
       <th class="c-num">Кол-во</th>
       <th class="c-num">Остаток</th>
       <th class="c-num">Резерв</th>

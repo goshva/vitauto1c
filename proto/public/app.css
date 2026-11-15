@@ -293,6 +293,19 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .step-count { min-width: 24px; padding: 1px 8px; text-align: center; font-weight: 600; color: var(--fg-2); background: var(--surface-3); border-radius: 11px; }
 .step-count-live { color: var(--accent-fg); background: var(--accent); }
 
+/* ---------- вариант поставки в строке (ФТ v2 п. 12) ----------
+ * Поле узкое и без лишней рамки: строка списка и без него плотная, а вариант — не
+ * главное в ней. Цена и срок стоят В САМОЙ ПОДПИСИ варианта: «выбрал АвтооптТорг»
+ * без цены ничего не решает.
+ */
+.c-offer { max-width: 210px; }
+.c-offer select {
+  max-width: 100%; padding: 3px 4px; font-size: 12px;
+  border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--surface); color: var(--fg);
+}
+.offer-one { font-size: 12px; color: var(--fg-2); }
+
 /* ---------- панель отбора (ФТ v2 п. 14) ----------
  * Поля идут СТРОКОЙ с переносом: «панель отбора по каждому полю сверху» — значит все
  * поля видны сразу, а не спрятаны за кнопкой «фильтр». Прятать пришлось бы только

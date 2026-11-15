@@ -2,10 +2,11 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { pool } from './db.ts';
 import { layout } from './views/html.ts';
-import { linesTable, type Row } from './views/lines.ts';
+import { linesTable } from './views/lines.ts';
 import { actionsPanel, type MarkedLine } from './views/actions.ts';
 import { filtersPanel, type FilterValues } from './views/filters.ts';
-import { buildFilter, filterCount, type LineFilters } from './lines-filters.ts';
+import { filterCount, filtersOf, type LineFilters } from './lines-filters.ts';
+import { loadRows } from './lines-query.ts';
 import { Problem, problemResponse } from './problem.ts';
 
 // Экраны АРМ на HTMX.
@@ -24,43 +25,6 @@ export const linesUi = new Hono();
 export function wantsHtml(c: Context): boolean {
   if (c.req.header('hx-request')) return true;
   return (c.req.header('accept') ?? '').includes('text/html');
-}
-
-const LIST_SQL = `
-  select "id", "order", "status", "marked", "nomenclature", "factName", "nomenclatureArticle", "clientOrderNumber",
-         "quantity", "stockQty", "reserveQty", "customer", "salePrice", "saleSum", "comment", "urgency"
-    from line_view
-   %WHERE%
-   -- Порядок задаётся номером строки, а НЕ срочностью: срочность — только метка
-   -- (ФТ v2 п. 9). Иначе «срочные» обгоняли бы уже оплаченные.
-   order by "order"
-   limit %LIMIT%`;
-
-/**
- * Строки списка с отбором по каждому полю (ФТ v2 п. 14).
- *
- * Условия собирает `buildFilter` — тот же, что и в API. Две копии правил отбора
- * разошлись бы, и экран показывал бы не то, что отдаёт API на том же адресе.
- *
- * `where` из `buildFilter` НИКОГДА не пуст: условие по операции там обязательное.
- * Поэтому подстановка простая — без ветки «а если отбора нет».
- */
-async function loadRows(operation: string, filters: FilterValues = {}, limit = 100): Promise<Row[]> {
-  const all = {
-    ...filters,
-    view: operation === 'purchase' ? 'purchases' : 'sales',
-    limit,
-    cursor: 0,
-  } as LineFilters;
-
-  const { where, params } = buildFilter(all);
-  params.push(limit);
-  const sql = LIST_SQL
-    .replace('%WHERE%', where)
-    .replace('%LIMIT%', `$${params.length}`);
-
-  const r = await pool.query<Row>(sql, params);
-  return r.rows;
 }
 
 async function loadMarked(): Promise<MarkedLine[]> {
@@ -128,28 +92,16 @@ async function linesPage(operation: string): Promise<string> {
 
 const operation = (view: string | undefined): string => (view === 'purchases' ? 'purchase' : 'sale');
 
-/** Значения отбора из строки запроса. Пустые не переносим — «не задано» и «пусто» одно. */
-function filtersOf(query: Record<string, string | undefined>): FilterValues {
-  const keys: (keyof FilterValues)[] = [
-    'status', 'number', 'name', 'article', 'clientNumber', 'customer', 'supplier',
-    'urgency', 'base', 'plate', 'comment', 'dateFrom', 'dateTo', 'marked',
-  ];
-  const out: Record<string, unknown> = {};
-  for (const k of keys) if (query[k]) out[k] = query[k];
-  for (const k of ['qtyFrom', 'qtyTo'] as const) {
-    const v = query[k];
-    if (v !== undefined && v !== '' && Number.isFinite(Number(v))) out[k] = Number(v);
-  }
-  return out as FilterValues;
-}
-
 // --- GET /lines/panel — фрагмент (обновление списка и фильтра) -------------------------
 //
 // Один адрес и для смены раздела, и для отбора: два адреса разошлись бы, и отбор
 // терялся бы при переключении «Продажи / Закупки».
+//
+// Разбор строки запроса живёт в `lines-filters.ts` — рядом с правилами отбора, а не
+// в этом файле: он тоже часть контракта фильтра.
 linesUi.get('/ui/lines/panel', async (c) => {
   const op = operation(c.req.query('view'));
-  return c.html(await linesPanel(op, filtersOf(c.req.query())));
+  return c.html(await linesPanel(op, filtersOf(c.req.query()) as FilterValues));
 });
 
 // --- POST /lines/{id}/toggle — отметка переключателем ---------------------------------

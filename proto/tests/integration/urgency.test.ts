@@ -118,7 +118,10 @@ describe('№9 · метка НЕ влияет на порядок заказа 
 
   test('сортировка в запросах — по номеру строки, а не по срочности', async () => {
     // Проверяем сам SQL: `order by "order"`, и рядом НЕТ сортировки по urgency.
-    for (const file of ['src/lines-ui.ts', 'src/supply-ui.ts']) {
+    // Запрос списка живёт в `lines-query.ts`: он переехал туда из `lines-ui.ts`,
+    // и без правки тест читал бы файл, где сортировки больше нет, — то есть
+    // проверял бы не тот код и молча проходил.
+    for (const file of ['src/lines-query.ts', 'src/supply-ui.ts']) {
       const t = readFileSync(file, 'utf8');
       const orderBy = [...t.matchAll(/order by[^\n`]*/gi)].map((m) => m[0]);
       expect(orderBy.length, `${file}: нет сортировки`).toBeGreaterThan(0);

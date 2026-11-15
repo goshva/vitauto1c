@@ -52,7 +52,8 @@ const LEGACY = [
 const ADDITIONS: Record<string, string[]> = {
   // `coefficient` добавлен по ФТ v2 п. 1 — коэффициент-множитель. В матрице
   // legacy это была «Наценка, %», и заказчик уточнил: это МНОЖИТЕЛЬ, а не процент.
-  line: ['return_id', 'work_order_id', 'executor_id', 'issued_by_id', 'coefficient'],
+  line: ['return_id', 'work_order_id', 'executor_id', 'issued_by_id', 'coefficient',
+    'supplier_offer_id'],
 };
 
 const documented = (table: string): string[] => ADDITIONS[table] ?? [];
@@ -72,9 +73,9 @@ describe('карта 82 столбцов', () => {
 });
 
 describe('line — столбцы по метке L плюс задокументированные добавления', () => {
-  test('36 из карты + 5 добавленных = 41', () => {
+  test('36 из карты + 6 добавленных = 42', () => {
     expect(names(line).length).toBe(byMark('L').length + documented('line').length);
-    expect(names(line).length).toBe(41);
+    expect(names(line).length).toBe(42);
   });
 
   test('имена = метка L карты + ровно задокументированные добавления', () => {

@@ -34,9 +34,9 @@ describe('миграция применилась к vitauto_proto', () => {
     expect(r.rows.map((x) => x.table_name)).toEqual(['line', 'line_fact', 'line_mark']);
   });
 
-  test('line в БД — 41 столбец: 36 из карты §4.2 + 5 задокументированных (включая коэффициент ФТ v2 п. 1)', async () => {
+  test('line в БД — 42 столбца: 36 из карты §4.2 + 6 задокументированных', async () => {
     const cols = await columnsOf('line');
-    expect(cols.length).toBe(41);
+    expect(cols.length).toBe(42);
     // Сверяем с картой, а не с числом: 36 столбцов из §4.2 плюс ПЯТЬ
     // задокументированных добавлений.
     //
@@ -48,7 +48,8 @@ describe('миграция применилась к vitauto_proto', () => {
     //   coefficient — коэффициент-множитель (ФТ v2 п. 1). В матрице legacy это
     //     была «Наценка, %», заказчик уточнил: это МНОЖИТЕЛЬ.
     expect(cols).toEqual(
-      [...byMark('L'), 'return_id', 'work_order_id', 'executor_id', 'issued_by_id', 'coefficient']
+      [...byMark('L'), 'return_id', 'work_order_id', 'executor_id', 'issued_by_id', 'coefficient',
+        'supplier_offer_id']
         .sort(),
     );
   });
