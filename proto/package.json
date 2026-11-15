@@ -21,7 +21,10 @@
     "e2e:ui": "playwright test --ui",
     "db:seed:all": "bun run db/seed.ts --all",
     "test:integration": "bun test tests/integration --parallel=1",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "backup": "bun run scripts/backup.ts",
+    "backup:verify": "bun run scripts/backup-verify.ts",
+    "backup:restore": "bun run scripts/restore.ts"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",

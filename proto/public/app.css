@@ -178,10 +178,12 @@ button.sm { min-height: 28px; padding: 0 10px; font-size: 13px; border-radius: 8
 
 /* Состояние строки: тот же язык, что у чипов legacy, но классы свои —
    `s-{status}` приходит из данных и не может называться по-русски. */
-.c-status, .s-new, .s-ordered, .s-paid, .s-in_transit, .s-acceptance, .s-to_stock,
+.s-new, .s-ordered, .s-paid, .s-in_transit, .s-acceptance, .s-to_stock,
 .s-reserve, .s-assembly, .s-ready_to_ship, .s-shipped, .s-closed, .s-return,
-.s-on_line, .s-in_repair, .s-written_off, .s-draft, .s-sent {
+.s-on_line, .s-in_repair, .s-written_off, .s-draft, .s-sent,
+.s-in_work, .s-partially_ordered, .s-cancelled, .s-refused {
   display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px;
+  border: 1px solid currentColor;   /* ← рамка цветом текста */
   background: var(--surface-3); color: var(--fg-2); font-size: 12px; font-weight: 600; white-space: nowrap;
 }
 .s-new, .s-on_line { background: var(--info-2); color: var(--accent); }
@@ -190,7 +192,15 @@ button.sm { min-height: 28px; padding: 0 10px; font-size: 13px; border-radius: 8
 .s-assembly, .s-ready_to_ship { background: var(--ok-2); color: var(--ok); }
 .s-shipped, .s-closed, .s-sent { background: var(--ok-2); color: var(--ok); }
 .s-return, .s-written_off, .s-draft { background: var(--err-2); color: var(--err); }
+.s-in_work { background: var(--accent-2); color: var(--accent); }
+.s-partially_ordered { background: var(--warn-2); color: var(--warn); }
+.s-cancelled, .s-refused { background: var(--err-2); color: var(--err); }
 
+td.c-status {
+  text-align: center;
+  vertical-align: middle;   /* перебивает `vertical-align: top` из `th, td` */
+  white-space: nowrap;
+}
 /* ---------- карточки и панели ---------- */
 .card {
   border: 1px solid var(--line); border-radius: var(--r-m); padding: 16px;

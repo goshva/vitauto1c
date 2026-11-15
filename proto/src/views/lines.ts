@@ -103,6 +103,7 @@ function row(r: Row): string {
   </td>
   <td class="c-num">${cell(r.order)}</td>
   <td data-testid="status-${esc(r.id)}" class="c-status"><span class="s-${esc(r.status)}">${esc(statusTitle(r.status))}</span></td>
+  <td class="c-flag" data-testid="urgency-${esc(r.id)}">${r.urgency ? esc(r.urgency) : '<span class="empty">—</span>'}</td>
   <td class="c-code" data-testid="client-number-${esc(r.id)}">${cell(r.clientOrderNumber)}</td>
   <td>${cell(r.factName ?? r.nomenclature)}</td>
   <td class="c-code">${cell(r.nomenclatureArticle)}</td>
@@ -120,7 +121,7 @@ function row(r: Row): string {
 /** Тело таблицы. Возвращается отдельно — HTMX подменяет только его. */
 export function linesRows(rows: Row[]): string {
   if (rows.length === 0) {
-    return `<tr><td colspan="13" class="empty-row" data-testid="no-rows">Строк нет</td></tr>`;
+    return `<tr><td colspan="15" class="empty-row" data-testid="no-rows">Строк нет</td></tr>`;
   }
   return rows.map(row).join('\n');
 }
