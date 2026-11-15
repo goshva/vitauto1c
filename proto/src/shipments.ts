@@ -4,6 +4,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { SHIPMENT_STATUSES } from './domain/shipment-state.ts';
+import { userIdOf } from './auth.ts';
 
 // Отгрузка: список, карточка и создание (3 операции).
 //
@@ -149,13 +150,13 @@ shipments.openapi(createRoute({
 
     const head = await client.query<{ id: string }>(
       `insert into shipment (number, status, operation, counterparty_id, customer_order_id,
-                             warehouse_id, zone_id, car_id)
+                             warehouse_id, zone_id, car_id, author_id)
        values ($1, 'new', 'sale',
                (select customer_id from line where id = $2),
                (select customer_order_id from line where id = $2),
-               '44444444-4444-4444-4444-444444444401', $3, $4)
+               '44444444-4444-4444-4444-444444444401', $3, $4, $5)
        returning id`,
-      [number, ready[0]!.id, zoneId ?? null, carId ?? null],
+      [number, ready[0]!.id, zoneId ?? null, carId ?? null, userIdOf(c)],
     );
     const shipmentId = head.rows[0]!.id;
 

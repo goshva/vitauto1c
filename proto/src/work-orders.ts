@@ -4,6 +4,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { WORK_ORDER_STATUSES } from './domain/work-order-state.ts';
+import { userIdOf } from './auth.ts';
 
 // Заказ-наряд (ремонт, G1–G9): список, карточка, открытие (3 операции).
 //
@@ -147,10 +148,10 @@ workOrders.openapi(createRoute({
 
   const r = await pool.query<{ id: string }>(
     `insert into work_order (number, status, car_id, counterparty_id, organization_id,
-                             service_type_id, comment)
-     values ($1, 'new', $2, $3, '55555555-5555-5555-5555-555555555501', $4, $5)
+                             service_type_id, comment, author_id)
+     values ($1, 'new', $2, $3, '55555555-5555-5555-5555-555555555501', $4, $5, $6)
      returning id`,
-    [number, carId, counterpartyId ?? null, serviceTypeId ?? null, comment ?? null],
+    [number, carId, counterpartyId ?? null, serviceTypeId ?? null, comment ?? null, userIdOf(c)],
   );
   return c.json({ id: r.rows[0]!.id, number }, 201);
 });

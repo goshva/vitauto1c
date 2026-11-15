@@ -9,6 +9,7 @@ import {
   RETURN_STATES,
   checkReturnTransition,
 } from './domain/return-state.ts';
+import { checkDocAuthor } from './doc-author.ts';
 
 type ReturnStatus = (typeof RETURN_STATUSES)[number];
 
@@ -115,6 +116,11 @@ returnsFlow.openapi(createRoute({
   if (noRight) return problemResponse(c, noRight);
 
   const { id } = c.req.valid('param');
+  // Право ПО АВТОРУ (БТ п. 20): «документ редактирует тот, кто его создал».
+  // После стражи права на действие: «нельзя удалять вообще» и «нельзя удалять
+  // чужое» — разные отказы, и первый обязан срабатывать первым.
+  const authorDenial = await checkDocAuthor(c, 'return_order', id);
+  if (authorDenial) return problemResponse(c, authorDenial);
 
   let head: ReturnHead;
   try {

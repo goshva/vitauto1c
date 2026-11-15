@@ -5,7 +5,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { SUPPLIER_ORDER_STATUSES } from './domain/supplier-order-state.ts';
 import { hideColumns } from './domain/columns.ts';
-import { roleOf } from './auth.ts';
+import { roleOf, userIdOf } from './auth.ts';
 
 // Заказ поставщику: список, карточка, создание (3 операции).
 //
@@ -158,12 +158,12 @@ supplierOrders.openapi(createRoute({
 
     const head = await client.query<{ id: string }>(
       `insert into supplier_order (number, status, operation, counterparty_id, customer_order_id,
-                                   organization_id, receipt_date)
+                                   organization_id, receipt_date, author_id)
        values ($1, 'new', 'purchase', $2,
                (select customer_order_id from line where id = $3),
-               '55555555-5555-5555-5555-555555555501', $4)
+               '55555555-5555-5555-5555-555555555501', $4, $5)
        returning id`,
-      [number, supplierId ?? ready[0]!.supplier_id, ready[0]!.id, receiptDate ?? null],
+      [number, supplierId ?? ready[0]!.supplier_id, ready[0]!.id, receiptDate ?? null, userIdOf(c)],
     );
     const orderId = head.rows[0]!.id;
 

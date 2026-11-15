@@ -5,6 +5,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { SHIPMENT_STATES, checkShipmentTransition } from './domain/shipment-state.ts';
+import { checkDocAuthor } from './doc-author.ts';
 
 // Движение отгрузки: отгрузить (M12, N4) и закрыть (M15). Плюс отмена.
 // Вынесено из `shipments.ts` (лимит 200 строк на файл).
@@ -109,6 +110,11 @@ shipmentsFlow.openapi(createRoute({
   if (noRight) return problemResponse(c, noRight);
 
   const { id } = c.req.valid('param');
+  // Право ПО АВТОРУ (БТ п. 20): «документ редактирует тот, кто его создал».
+  // После стражи права на действие: «нельзя удалять вообще» и «нельзя удалять
+  // чужое» — разные отказы, и первый обязан срабатывать первым.
+  const authorDenial = await checkDocAuthor(c, 'shipment', id);
+  if (authorDenial) return problemResponse(c, authorDenial);
 
   let head: ShipmentHead;
   try {

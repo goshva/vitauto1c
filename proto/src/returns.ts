@@ -4,6 +4,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { RETURN_KINDS, RETURN_STATUSES } from './domain/return-state.ts';
+import { userIdOf, guard } from './auth.ts';
 
 // Возвраты: список, карточка и оформление (3 операции).
 //
@@ -112,6 +113,12 @@ returns.openapi(createRoute({
     409: { description: 'Нет отмеченных строк для возврата' },
   },
 }), async (c) => {
+  // Право на возврат (БТ п. 18): менеджер И кладовщик. До этой правки стражи не было
+  // ВООБЩЕ — возврат мог оформить кто угодно, включая механика, который к складу
+  // отношения не имеет.
+  const noRight = guard(c, 'return.create');
+  if (noRight) return problemResponse(c, noRight);
+
   const { kind } = c.req.valid('json');
 
   const marked = await pool.query<{ id: string; counterparty_id: string | null }>(
@@ -137,10 +144,11 @@ returns.openapi(createRoute({
     const number = `ВЗ-${String(seq.rows[0]!.n).padStart(4, '0')}`;
 
     const head = await client.query<{ id: string }>(
-      `insert into return_order (number, kind, status, operation, counterparty_id, warehouse_id)
-       values ($1, $2, 'new', 'sale', $3, '44444444-4444-4444-4444-444444444401')
+      `insert into return_order (number, kind, status, operation, counterparty_id, warehouse_id,
+                                 author_id)
+       values ($1, $2, 'new', 'sale', $3, '44444444-4444-4444-4444-444444444401', $4)
        returning id`,
-      [number, kind, marked.rows[0]!.counterparty_id],
+      [number, kind, marked.rows[0]!.counterparty_id, userIdOf(c)],
     );
     const returnId = head.rows[0]!.id;
 

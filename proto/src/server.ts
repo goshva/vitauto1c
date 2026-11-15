@@ -53,6 +53,7 @@ import { ordersRefusal } from './orders-refusal.ts';
 import { linesPage, linesUi, wantsHtml } from './lines-ui.ts';
 import { linesUiActions } from './lines-ui-actions.ts';
 import { importPaste } from './import-paste.ts';
+import { returnsFind } from './returns-find.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { requestId } from './request-id.ts';
@@ -119,6 +120,9 @@ app.route('/', health);
 app.route('/', linesBulk);
 app.route('/', linesLifecycle);
 app.route('/', documentsUi);
+// Экраны возврата монтируются ДО API `returns`: иначе `/returns/{id}` перехватил бы
+// `/returns/find` и ответил «id: Ожидается UUID». Тот же порядок, что у `linesBulk`.
+app.route('/', returnsFind);
 
 // Тестовые хуки: только при PROTO_TEST_HOOKS=1. В обычном запуске адресов,
 // меняющих данные в обход API, не должно быть.

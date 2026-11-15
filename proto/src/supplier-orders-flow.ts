@@ -9,6 +9,7 @@ import {
   checkSupplierOrderTransition,
   type SupplierOrderStatus,
 } from './domain/supplier-order-state.ts';
+import { checkDocAuthor } from './doc-author.ts';
 
 // Движение заказа поставщику: подтвердить (P1), отменить, получить.
 // Вынесено из `supplier-orders.ts` — на группу из 5–7 операций один файл не влезает
@@ -127,6 +128,11 @@ supplierOrdersFlow.openapi(createRoute({
   if (noRight) return problemResponse(c, noRight);
 
   const { id } = c.req.valid('param');
+  // Право ПО АВТОРУ (БТ п. 20): «документ редактирует тот, кто его создал».
+  // После стражи права на действие: «нельзя удалять вообще» и «нельзя удалять
+  // чужое» — разные отказы, и первый обязан срабатывать первым.
+  const authorDenial = await checkDocAuthor(c, 'supplier_order', id);
+  if (authorDenial) return problemResponse(c, authorDenial);
 
   let head: OrderHead;
   try {

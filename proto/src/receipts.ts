@@ -3,6 +3,7 @@ import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
+import { userIdOf } from './auth.ts';
 
 // Приёмка: список, карточка, создание (3 операции).
 //
@@ -160,15 +161,16 @@ receipts.openapi(createRoute({
     const number = `ПР-${String(seq.rows[0]!.n).padStart(4, '0')}`;
 
     const head = await client.query<{ id: string }>(
-      `insert into receipt (number, operation, counterparty_id, warehouse_id, zone_id, posted)
+      `insert into receipt (number, operation, counterparty_id, warehouse_id, zone_id, posted,
+                            author_id)
        values ($1, 'purchase',
                (select supplier_id from line where id = $2),
-               '44444444-4444-4444-4444-444444444401', $3, false)
+               '44444444-4444-4444-4444-444444444401', $3, false, $4)
        returning id`,
       // По умолчанию — ЗОНА ПРИЁМКИ: товар только что выгрузили, и раскладывать его
       // по складу будет отдельный шаг (K2). Пустая зона означала бы «неизвестно где»,
       // а это ровно тот дефект, из-за которого разъезжался остаток при списании.
-      [number, ready[0]!.id, zoneId ?? '99999999-9999-9999-9999-999999999901'],
+      [number, ready[0]!.id, zoneId ?? '99999999-9999-9999-9999-999999999901', userIdOf(c)],
     );
     const receiptId = head.rows[0]!.id;
 

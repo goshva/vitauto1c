@@ -95,6 +95,15 @@ function page(kind: DocKind, rows: DocumentRow[]): string {
     body: `<nav class="tabs" data-testid="doc-tabs">
       ${tabs}
     </nav>
+    ${kind.key === 'returns'
+      // Ссылка на подбор стоит ЗДЕСЬ, а не только в адресной строке: кладовщик
+      // приходит с деталью в руках и не знает номера возврата. Не покажи мы вход,
+      // он пошёл бы искать строку в общем списке — то есть делать работу дважды.
+      ? `<p class="hint" data-testid="find-link-hint">
+           Клиент принёс деталь без документов?
+           <a href="/returns/find" data-testid="find-link">Найти проданное для возврата</a>
+         </p>`
+      : ''}
     ${rows.length === 0
       ? `<p data-testid="documents-empty">Документов «${kind.title}» пока нет</p>`
       : documentsTable(kind.key, rows)}`,
