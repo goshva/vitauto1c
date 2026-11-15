@@ -58,6 +58,7 @@ import { auditApi } from './audit-api.ts';
 import { auditUi } from './audit-ui.ts';
 import { jobsUi } from './jobs-ui.ts';
 import { matchingRoutes } from './matching-routes.ts';
+import { reports } from './reports.ts';
 import { startScheduler } from './scheduler.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
@@ -180,6 +181,7 @@ app.route('/', importPaste);
 app.route('/', linesUiWarehouse);
 app.route('/', jobsUi);
 app.route('/', matchingRoutes);
+app.route('/', reports);
 
 export type App = typeof app;
 

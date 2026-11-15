@@ -45,7 +45,7 @@ async function seedOffProcess(): Promise<void> {
  * (`seedRefs`, `seedProcess`, `resetTo`, `processIds`) остаются отдельными —
  * их импортируют по двадцать файлов.
  */
-export const seedExtra = { showcase: seedShowcase, offProcess: seedOffProcess, clear: clearTransactions };
+export const seedExtra = { showcase: seedShowcase, offProcess: seedOffProcess, sales: seedSales, clear: clearTransactions };
 
 /** Идентификаторы процессов, для которых есть сид. */
 export function processIds(): string[] {
@@ -113,6 +113,18 @@ export async function seedRefs(): Promise<void> {
  * состояние e2e непредсказуемым — тесты рассчитывают на состояние одного процесса.
  * Витрина нужна, чтобы увидеть карту процессов «живой» на всех этапах.
  */
+  /**
+   * История продаж для отчётности: проданные строки за полгода с себестоимостью и
+   * ценами. Отдельно от `--showcase`: там по строке на каждый этап каждого процесса,
+   * и продаж с историей среди них нет.
+   *
+   * Отдельным ключом ещё и потому, что 60 заказов с отгрузками меняют состояние базы:
+   * в `--all` это сделало бы e2e непредсказуемым — та же причина, что у витрины.
+   */
+  async function seedSales(): Promise<void> {
+    await runSqlFile('sales-history.sql');
+  }
+
 async function seedShowcase(): Promise<void> {
   await runSqlFile('showcase.sql');
 }
@@ -132,6 +144,9 @@ if (import.meta.main) {
       await seedProcess(id);
       console.log(`процесс ${id}: состояние применено`);
     }
+  } else if (arg === '--sales') {
+    await seedSales();
+    console.log('история продаж: проданные строки за полгода — для отчётов');
   } else if (arg === '--showcase') {
     await seedShowcase();
     console.log('витрина: по строке на каждый этап каждого процесса');
