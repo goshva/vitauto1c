@@ -303,6 +303,25 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .step-count { min-width: 24px; padding: 1px 8px; text-align: center; font-weight: 600; color: var(--fg-2); background: var(--surface-3); border-radius: 11px; }
 .step-count-live { color: var(--accent-fg); background: var(--accent); }
 
+/* ---------- регламентные задания ----------
+ * Просроченное задание выделено рамкой и подписью, а не только цветом: цвет не
+ * читается при печати и на части экранов, а пропущенная копия — это то, что должно
+ * бросаться в глаза при первом же взгляде.
+ */
+.job {
+  margin: 10px 0; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface-2);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.job-alarm { border-color: var(--danger, #c0392b); border-width: 2px; }
+.job-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.job-badge {
+  padding: 2px 8px; font-size: 12px; font-weight: 600;
+  color: #fff; background: var(--danger, #c0392b); border-radius: 10px;
+}
+.job-badge-run { background: var(--fg-2); }
+.job form { display: flex; align-items: center; gap: 10px; }
+
 /* ---------- журнал действий ----------
  * «Было → стало» выделено цветом и стрелкой: при разборе читают именно переход, а не
  * строку целиком. Стрелка не украшение — без неё два значения рядом читаются как

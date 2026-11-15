@@ -71,7 +71,9 @@ async function dashboardBody(): Promise<string> {
   </div>
   <p class="hint">Быстрые переходы:
     <a href="/fleet">Автопарк</a> · <a href="/stock">Склад</a> ·
-    <a href="/processes">Карта процессов</a></p>`;
+    <a href="/processes">Карта процессов</a> ·
+    <a href="/jobs" data-testid="dash-jobs">Регламентные задания</a> ·
+    <a href="/audit" data-testid="dash-audit">Журнал действий</a></p>`;
 }
 
 // `GET /` — домашний экран администратора. Роль проверяется здесь же: дашборд

@@ -56,23 +56,21 @@ import { importPaste } from './import-paste.ts';
 import { returnsFind } from './returns-find.ts';
 import { auditApi } from './audit-api.ts';
 import { auditUi } from './audit-ui.ts';
+import { jobsUi } from './jobs-ui.ts';
+import { startScheduler } from './scheduler.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { requestId } from './request-id.ts';
 import { idempotency } from './idempotency.ts';
 import type { AppEnv } from './env.ts';
 
-// Сборка приложения. Всё явно: без init(), без глобальных переменных
-// (prototype-spec.md §12: anti-patterns, которые убивают AI-разработку).
+// Сборка приложения. Всё явно: без init(), без глобальных переменных (prototype-spec.md §12: anti-patterns, которые убивают AI-разработку).
 export const app = new OpenAPIHono<AppEnv>();
 
 app.use('*', requestId);
 app.use('*', idempotency);
 
-// Статика: HTMX и таблица стилей лежат локально. Прототип обязан работать
-// без сети — иначе «1С вне контура» превращается в «CDN вне контура». 
-// rewriteRequestPath обязателен: без него `/static/app.css` ищется как
-// `public/static/app.css` и отдаётся 404 (проверено).
+// Статика: HTMX и таблица стилей лежат локально. Прототип обязан работать без сети — иначе «1С вне контура» превращается в «CDN вне контура». rewriteRequestPath обязателен: без него `/static/app.css` ищется как `public/static/app.css` и отдаётся 404 (проверено).
 app.use(
   '/static/*',
   serveStatic({ root: './public', rewriteRequestPath: (p) => p.replace(/^\/static/, '') }),
@@ -85,18 +83,14 @@ app.onError((err, c) => {
   return problemResponse(c, new Problem(500, 'internal', err.message));
 });
 
-// `GET /lines` — адрес экрана. Браузер просит HTML и получает страницу,
-// тест и агент просят JSON и получают данные. Один URL, два представления.
-// Регистрируется ДО JSON-маршрута: иначе JSON перехватил бы браузер.
+// `GET /lines` — адрес экрана. Браузер просит HTML и получает страницу, тест и агент просят JSON и получают данные. Один URL, два представления. Регистрируется ДО JSON-маршрута: иначе JSON перехватил бы браузер.
 app.get('/lines', async (c, next) => {
   if (!wantsHtml(c)) return next();
   const view = c.req.query('view');
   return c.html(await linesPage(view === 'purchases' ? 'purchase' : 'sale'));
 });
 
-// То же для новых экранов: `/fleet` и `/invoices` — адреса ЭКРАНОВ, а не только
-// API. Браузер получает страницу, агент — данные. Без этого браузер видел бы JSON,
-// а отдельный адрес для экрана разошёлся бы с API.
+// То же для новых экранов: `/fleet` и `/invoices` — адреса ЭКРАНОВ, а не только API. Браузер получает страницу, агент — данные. Без этого браузер видел бы JSON, а отдельный адрес для экрана разошёлся бы с API.
 app.get('/fleet', async (c, next) => {
   if (!wantsHtml(c)) return next();
   const q = c.req.query();
@@ -113,8 +107,7 @@ app.get('/invoices', async (c, next) => {
   return c.html(await invoicesPage());
 });
 
-// Дашборд — домашний экран администратора: GET /. Монтируется ПЕРЕД остальными,
-// иначе / перехватил бы кто-то другой.
+// Дашборд — домашний экран администратора: GET /. Монтируется ПЕРЕД остальными, иначе / перехватил бы кто-то другой.
 app.route('/', dashboardUi);
 app.route('/', health);
 // linesBulk монтируется ДО lines: иначе /lines/{id} перехватил бы /lines/summary.
@@ -124,8 +117,7 @@ app.route('/', documentsUi);
 app.route('/', auditUi);
 app.route('/', returnsFind);
 
-// Тестовые хуки: только при PROTO_TEST_HOOKS=1. В обычном запуске адресов,
-// меняющих данные в обход API, не должно быть.
+// Тестовые хуки: только при PROTO_TEST_HOOKS=1. В обычном запуске адресов, меняющих данные в обход API, не должно быть.
 if (Bun.env.PROTO_TEST_HOOKS === '1') app.route('/', testHooks);
 app.route('/', lines);
 app.route('/', auditApi);
@@ -134,13 +126,11 @@ app.route('/', transitions);
 app.route('/', imports);
 app.route('/', operations);
 app.route('/', supply);
-// Документные формы ремонта — ДО построчных: иначе /print/{kind} перехватил бы
-// /print/work_order и ответил «формы нет».
+// Документные формы ремонта — ДО построчных: иначе /print/{kind} перехватил бы /print/work_order и ответил «формы нет».
 app.route('/', printRepair);
 app.route('/', print);
 app.route('/', supplyUi);
-// Вход и выход — рядом с экранами, до API: `/login` не должен попасть под
-// согласование формата, иначе агент получил бы HTML вместо отказа.
+// Вход и выход — рядом с экранами, до API: `/login` не должен попасть под согласование формата, иначе агент получил бы HTML вместо отказа.
 app.route('/', loginUi);
 app.route('/', purchaseUi);
 app.route('/', refs);
@@ -187,13 +177,15 @@ app.route('/', linesUi);
 app.route('/', linesUiActions);
 app.route('/', importPaste);
 app.route('/', linesUiWarehouse);
+app.route('/', jobsUi);
 
 export type App = typeof app;
 
-// Сервер поднимается только при прямом запуске — в тестах app импортируется
-// и вызывается через app.request(), без открытия порта.
+// Сервер поднимается только при прямом запуске — в тестах app импортируется и вызывается через app.request(), без открытия порта.
 if (import.meta.main) {
   const port = Number(Bun.env.PORT ?? 18190);
   console.log(`vitauto-proto слушает http://127.0.0.1:${port}`);
   Bun.serve({ port, hostname: '127.0.0.1', fetch: app.fetch });
+  // Планировщик — ВМЕСТЕ С ПРИЛОЖЕНИЕМ, а не отдельной службой: настройка внешнего планировщика в чужой системе — это то, что забывают при развёртывании.
+  startScheduler();
 }
