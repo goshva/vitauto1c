@@ -139,7 +139,7 @@ describe('аудит · КТО ИЗМЕНИЛ ЦЕНУ', () => {
 
     // Логин учётной записи — `store`; `storekeeper` — это роль, и она в журнале
     // лежит отдельным полем. Разделение намеренное: логин говорит «кто», роль —
-    // «с какими правам��».
+    // «с какими правамправами».
     const rows = await logOf(id);
     expect(rows.map((x) => x.login), 'в журнале не оба сотрудника')
       .toEqual(expect.arrayContaining(['manager', 'store']));
@@ -175,7 +175,7 @@ describe('аудит · что ещё записывается', () => {
     expect(denied.status).toBe(409);
 
     const transitions = (await logOf(id)).filter((x) => x.action === 'transition');
-    expect(transitions.length, 'записан переход, которого ��е было').toBe(0);
+    expect(transitions.length, 'записан переход, которого нее было').toBe(0);
   });
 
   test('создание и удаление документа', async () => {
@@ -304,7 +304,7 @@ describe('аудит · журнал не мешает работе', () => {
   test('сбой записи не отменяет саму правку', async () => {
     const id = await pricedLine();
 
-    // Свидетель ��е должен ронять работу: если запись в журнал не удалась, правка
+    // Свидетель нее должен ронять работу: если запись в журнал не удалась, правка
     // всё равно нужна. Иначе сбой журнала останавливал бы склад.
     const broken = await pool.query(
       `alter table audit_log add constraint audit_probe check (entity <> 'line')`);

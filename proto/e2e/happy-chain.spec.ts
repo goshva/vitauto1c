@@ -8,15 +8,26 @@ import { expect, test, type Page } from '@playwright/test';
 // перестанут работать, потому что HTMX не загрузился.
 
 /** Создаёт строку через форму загрузки листа. Возвращает её идентификатор. */
+/**
+ * Хвост, уникальный для прогона.
+ *
+ * Без него номер заказа повторяется от запуска к запуску, а строки прошлых прогонов
+ * остаются в базе. Фильтр по подстроке находил и старую строку — уже прошедшую
+ * цепочку, — и переход применялся к ней, а не к свежей.
+ */
+const runSuffix = String(Date.now() % 1_000_000);
+
 async function createLine(page: Page, name: string, clientNumber: string): Promise<string> {
+  // Ищем по полному номеру, а не по общему префиксу.
+  const unique = `${clientNumber}-${runSuffix}`;
   await page.goto('/lines');
   await page.getByTestId('import-panel').locator('summary').click();
   await page.getByTestId('import-name').fill(name);
   await page.getByTestId('import-qty').fill('1');
-  await page.getByTestId('import-client-number').fill(clientNumber);
+  await page.getByTestId('import-client-number').fill(unique);
   await page.getByTestId('import-submit').click();
 
-  const row = page.getByTestId('lines-body').locator('tr').filter({ hasText: clientNumber });
+  const row = page.getByTestId('lines-body').locator('tr').filter({ hasText: unique });
   await expect(row).toHaveCount(1);
   const id = await row.getAttribute('data-id');
   expect(id, 'строка без идентификатора').toBeTruthy();

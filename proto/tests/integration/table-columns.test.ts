@@ -83,7 +83,7 @@ describe('таблица строк · колонки не съезжают', ()
 
     const th = headers(html);
     const at = th.indexOf('Срочно');
-    expect(at, 'заголовка «Срочно» н��т').toBeGreaterThan(-1);
+    expect(at, 'заголовка «Срочно» ннетт').toBeGreaterThan(-1);
 
     const rowAt = html.indexOf('class="line-row row-urgent"');
     expect(rowAt, 'срочной строки нет в списке').toBeGreaterThan(-1);

@@ -29,7 +29,7 @@ if (!to) {
   console.error('Не указана целевая база. Пример:\n'
     + '  bun run scripts/restore.ts 20261115-1600 --to vitauto_proto\n\n'
     + 'Целевую базу нужно назвать явно: восстановление ЗАТИРАЕТ её содержимое, и\n'
-    + 'удара по рабочей ��азе по умолчанию быть не должно.');
+    + 'удара по рабочей базеазе по умолчанию быть не должно.');
   process.exit(2);
 }
 
@@ -77,6 +77,6 @@ execFileSync(`${PG_BIN}\\pg_restore.exe`, [
 ], { stdio: ['ignore', 'ignore', 'inherit'], env });
 
 console.log(`  восстановлено: ${manifest.totalRows} строк, ${manifest.tables.length} таблиц`);
-console.log('\nТеперь ОБЯЗАТ��ЛЬНО проверьте копию:');
+console.log('\nТеперь ОБЯЗАТОБЯЗАТЕЛЬНОЛЬНО проверьте копию:');
 console.log(`  bun run scripts/backup-verify.ts ${backup.stamp}`);
 console.log('Восстановление без проверки — это ещё не восстановление.');

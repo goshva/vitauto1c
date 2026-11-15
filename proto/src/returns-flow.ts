@@ -153,7 +153,7 @@ returnsFlow.openapi(createRoute({
     await client.query('commit');
 
     // Журнал: удаление должно быть видно. `author_id` говорит, кто СОЗДАЛ;
-    // до этой правки д��кумент исчезал из списков бесследно.
+    // до этой правки ддокументкумент исчезал из списков бесследно.
     await record(c, {
       entity: 'return_order', entityId: id, action: 'delete',
       comment: 'документ удалён',

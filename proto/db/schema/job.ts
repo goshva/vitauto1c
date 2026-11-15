@@ -40,7 +40,7 @@ export const scheduledJobRun = pgTable(
     status: text('status').notNull(),
     /** Что сделано словами: «копий: 1, проверена: 1» или причина отказа. */
     message: text('message'),
-    /** Кто запустил: `schedule` или логин админис��ратора. */
+    /** Кто запустил: `schedule` или логин админисадминистратораратора. */
     startedBy: text('started_by'),
     durationMs: integer('duration_ms'),
   },
