@@ -474,17 +474,24 @@ table.lines td[data-filter]:hover {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-/* ---------- бланк: возврат к строкам ----------
- * Кнопка стоит НАД бланком и слева: так она читается как «выйти», а не как часть формы.
- * На печать не идёт — правило `.no-print` в блоке печати.
+/* ---------- бланк: возврат и печать ----------
+ * Кнопки стоят НАД бланком и слева: так они читаются как «служебное», а не как часть формы.
+ * `no-print` обязателен — на бумаге они бессмысленны, а место занимают.
  */
-.print-back { margin: 0 0 10px; font-size: 13px; }
-.print-back a {
+.print-actions { display: flex; gap: 10px; align-items: center; margin: 0 0 10px; }
+.print-back { margin: 0; font-size: 13px; }
+.print-back a, .print-back button {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; border: 1px solid var(--line); border-radius: var(--r-s);
   background: var(--surface); color: var(--fg); text-decoration: none;
+  font: inherit; font-size: 13px; cursor: pointer;
 }
-.print-back a:hover { border-color: var(--accent); color: var(--accent); }
+.print-back a:hover, .print-back button:hover { border-color: var(--accent); color: var(--accent); }
+/* Печать — ГЛАВНОЕ действие на бланке, и оно выделено: остальные здесь служебные. */
+.print-back button[data-testid="print-go"] {
+  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+}
+.print-back button[data-testid="print-go"]:hover { color: #fff; opacity: 0.9; }
 
 /* ---------- выпадающие списки — ОДИН вид на всей странице ----------
  * Раньше их было два вида: в панели отбора поля оформлены, а в строке списка список
