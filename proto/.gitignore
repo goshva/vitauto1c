@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 .env
 .env.local
 
@@ -28,3 +28,8 @@ logs/baseline-*.json
 # распухла бы.
 backups/
 *.dump
+
+# Служебные файлы моих правок: .что-то.ts и .что-то.json.
+# Попадали в коммит дважды: .before.json и .snapshot.ts.
+.*.ts
+.*.json
