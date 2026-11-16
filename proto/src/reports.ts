@@ -1,9 +1,9 @@
 import { createRoute, z } from '@hono/zod-openapi';
-import { pool } from './db.ts';
 import { guard } from './auth.ts';
 import { problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { byMonth, totals, totalsBy, type SaleRow } from './domain/reports.ts';
+import { loadSales, loadStuck } from './reports-data.ts';
 
 // Отчёты: маршруты (п. 8 плана волны 2).
 //
@@ -35,54 +35,6 @@ const PeriodQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
 });
 
-/**
- * Строки для отчёта: только СОСТОЯВШИЕСЯ продажи.
- *
- * «Состоявшаяся» — это два условия сразу: состояние не отменено и есть ДАТА ОТГРУЗКИ.
- * Одно состояние без даты означало бы «закрыли, не отгрузив», и считать это выручкой
- * нельзя.
- */
-async function loadSales(q: { dateFrom?: string; dateTo?: string }): Promise<SaleRow[]> {
-  const params: unknown[] = [];
-  // `not deleted` не нужен: представление отсекает удалённые само.
-  const parts = [
-    "status not in ('cancelled', 'refused', 'return')",
-    '"shipmentDate" is not null',
-  ];
-  if (q.dateFrom) {
-    params.push(q.dateFrom);
-    parts.push(`"shipmentDate" >= $${params.length}::date`);
-  }
-  if (q.dateTo) {
-    params.push(q.dateTo);
-    parts.push(`"shipmentDate" < ($${params.length}::date + 1)`);
-  }
-
-  const r = await pool.query<{
-    quantity: string; cost_price: string | null; sale_price: string | null;
-    customer: string | null; nomenclature: string | null;
-    shipment_date: Date | null; status: string;
-  }>(
-    // Имена колонок — КАК В ПРЕДСТАВЛЕНИИ (`camelCase`), а не как в таблице: `line_view`
-    // переименовывает `cost_price` в `costPrice`. Отчёт, написанный по именам таблицы,
-    // падал на `column "cost_price" does not exist` — ошибку нашли интеграционные тесты.
-    `select quantity::text, "costPrice" as cost_price, "salePrice" as sale_price,
-            customer, nomenclature, "shipmentDate" as shipment_date, status
-       from line_view
-      where ${parts.join(' and ')}`,
-    params,
-  );
-
-  return r.rows.map((x) => ({
-    quantity: Number(x.quantity),
-    costPrice: x.cost_price === null ? null : Number(x.cost_price),
-    salePrice: x.sale_price === null ? null : Number(x.sale_price),
-    customer: x.customer,
-    nomenclature: x.nomenclature,
-    shippedAt: x.shipment_date,
-    status: x.status,
-  }));
-}
 
 // --- GET /reports/profitability — рентабельность продаж -------------------------------
 reports.openapi(createRoute({
@@ -166,34 +118,9 @@ reports.openapi(createRoute({
 
   const { days } = c.req.valid('query');
 
-  // Зависшими не считаются закрытые и отменённые: они закончены, а не стоят.
-  const r = await pool.query<{
-    id: string; order: number | null; status: string; customer: string | null;
-    nomenclature: string | null; order_date: Date | null; days_stuck: string;
-  }>(
-    // Тут имена ТОЖЕ как в представлении: `orderDate`, `order`. Ошибка «column "deleted"
-    // does not exist» была из-за того же — я писал по именам таблицы.
-    `select id, "order", status, customer, nomenclature, "orderDate" as order_date,
-            (current_date - "orderDate"::date)::text as days_stuck
-       from line_view
-      where status not in ('closed', 'cancelled', 'refused')
-        and "orderDate" is not null
-        and "orderDate"::date < current_date - $1::int
-      order by "orderDate", "order"`,
-    [days],
-  );
+  // Выборка живёт в `reports-data.ts` — ТА ЖЕ, что у экрана. Две копии разошлись бы,
+  // и экран с выгрузкой показывали бы разное число зависших строк.
+  const items = await loadStuck(days);
 
-  return c.json({
-    days,
-    total: r.rowCount ?? 0,
-    items: r.rows.map((x) => ({
-      id: x.id,
-      order: x.order,
-      status: x.status,
-      customer: x.customer,
-      nomenclature: x.nomenclature,
-      orderDate: x.order_date === null ? null : x.order_date.toISOString().slice(0, 10),
-      daysStuck: Number(x.days_stuck),
-    })),
-  }, 200);
+  return c.json({ days, total: items.length, items }, 200);
 });

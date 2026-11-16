@@ -70,6 +70,7 @@ async function dashboardBody(): Promise<string> {
     ${card('dash-work-orders', 'нарядов открыто', String(k.workOrdersOpen), 'в работе или ждут закрытия')}
   </div>
   <p class="hint">Быстрые переходы:
+    <a href="/reports" data-testid="dash-reports">Отчёты</a> ·
     <a href="/fleet">Автопарк</a> · <a href="/stock">Склад</a> ·
     <a href="/processes">Карта процессов</a> ·
     <a href="/jobs" data-testid="dash-jobs">Регламентные задания</a> ·

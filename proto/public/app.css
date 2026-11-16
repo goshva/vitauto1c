@@ -303,6 +303,26 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .step-count { min-width: 24px; padding: 1px 8px; text-align: center; font-weight: 600; color: var(--fg-2); background: var(--surface-3); border-radius: 11px; }
 .step-count-live { color: var(--accent-fg); background: var(--accent); }
 
+/* ---------- отчёты ----------
+ * УБЫТОК ВЫДЕЛЕН ЦВЕТОМ И НЕ СПРЯТАН. Отчёт, в котором продажа ниже себестоимости
+ * выглядит как обычная строка, опаснее отсутствующего: по нему принимают решения.
+ * Поэтому отрицательные прибыль и наценка красные, а число убыточных строк стоит
+ * отдельной цифрой в итоге.
+ */
+.report { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 14px; }
+.report th, .report td { padding: 6px 9px; border-bottom: 1px solid var(--line); text-align: left; }
+.report th { color: var(--fg-2); font-weight: 500; }
+.report tbody tr:hover { background: var(--surface-2); }
+.report-loss { color: var(--danger, #c0392b); font-weight: 600; }
+
+.report-total {
+  display: flex; flex-wrap: wrap; gap: 18px 28px;
+  margin: 10px 0; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface-2);
+}
+.report-figure { display: flex; flex-direction: column; gap: 2px; }
+.report-figure strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+
 /* ---------- сопоставление позиций (п. 2) ----------
  * ПОЛОСА ПОХОЖЕСТИ ВИДНА СРАЗУ, а не только по числу: полоса и есть решение — подставить
  * самим, показать список или сказать «в справочнике нет». Оценка рядом с названием, но
