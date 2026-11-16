@@ -88,7 +88,13 @@ code, pre { font-family: var(--mono); }
 .appbar .title { font-weight: 700; font-size: 18px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .main { padding: 16px; }
-.page { display: flex; flex-direction: column; gap: 12px; max-width: 1280px; }
+/* ОГРАНИЧЕНИЯ ШИРИНЫ НЕТ. Реестр строк — рабочая таблица, и в ней пятнадцать колонок:
+ * на 1280 пикселях они ужимаются, а «Комментарий» переносится по слогам. Экран занимает
+ * всю доступную ширину, а таблица растягивается по содержимому.
+ *
+ * Поля по краям оставлены небольшими: строка во всю ширину монитора без отступов читается
+ * хуже, чем с ними. */
+.page { display: flex; flex-direction: column; gap: 12px; max-width: none; }
 
 .navbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: space-around;
@@ -249,7 +255,10 @@ th { position: sticky; top: 0; background: var(--surface-2); z-index: 2; font-we
 tbody tr:hover td { background: var(--surface-2); }
 td.c-num, .c-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .c-code { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
-.c-comment { color: var(--fg-2); max-width: 280px; }
+/* Комментарий: предел 280px СНЯТ. Он ужимал колонку на широком экране, и текст уходил
+ * в перенос по слогам — при том, что рядом было пустое место. Теперь колонка занимает
+ * столько, сколько нужно, а таблица тянется по содержимому. */
+.c-comment { color: var(--fg-2); }
 .c-mark { width: 32px; text-align: center; }
 
 table.docs, table.fleet, table.invoices, table.stats, table.lines {
@@ -373,6 +382,20 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .audit-arrow { color: var(--fg-2); }
 .c-nowrap { white-space: nowrap; }
 
+/* ---------- движение по шагам процесса ----------
+ * Панель стоит ПОД кнопками действий и отделена рамкой: это другой способ движения —
+ * не «в состояние», а «на соседний шаг». Смешивать их в одном ряду нельзя, оператор читал
+ * бы два набора кнопок как выбор и жал наугад.
+ */
+.steps-panel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-top: 8px; padding: 8px 10px;
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: var(--r-s); background: var(--surface-2);
+}
+.steps-panel .hint { font-size: 12px; }
+.steps-panel .buttons { display: flex; gap: 8px; margin-left: auto; }
+
 /* ---------- отбор по клику на ячейку реестра ----------
  * ЯЧЕЙКА ДОЛЖНА ВЫГЛЯДЕТЬ НАЖИМАЕМОЙ, иначе о ней не догадаются. Подсветка — только
  * при наведении и слабая: строки в реестре плотные, и яркая заливка на каждой ячейке
@@ -438,7 +461,9 @@ select:disabled { background-color: var(--surface-2); color: var(--fg-2); cursor
  * главное в ней. Цена и срок стоят В САМОЙ ПОДПИСИ варианта: «выбрал АвтооптТорг»
  * без цены ничего не решает.
  */
-.c-offer { max-width: 210px; }
+/* Вариант поставки: предел 210px снят по той же причине — на широком экране он резал
+ * подпись «АвтооптТорг · 395.00 ₽ · 21 дн.» на три строки. */
+.c-offer { min-width: 180px; }
 .c-offer select {
   max-width: 100%; padding: 3px 22px 3px 5px; font-size: 12px;
   background-position: right 11px center, right 6px center;

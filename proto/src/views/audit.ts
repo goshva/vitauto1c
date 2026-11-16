@@ -25,10 +25,14 @@ const ACTION_TITLES: Record<string, string> = {
   update: 'изменил',
   delete: 'удалил',
   transition: 'перевёл',
+  // Сдвиг по шагам процесса — отдельное действие: «перевёл» не говорит, на каком шаге
+  // строка была и на какой встала, а по журналу спрашивают именно это.
+  step: 'сдвинул по шагу',
 };
 
 const FIELD_TITLES: Record<string, string> = {
   status: 'состояние',
+  process_step: 'шаг процесса',
   sale_price: 'цена продажи',
   cost_price: 'себестоимость',
   coefficient: 'коэффициент',

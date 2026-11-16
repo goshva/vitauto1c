@@ -12,6 +12,12 @@ import { esc } from './html.ts';
 export interface MarkedLine {
   id: string;
   status: string;
+  /**
+   * Процесс и шаг строки. Пусто — строка вне процесса: движение по шагам для неё
+   * невозможно, и панель показывает переходы ПО СОСТОЯНИЯМ.
+   */
+  processId?: string | null;
+  processStep?: number | null;
 }
 
 /**

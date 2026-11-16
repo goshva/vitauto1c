@@ -1,6 +1,7 @@
 import { allowedFrom, TRANSITIONS, type Transition } from '../domain/transition.ts';
 import { esc } from './html.ts';
 import { chainPanel, type MarkedLine } from './chain.ts';
+import { stepsPanel } from './steps.ts';
 
 // Панель действий. Кнопки строятся из ТОЙ ЖЕ таблицы, что проверяет API
 // (`src/domain/transition.ts`) — поэтому кнопка не может появиться там, где
@@ -49,19 +50,32 @@ export function actionsPanel(lines: MarkedLine[]): string {
   const common = commonTransitions(lines);
   const partial = partialTransitions(lines);
 
-  const buttons = common
-    .map(
-      (t) => `<button type="button" data-testid="action-${esc(t.to)}"
+  // ДВИЖЕНИЕ ПО ШАГАМ ПРОЦЕССА — вместо переходов по состояниям, когда все отмеченные
+  // строки стоят в процессе. Так строка идёт СТРОГО на соседний шаг: у одного состояния
+  // бывает несколько шагов, и переход «из нового в новый» перескочил бы шаг, показав, что
+  // работа идёт, хотя её не делали.
+  //
+  // Для строк ВНЕ процесса кнопки шагов не строятся — «следующий шаг» для них не определён,
+  // и там работают прежние переходы по состояниям.
+  const steps = stepsPanel(lines);
+
+  // Панель шагов отдаётся ВМЕСТО кнопок состояний, а не рядом: два набора кнопок на одно
+  // действие оператор читает как выбор и жмёт наугад.
+  const buttons = steps !== ''
+    ? ''
+    : common
+      .map(
+        (t) => `<button type="button" data-testid="action-${esc(t.to)}"
         hx-post="/ui/lines/transition" hx-vals='{"to":"${esc(t.to)}"}'
         hx-target="#lines-panel" hx-swap="outerHTML"
         title="Узел ${esc(t.node)}">${esc(t.title)}</button>`,
-    )
-    .join('\n      ');
+      )
+      .join('\n      ');
 
-  const note = partial.length
+  const note = partial.length && steps === ''
     ? `<p class="hint-partial" data-testid="partial-note">Недоступно для части строк: ${partial
-        .map((x) => `${esc(x.transition.title)} (${x.count})`)
-        .join(', ')}</p>`
+      .map((x) => `${esc(x.transition.title)} (${x.count})`)
+      .join(', ')}</p>`
     : '';
 
   return `<div id="actions" data-testid="actions-panel" data-count="${lines.length}">
@@ -70,6 +84,7 @@ export function actionsPanel(lines: MarkedLine[]): string {
   <span class="buttons">
       ${buttons}
   </span>
+  ${steps}
   ${note}
 ${chainPanel(lines)}
 </div>`;

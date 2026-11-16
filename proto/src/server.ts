@@ -60,6 +60,7 @@ import { jobsUi } from './jobs-ui.ts';
 import { matchingRoutes } from './matching-routes.ts';
 import { reports } from './reports.ts';
 import { reportsUi } from './reports-ui.ts';
+import { lineSteps } from './lines-steps.ts';
 import { startScheduler } from './scheduler.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
@@ -184,6 +185,7 @@ app.route('/', jobsUi);
 app.route('/', matchingRoutes);
 app.route('/', reports);
 app.route('/', reportsUi);
+app.route('/', lineSteps);
 
 export type App = typeof app;
 

@@ -53,7 +53,12 @@ const ADDITIONS: Record<string, string[]> = {
   // `coefficient` добавлен по ФТ v2 п. 1 — коэффициент-множитель. В матрице
   // legacy это была «Наценка, %», и заказчик уточнил: это МНОЖИТЕЛЬ, а не процент.
   line: ['return_id', 'work_order_id', 'executor_id', 'issued_by_id', 'coefficient',
-    'supplier_offer_id'],
+    'supplier_offer_id',
+    // ПРОЦЕСС И ШАГ СТРОКИ. Добавлены для движения по шагам процесса: состояния
+    // отвечают «что со строкой», но не «где она», а у одного состояния бывает
+    // несколько шагов — «Новый» стоит на шагах 1, 2 и 3 почти каждого процесса.
+    // Без шага строка могла бы «перейти из нового в новый», перескочив шаг.
+    'process_id', 'process_step'],
 };
 
 const documented = (table: string): string[] => ADDITIONS[table] ?? [];
@@ -73,9 +78,9 @@ describe('карта 82 столбцов', () => {
 });
 
 describe('line — столбцы по метке L плюс задокументированные добавления', () => {
-  test('36 из карты + 6 добавленных = 42', () => {
+  test('36 из карты + 8 добавленных = 44', () => {
     expect(names(line).length).toBe(byMark('L').length + documented('line').length);
-    expect(names(line).length).toBe(42);
+    expect(names(line).length).toBe(44);
   });
 
   test('имена = метка L карты + ровно задокументированные добавления', () => {

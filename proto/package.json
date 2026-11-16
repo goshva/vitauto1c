@@ -25,7 +25,8 @@
     "backup": "bun run scripts/backup.ts",
     "backup:verify": "bun run scripts/backup-verify.ts",
     "backup:restore": "bun run scripts/restore.ts",
-    "verify:nodes": "bun run scripts/verify-nodes.ts"
+    "verify:nodes": "bun run scripts/verify-nodes.ts",
+    "verify:walkthrough": "bun run scripts/verify-walkthrough.ts"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.6.3",

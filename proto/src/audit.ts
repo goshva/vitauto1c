@@ -22,7 +22,14 @@ export interface AuditEntry {
   /** Таблица, которую меняли: `line`, `customer_order`, `receipt`… */
   entity: string;
   entityId: string;
-  action: 'create' | 'update' | 'delete' | 'transition';
+  /**
+   * `step` — сдвиг строки по шагам процесса.
+   *
+   * ОТДЕЛЬНЫЙ ВИД, А НЕ `transition`, хотя состояние при этом меняется: по журналу потом
+   * спрашивают «кто двигал строку по процессу», и ответ «переход в состояние X» на этот
+   * вопрос не отвечает — он не говорит, на каком шаге строка была и на какой встала.
+   */
+  action: 'create' | 'update' | 'delete' | 'transition' | 'step';
   /** Поле, если меняли одно. */
   field?: string;
   oldValue?: unknown;

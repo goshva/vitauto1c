@@ -15,13 +15,17 @@ import { readFileSync } from 'node:fs';
 // снова его уберут, и это нормально: сид ручной проверки — не рабочие данные.
 
 const map = JSON.parse(readFileSync('db/process-map.json', 'utf8')) as {
-  scenarios: Record<string, { title?: string; steps: { n: number; nodes: string[]; status: string | null }[] }>;
+  // Массив, а не объект: см. пояснение в генераторе сида — неверный тип обосновал
+  // ошибку вместо того, чтобы её поймать.
+  scenarios: { id: string; title?: string; steps: { n: number; nodes: string[]; status: string | null }[] }[];
 };
 
 /** Ожидание из карты. Состояние ПЕРЕНОСИТСЯ: шаг без своего состояния его не меняет. */
 function expectedRows(): { process: string; node: string; status: string }[] {
   const out: { process: string; node: string; status: string }[] = [];
-  for (const [pid, proc] of Object.entries(map.scenarios)) {
+  for (const proc of map.scenarios) {
+    // Идентификатор процесса, а НЕ индекс в массиве: первая версия брала индекс.
+    const pid = proc.id;
     let last: string | null = null;
     for (const st of proc.steps) {
       // Тип указан явно: без него `status` ссылается сам на себя через `last`, и TypeScript
@@ -61,7 +65,9 @@ if (rows.length === 0) {
 // 1. ПО ПРОЦЕССАМ.
 console.log('ПО ПРОЦЕССАМ:');
 console.log('  №   процесс                              строк  в базе  итог');
-for (const [pid, proc] of Object.entries(map.scenarios)) {
+for (const proc of map.scenarios) {
+    // Идентификатор процесса, а НЕ индекс в массиве.
+    const pid = proc.id;
   let last: string | null = null;
   let total = 0;
   for (const st of proc.steps) {

@@ -28,8 +28,12 @@ export function wantsHtml(c: Context): boolean {
 }
 
 async function loadMarked(): Promise<MarkedLine[]> {
+  // ПРОЦЕСС И ШАГ ЧИТАЮТСЯ ВМЕСТЕ СО СОСТОЯНИЕМ: по ним панель решает, показывать ли
+  // движение по шагам. Отдельным запросом это дало бы второй ответ на тот же вопрос.
   const r = await pool.query<MarkedLine>(
-    `select id, status from line where id in (select id from line_mark where marked) and not deleted`,
+    `select id, status, process_id as "processId", process_step as "processStep"
+       from line
+      where id in (select id from line_mark where marked) and not deleted`,
   );
   return r.rows;
 }
@@ -118,6 +122,25 @@ linesUi.post('/ui/lines/:id/toggle', async (c) => {
     [id],
   );
   return c.html(await linesPanel(operation(c.req.query('view'))));
+});
+
+// --- POST /ui/lines/step — сдвиг по шагам процесса ------------------------------------
+//
+// ДЕЛЕГИРУЕТ в API, как и переход: там же проверки границ и запись в журнал. Вторая копия
+// правила разошлась бы с первой — ровно тот класс дефектов, от которого проект уходил.
+linesUi.post('/ui/lines/step', async (c) => {
+  const form = await c.req.parseBody();
+  const dir = String(form.dir ?? 'next');
+  const op = operation(typeof form.view === 'string' ? form.view : undefined);
+
+  const { app } = await import('./server.ts');
+  await app.request('/lines/step', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ dir }),
+  });
+
+  return c.html(await linesPanel(op));
 });
 
 // --- POST /ui/lines/transition — переход по отмеченным --------------------------------

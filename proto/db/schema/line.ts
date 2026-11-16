@@ -79,6 +79,19 @@ export const line = pgTable(
     comment: text('comment'),
     orderDate: timestamp('order_date'),
     internalOrderNumber: text('internal_order_number'),
+    /**
+     * ПРОЦЕСС и ШАГ, на котором строка стоит.
+     *
+     * ЗАЧЕМ ОТДЕЛЬНО ОТ СОСТОЯНИЯ. Состояние отвечает на вопрос «что со строкой», но не
+     * «где она». Состояний одиннадцать, а шагов сто двадцать один, и у одного состояния
+     * бывает НЕСКОЛЬКО шагов: «Новый» стоит на шагах 1, 2 и 3 почти каждого процесса.
+     *
+     * Без шага строка могла бы «перейти из нового в новый», перескочив шаг, — и учёт
+     * показал бы, что работа идёт, хотя её не делали. По шагу движение строгое: только на
+     * соседний, до конца процесса и обратно до начала.
+     */
+    processId: text('process_id'),
+    processStep: integer('process_step'),
     serviceTypeId: uuid('service_type_id'),
     urgency: text('urgency'),
     territory: text('territory'),

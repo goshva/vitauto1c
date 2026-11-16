@@ -6,6 +6,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 // процессах. Витрина такой задачи не решает — там по строке на пару «процесс × состояние»
 // (61), и по ней нельзя пройти все узлы.
 //
+// КАЖДАЯ СТРОКА ЗНАЕТ СВОЙ ПРОЦЕСС И ШАГ — без этого движение по процессу невозможно.
+//
 // КОММЕНТАРИЙ К СТРОКЕ НАЗЫВАЕТ УЗЕЛ И ПРОЦЕСС — «процесс 0 (Основной), шаг 5, узел P1».
 // Это НЕ для работы, а для ручной проверки: в обычной работе комментарий пишет менеджер, и
 // подменять его служебным текстом в промысле нельзя. Поэтому набор отдельный, отмечен
@@ -24,18 +26,22 @@ interface Step {
 }
 
 const m = JSON.parse(readFileSync('db/process-map.json', 'utf8')) as {
-  scenarios: Record<string, { title?: string; steps: Step[] }>;
+  // `scenarios` — МАССИВ процессов, а не объект с ключами. Первая версия объявляла его
+  // объектом, и `Object.entries` по массиву давал индексы «0», «1», … вместо
+  // идентификаторов: неверный тип не скрыл ошибку, а обосновал её.
+  scenarios: { id: string; title?: string; steps: Step[] }[];
 };
 
-const scenarios = Object.entries(m.scenarios);
-const allSteps = scenarios.reduce((s, [, x]) => s + x.steps.length, 0);
-const uniqueNodes = new Set(scenarios.flatMap(([, x]) => x.steps.flatMap((st) => st.nodes)));
+// СПИСОК ПРОЦЕССОВ, а не пар «индекс, процесс»: идентификатор берётся из самого процесса.
+const scenarios = m.scenarios;
+const allSteps = scenarios.reduce((s, x) => s + x.steps.length, 0);
+const uniqueNodes = new Set(scenarios.flatMap((x) => x.steps.flatMap((st) => st.nodes)));
 
 console.log(`процессов: ${scenarios.length}, шагов: ${allSteps}, уникальных узлов: ${uniqueNodes.size}`);
 
 // Состояния, допустимые для строки: берём из карты. Значения вида «M15,K7» — это список
 // узлов, а состояние всегда одно.
-const STATUSES = new Set(scenarios.flatMap(([, x]) => x.steps.map((st) => st.status)));
+const STATUSES = new Set(scenarios.flatMap((x) => x.steps.map((st) => st.status)));
 
 const hex = (prefix: string, n: number): string =>
   prefix + '000000-0000-0000-0000-' + String(n).padStart(12, '0');
@@ -47,7 +53,9 @@ const facts: string[] = [];
 let seq = 0;
 let carried = 0;
 
-for (const [processId, proc] of scenarios) {
+for (const proc of scenarios) {
+  // `scenarios` — МАССИВ: `Object.entries` дал бы индексы «0», «1», а не идентификаторы.
+  const processId = proc.id;
   // СОСТОЯНИЕ ПЕРЕНОСИТСЯ С ПРЕДЫДУЩЕГО ШАГА. Шаг без своего состояния состояние НЕ
   // МЕНЯЕТ: строка проходит через него с тем, что было. Подставить сюда «new» значило бы
   // показать проверяющему несуществующее состояние.
@@ -83,13 +91,15 @@ for (const [processId, proc] of scenarios) {
       lines.push(
         `insert into line (id, customer_order_id, operation, status, quantity,`
         + ` nomenclature_id, customer_id, contract_id, order_date, comment,`
-        + ` internal_order_number)`
+        + ` internal_order_number, process_id, process_step)`
         + ` values ('${lineId}', '${orderId}', 'sale', '${status}', 1,`
         + ` '77777777-7777-7777-7777-777777777702',`
         + ` '66666666-6666-6666-6666-666666666601',`
         + ` 'ee000000-0000-0000-0000-000000000003', current_date,`
-        + ` '${comment.replace(/'/g, "''")}', 'ПРОВ-${processId}-${st.n}')`
-        + ` on conflict (id) do update set status = excluded.status, comment = excluded.comment;`,
+        + ` '${comment.replace(/'/g, "''")}', 'ПРОВ-${processId}-${st.n}',`
+        + ` '${processId}', ${st.n})`
+        + ` on conflict (id) do update set status = excluded.status, comment = excluded.comment,`
+        + ` process_id = excluded.process_id, process_step = excluded.process_step;`,
       );
 
       facts.push(
