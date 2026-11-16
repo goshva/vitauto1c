@@ -45,7 +45,7 @@ async function seedOffProcess(): Promise<void> {
  * (`seedRefs`, `seedProcess`, `resetTo`, `processIds`) остаются отдельными —
  * их импортируют по двадцать файлов.
  */
-export const seedExtra = { showcase: seedShowcase, offProcess: seedOffProcess, sales: seedSales, clear: clearTransactions };
+export const seedExtra = { showcase: seedShowcase, offProcess: seedOffProcess, sales: seedSales, nodes: seedNodes, clear: clearTransactions };
 
 /** Идентификаторы процессов, для которых есть сид. */
 export function processIds(): string[] {
@@ -121,6 +121,18 @@ export async function seedRefs(): Promise<void> {
    * Отдельным ключом ещё и потому, что 60 заказов с отгрузками меняют состояние базы:
    * в `--all` это сделало бы e2e непредсказуемым — та же причина, что у витрины.
    */
+  /**
+   * Сид РУЧНОЙ ПРОВЕРКИ: строка на каждый узел каждого процесса (121 шаг, 131 строка).
+   *
+   * Комментарий к строке называет узел и процесс — «процесс 0 (Основной), шаг 5, узел P1».
+   * ЭТО ДЛЯ ПРОВЕРКИ, а не для работы: в промысле комментарий пишет менеджер. Поэтому
+   * набор отдельный, с префиксом ПРОВ-, и в `--all` не входит: 121 заказ сделал бы
+   * состояние e2e непредсказуемым.
+   */
+  async function seedNodes(): Promise<void> {
+    await runSqlFile('nodes.sql');
+  }
+
   async function seedSales(): Promise<void> {
     await runSqlFile('sales-history.sql');
   }
@@ -144,6 +156,9 @@ if (import.meta.main) {
       await seedProcess(id);
       console.log(`процесс ${id}: состояние применено`);
     }
+  } else if (arg === '--nodes') {
+    await seedNodes();
+    console.log('сид проверки: строка на каждый узел каждого процесса');
   } else if (arg === '--sales') {
     await seedSales();
     console.log('история продаж: проданные строки за полгода — для отчётов');
