@@ -124,6 +124,18 @@ linesUi.post('/ui/lines/:id/toggle', async (c) => {
   return c.html(await linesPanel(operation(c.req.query('view'))));
 });
 
+// --- POST /ui/lines/unmark — снять выделение со всех ----------------------------------
+//
+// Нужен там, где переход доступен не для всех отмеченных строк: единственное осмысленное
+// действие в этом случае — снять выделение и отметить заново. Сообщение об этом несёт
+// кнопку, ведущую сюда.
+linesUi.post('/ui/lines/unmark', async (c) => {
+  const form = await c.req.parseBody();
+  const op = operation(typeof form.view === 'string' ? form.view : undefined);
+  await pool.query(`update line_mark set marked = false where marked`);
+  return c.html(await linesPanel(op));
+});
+
 // --- POST /ui/lines/step — сдвиг по шагам процесса ------------------------------------
 //
 // ДЕЛЕГИРУЕТ в API, как и переход: там же проверки границ и запись в журнал. Вторая копия

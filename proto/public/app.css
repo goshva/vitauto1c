@@ -232,9 +232,71 @@ td.c-status {
 .buttons { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .print-links { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Панель действий над отмеченными: липнет к низу, как нижняя навигация legacy. */
+/* ---------- всплывающее сообщение снизу ----------
+ * ВСПЛЫВАЕТ, А НЕ ЗАНИМАЕТ МЕСТО. Сообщение появляется и исчезает при каждой отметке
+ * строки; в потоке оно двигало бы строки при каждом появлении, а на коротком списке —
+ * дёргало бы полосу прокрутки.
+ *
+ * ШИРИНА СВОЯ, ПО СОДЕРЖИМОМУ: растянутое на весь экран сообщение закрывает таблицу. И
+ * предел по ширине окна — чтобы на узком экране оно не уехало за край.
+ *
+ * СТОИТ ВЫШЕ ПАНЕЛИ ДЕЙСТВИЙ (60): обе всплывают снизу, и сообщение должно читаться
+ * поверх панели, а не под ней.
+ */
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: 72px; z-index: 70;
+  width: fit-content; max-width: calc(100vw - 24px);
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 9px 12px; font-size: 13px;
+  background: var(--surface); color: var(--fg);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn, #b7791f);
+  border-radius: var(--r-m); box-shadow: var(--shadow-1);
+  animation: toast-rise 160ms ease-out;
+}
+@keyframes toast-rise {
+  from { transform: translate(-50%, 120%); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+.toast button { white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
+/* ВСПЛЫВАЮЩИЙ НИЗ — ОДИН КОНТЕЙНЕР НА ВСЕ НИЖНИЕ ПАНЕЛИ.
+ *
+ * ПОЧЕМУ КОНТЕЙНЕР, А НЕ ЗАКРЕПЛЕНИЕ КАЖДОЙ ПАНЕЛИ. Панель действий и панель шагов
+ * появляются одновременно, и закрепи их по отдельности — пришлось бы выравнивать одну
+ * относительно другой вручную, а при изменении высоты одной вторая наезжала бы на неё.
+ * Контейнер ставит их стопкой сам.
+ *
+ * ПОЧЕМУ `fixed`, А НЕ `sticky`. Sticky-элемент ОСТАЁТСЯ В ПОТОКЕ: пока он виден, он
+ * занимает место, и при появлении панели высота страницы меняется. На коротком списке это
+ * и давало прыжок полосы прокрутки — ровно то, на что указал заказчик. `fixed` выводит
+ * содержимое ИЗ ПОТОКА: появление панели не двигает ни строку.
+ *
+ * Z-index выше нижней навигации (40): на узком экране панель должна перекрывать её.
+ * ШИРИНА — СВОЯ, ПО СОДЕРЖИМОМУ: растянуть на весь экран значило бы закрыть таблицу, ради
+ * которой панель и появилась.
+ */
+.floating-bottom {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: 12px; z-index: 60;
+  width: fit-content; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+  animation: chain-rise 160ms ease-out;
+}
+@keyframes chain-rise {
+  from { transform: translate(-50%, 120%); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+/* Уважение к настройке «меньше движения»: анимация выключается, появление остаётся. */
+@media (prefers-reduced-motion: reduce) {
+  .floating-bottom { animation: none; }
+}
+
+/* `.chain` — ТОЛЬКО ОФОРМЛЕНИЕ, БЕЗ ПОЛОЖЕНИЯ. Класс используется и в панели ссылок на
+ * печатные формы, которой закрепление снизу не нужно вовсе. */
 .chain {
-  position: sticky; bottom: 8px; z-index: 20; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m);
   padding: 8px 12px; box-shadow: var(--shadow-1);
 }
