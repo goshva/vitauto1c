@@ -32,8 +32,13 @@ export function printShell(title: string, testId: string, body: string): string 
   .sign { margin-bottom: 6mm; }
   .req { margin-bottom: 2mm; }
   .muted { color: #444; }
+  /* Возврат: кнопка СЛУЖЕБНАЯ — на бумаге бессмысленна. */
+  .back { margin: 0 0 4mm; font-size: 9pt; }
+  .back a { color: #0645ad; text-decoration: none; border-bottom: 1px solid currentColor; }
+  @media print { .back { display: none !important; } }
 </style></head>
 <body data-testid="${esc(testId)}">
+<p class="back"><a href="/lines" data-testid="print-back">← Назад к строкам</a></p>
 <div class="page">
 ${body}
 </div>

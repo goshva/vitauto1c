@@ -1,4 +1,5 @@
 import { icon } from './icons.ts';
+import { UI_SCRIPT } from './ui-script.ts';
 
 // Каркас HTML и экранирование.
 //
@@ -75,24 +76,6 @@ const ROLE_TITLES: Record<string, string> = {
  * В `localStorage` пишем и читаем в `try`: в приватном режиме браузера хранилище
  * может быть недоступно, и падение скрипта оставило бы страницу без оболочки.
  */
-const UI_SCRIPT = `(function(){try{
-var t=localStorage.getItem('arm.theme');if(t)document.documentElement.setAttribute('data-theme',t);
-var n=localStorage.getItem('arm.nav');document.documentElement.setAttribute('data-nav',n||'expanded');
-}catch(e){document.documentElement.setAttribute('data-nav','expanded');}})();
-function armTheme(){var r=document.documentElement;
-var now=r.getAttribute('data-theme')||'';
-var next=now==='dark'?'light':now==='light'?'':'dark';
-if(next)r.setAttribute('data-theme',next);else r.removeAttribute('data-theme');
-try{localStorage.setItem('arm.theme',next||'');}catch(e){}}
-function armNav(){var r=document.documentElement;
-var collapsed=r.getAttribute('data-nav')==='collapsed';
-var next=collapsed?'expanded':'collapsed';
-r.setAttribute('data-nav',next);
-var b=document.getElementById('nav-toggle');
-if(b){b.setAttribute('aria-expanded',String(!(next==='collapsed')));
-b.setAttribute('title',collapsed?'Свернуть меню':'Развернуть меню');
-b.setAttribute('aria-label',collapsed?'Свернуть меню':'Развернуть меню');}
-try{localStorage.setItem('arm.nav',next);}catch(e){}}`;
 
 export function layout({ title, body, testId, active, role }: LayoutProps): string {
   const who = role ?? 'admin';

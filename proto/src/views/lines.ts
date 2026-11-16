@@ -101,20 +101,20 @@ function row(r: Row): string {
            hx-post="/ui/lines/${esc(r.id)}/toggle"
            hx-target="#lines-panel" hx-swap="outerHTML">
   </td>
-  <td class="c-num">${cell(r.order)}</td>
-  <td data-testid="status-${esc(r.id)}" class="c-status"><span class="s-${esc(r.status)}">${esc(statusTitle(r.status))}</span></td>
-  <td class="c-flag" data-testid="urgency-${esc(r.id)}">${r.urgency ? esc(r.urgency) : '<span class="empty">—</span>'}</td>
-  <td class="c-code" data-testid="client-number-${esc(r.id)}">${cell(r.clientOrderNumber)}</td>
-  <td>${cell(r.factName ?? r.nomenclature)}</td>
-  <td class="c-code">${cell(r.nomenclatureArticle)}</td>
+  <td data-filter="number" class="c-num">${cell(r.order)}</td>
+  <td data-filter="status" data-testid="status-${esc(r.id)}" class="c-status"><span class="s-${esc(r.status)}">${esc(statusTitle(r.status))}</span></td>
+  <td data-filter="urgency" class="c-flag" data-testid="urgency-${esc(r.id)}">${r.urgency ? esc(r.urgency) : '<span class="empty">—</span>'}</td>
+  <td data-filter="clientNumber" class="c-code" data-testid="client-number-${esc(r.id)}">${cell(r.clientOrderNumber)}</td>
+  <td data-filter="name">${cell(r.factName ?? r.nomenclature)}</td>
+  <td data-filter="article" class="c-code">${cell(r.nomenclatureArticle)}</td>
   ${offerCell(r)}
-  <td class="c-num">${cell(r.quantity)}</td>
+  <td data-filter="qtyFrom" class="c-num">${cell(r.quantity)}</td>
   <td class="c-num" data-testid="stock-${esc(r.id)}">${cell(r.stockQty)}</td>
   <td class="c-num">${cell(r.reserveQty)}</td>
-  <td>${cell(r.customer)}</td>
+  <td data-filter="customer">${cell(r.customer)}</td>
   <td class="c-num">${cell(r.salePrice)}</td>
   <td class="c-num">${cell(r.saleSum)}</td>
-  <td class="c-comment">${cell(r.comment)}</td>
+  <td data-filter="comment" class="c-comment">${cell(r.comment)}</td>
 </tr>`;
 }
 

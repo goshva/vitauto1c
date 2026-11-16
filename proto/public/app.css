@@ -373,6 +373,66 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
 .audit-arrow { color: var(--fg-2); }
 .c-nowrap { white-space: nowrap; }
 
+/* ---------- отбор по клику на ячейку реестра ----------
+ * ЯЧЕЙКА ДОЛЖНА ВЫГЛЯДЕТЬ НАЖИМАЕМОЙ, иначе о ней не догадаются. Подсветка — только
+ * при наведении и слабая: строки в реестре плотные, и яркая заливка на каждой ячейке
+ * превратила бы таблицу в мозаику.
+ *
+ * Курсор `pointer` стоит НЕ на всей ячейке, а только на тех, у которых есть отбор:
+ * `data-filter` — признак того, что клик что-то сделает. Ячейки без него (остаток,
+ * цена, сумма) остаются обычными, и это честно: обещать клик, который ничего не
+ * делает, нельзя.
+ */
+table.lines td[data-filter] { cursor: pointer; }
+table.lines td[data-filter]:hover {
+  background: var(--accent-2);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* ---------- бланк: возврат к строкам ----------
+ * Кнопка стоит НАД бланком и слева: так она читается как «выйти», а не как часть формы.
+ * На печать не идёт — правило `.no-print` в блоке печати.
+ */
+.print-back { margin: 0 0 10px; font-size: 13px; }
+.print-back a {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--surface); color: var(--fg); text-decoration: none;
+}
+.print-back a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- выпадающие списки — ОДИН вид на всей странице ----------
+ * Раньше их было два вида: в панели отбора поля оформлены, а в строке списка список
+ * варианта поставки оставался почти системным. Разница видна на одном экране, и выглядит
+ * это как недоделка.
+ *
+ * СТРЕЛКА РИСУЕТСЯ СВОЯ (`appearance: none` + фоновая картинка). Системная стрелка в
+ * разных браузерах разной высоты и цвета, и подогнать её под оформление нельзя — она
+ * часть системы, а не страницы.
+ */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 5px 26px 5px 8px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background-color: var(--surface);
+  color: var(--fg);
+  /* Стрелка — своим значком, а не картинкой из сети: страница работает без интернета. */
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 13px center, right 8px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+select:hover { border-color: var(--fg-2); }
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Отключённый список виден как отключённый, а не как обычный: иначе по нему кликают. */
+select:disabled { background-color: var(--surface-2); color: var(--fg-2); cursor: default; }
+
 /* ---------- вариант поставки в строке (ФТ v2 п. 12) ----------
  * Поле узкое и без лишней рамки: строка списка и без него плотная, а вариант — не
  * главное в ней. Цена и срок стоят В САМОЙ ПОДПИСИ варианта: «выбрал АвтооптТорг»
@@ -380,9 +440,8 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
  */
 .c-offer { max-width: 210px; }
 .c-offer select {
-  max-width: 100%; padding: 3px 4px; font-size: 12px;
-  border: 1px solid var(--line); border-radius: var(--r-s);
-  background: var(--surface); color: var(--fg);
+  max-width: 100%; padding: 3px 22px 3px 5px; font-size: 12px;
+  background-position: right 11px center, right 6px center;
 }
 .offer-one { font-size: 12px; color: var(--fg-2); }
 
@@ -404,6 +463,9 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
   border: 1px solid var(--line); border-radius: var(--r-s);
   background: var(--surface); color: var(--fg);
 }
+/* У списка справа оставлено место ПОД СТРЕЛКУ: иначе текст заезжает под неё, и последние
+ * буквы выбранного состояния не видны. */
+.filters select { padding-right: 26px; min-width: 130px; }
 .filters .f.wide input { width: 100%; min-width: 0; }
 .filters-actions { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 
@@ -453,6 +515,8 @@ ol.scheme { list-style: none; margin: 0; padding: 0; }
  */
 @media print {
   .navbar, .appbar, button, .chain, .tabs { display: none !important; }
+  /* Кнопка «назад» на бланке — СЛУЖЕБНАЯ: на бумаге она бессмысленна, а место занимает. */
+  .no-print { display: none !important; }
   .app { display: block; }
   .main { padding: 0; }
   .page { max-width: none; gap: 0; }

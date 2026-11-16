@@ -44,7 +44,7 @@ function row(inv: InvoiceRow): string {
   <td>${esc(KIND_TITLES[inv.kind] ?? inv.kind)}</td>
   <td>${esc(inv.counterparty ?? '—')}</td>
   <td class="c-num" data-testid="invoice-amount-${esc(inv.id)}">${esc(inv.amount ?? '—')}</td>
-  <td class="c-status s-${esc(inv.status)}" data-testid="invoice-status-${esc(inv.id)}">${esc(inv.statusTitle)}</td>
+  <td class="c-status" data-testid="invoice-status-${esc(inv.id)}"><span class="s-${esc(inv.status)}">${esc(inv.statusTitle)}</span></td>
   <td>${esc(inv.comment ?? '—')}</td>
   <td>${button}</td>
 </tr>`;

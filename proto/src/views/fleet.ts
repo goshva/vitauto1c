@@ -60,7 +60,7 @@ function fleetRow(c: FleetRow): string {
   <td>${esc(c.plate ?? '—')}</td>
   <td>${esc(c.department ?? '—')}</td>
   <td class="c-num">${c.mileage === null ? '—' : c.mileage.toLocaleString('ru-RU')}</td>
-  <td class="c-status s-${esc(c.status)}">${esc(c.statusTitle)}</td>
+  <td class="c-status"><span class="s-${esc(c.status)}">${esc(c.statusTitle)}</span></td>
   <td>${due}</td>
 </tr>`;
 }
@@ -104,7 +104,7 @@ export function fleetCard(
     <dt>VIN</dt><dd>${esc(car.vin ?? '—')}</dd>
     <dt>Год</dt><dd>${car.year ?? '—'}</dd>
     <dt>Подразделение</dt><dd>${esc(car.department ?? '—')}</dd>
-    <dt>Состояние</dt><dd class="c-status s-${esc(car.status)}">${esc(car.statusTitle)}</dd>
+    <dt>Состояние</dt><dd class="c-status"><span class="s-${esc(car.status)}">${esc(car.statusTitle)}</span></dd>
     <dt>Пробег</dt><dd>${car.mileage === null ? '—' : `${car.mileage.toLocaleString('ru-RU')} км`}</dd>
     <dt>До ТО</dt><dd data-testid="card-due">${esc(dueText(car.due))}</dd>
   </dl>

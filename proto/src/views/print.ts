@@ -149,12 +149,27 @@ function signs(): string {
   </footer>`;
 }
 
+/**
+ * Кнопка возврата.
+ *
+ * Бланк открывают ИЗ АРМ по ссылке, и браузерная кнопка «назад» — не то же самое: она
+ * вернёт на предыдущую страницу истории, которой после печати может и не быть. Поэтому
+ * возврат ведёт В СТРОКИ — туда, откуда формы и открывают.
+ *
+ * Класс `no-print` обязателен: на бумаге кнопка бессмысленна, а место занимает.
+ */
+function backButton(): string {
+  return `<p class="print-back no-print">
+    <a href="/lines" data-testid="print-back">← Назад к строкам</a>
+  </p>`;
+}
+
 /** Форма целиком: HTML-страница, пригодная для печати. */
 export function printPage(kindKey: string, kind: PrintKind, rows: PrintRow[]): string {
   return layout({
     title: kind.title,
     testId: `page-print-${kindKey}`,
-    body: `<article class="print-sheet">
+    body: `${backButton()}<article class="print-sheet">
       ${header(kind, rows)}
       ${rows.length === 0 ? '<p data-testid="print-empty">Нет строк для этой формы</p>' : table(kind, rows)}
       ${signs()}

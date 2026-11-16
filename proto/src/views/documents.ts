@@ -29,8 +29,8 @@ function row(kind: string, doc: DocumentRow): string {
   return `<tr data-testid="doc-${esc(doc.id)}" data-status="${esc(doc.status)}">
   <td class="c-code">${esc(doc.number ?? '—')}</td>
   <td class="c-num">${esc(doc.date)}</td>
-  <td data-testid="doc-status-${esc(doc.id)}" class="c-status s-${esc(doc.status)}">
-    ${esc(doc.statusTitle)}</td>
+  <td data-testid="doc-status-${esc(doc.id)}" class="c-status">
+    <span class="s-${esc(doc.status)}">${esc(doc.statusTitle)}</span></td>
   <td class="doc-actions">${buttons || '<span class="empty">—</span>'}</td>
 </tr>`;
 }

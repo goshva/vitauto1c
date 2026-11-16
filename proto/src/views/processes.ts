@@ -21,7 +21,7 @@ export function statsByStatus(counts: StatusCount[]): string {
   const total = counts.reduce((s, c) => s + c.lines, 0);
   const rows = counts
     .map((c) => `<tr data-testid="stat-${esc(c.status)}">
-      <td class="c-status s-${esc(c.status)}">${esc(statusTitle(c.status))}</td>
+      <td class="c-status"><span class="s-${esc(c.status)}">${esc(statusTitle(c.status))}</span></td>
       <td class="c-num">${c.lines}</td>
       <td><a href="/lines?status=${esc(c.status)}" data-testid="stat-link-${esc(c.status)}">показать</a></td>
     </tr>`)
@@ -59,7 +59,7 @@ export function processScheme(process: Process, counts: StatusCount[]): string {
       const count = s.status ? (byStatus.get(s.status) ?? 0) : null;
       const roles = s.roles.map((r) => ROLE_TITLES[r] ?? r).join(', ');
       const status = s.status
-        ? `<span class="c-status s-${esc(s.status)}" data-testid="step-status-${s.n}">${esc(statusTitle(s.status))}</span>`
+        ? `<span class="s-${esc(s.status)}" data-testid="step-status-${s.n}">${esc(statusTitle(s.status))}</span>`
         : '<span class="empty">—</span>';
       // Число рядом со шагом — СКОЛЬКО СТРОК СЕЙЧАС В ЭТОМ СОСТОЯНИИ. Это и делает
       // схему живой: без него карта остаётся картинкой из ТЗ.
