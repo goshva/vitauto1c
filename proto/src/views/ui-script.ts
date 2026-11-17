@@ -85,6 +85,28 @@ document.addEventListener('click',function(e){
  *
  * БЕЗ СКРИПТА МЕНЮ НЕ ВРЁТ: там стоит «…», а не чужая роль.
  */
+/* ВКЛАДКИ, ДОСТУПНЫЕ НЕ ВСЕМ, СКРЫВАЮТСЯ ПО РОЛИ.
+ *
+ * Проверка запросом показала: из девяти вкладок ограничена ОДНА — «Сводка», и та закрыта
+ * только администратору. Остальные открыты любой роли, и скрывать их «на глаз» нельзя:
+ * правила доступа к ЭКРАНАМ в эталоне нет вовсе — там про права на колонки.
+ *
+ * Поэтому скрывается ровно то, что помечено в разметке (data-role-only), а не то, что
+ * показалось. Остальное — открытый вопрос к заказчику.
+ *
+ * Вкладка ведёт на экран, который может её не пустить. Скрытие — это ПОДСКАЗКА, а не
+ * защита: защита стоит на экране, и она проверяется отдельно.
+ */
+function armNavRoles(role){
+  var links=document.querySelectorAll('[data-role-only]');
+  for(var i=0;i<links.length;i++){
+    var allowed=(links[i].getAttribute('data-role-only')||'').split(/\s+/);
+    var ok=allowed.indexOf(role)!==-1;
+    /* Скрываем АТРИБУТОМ, а не удалением: так пункт остаётся в разметке, и по ней видно,
+     * кому он положен — это проверяется тестом. */
+    if(ok)links[i].removeAttribute('hidden');else links[i].setAttribute('hidden','');
+  }
+}
 function armWho(){
   var slots=document.querySelectorAll('[data-testid="user-menu-role-name"]');
   if(!slots.length)return;
@@ -95,6 +117,7 @@ function armWho(){
       for(var i=0;i<slots.length;i++)slots[i].textContent=u.fullName||u.role;
       var codes=document.querySelectorAll('[data-testid="user-menu-role-code"]');
       for(var j=0;j<codes.length;j++)codes[j].textContent=u.role;
+      armNavRoles(u.role);
     })
     .catch(function(){});
 }

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { pool } from './db.ts';
+import { roleOf } from './auth.ts';
 import { layout } from './views/html.ts';
 import { linesTable } from './views/lines.ts';
 import { actionsPanel, type MarkedLine } from './views/actions.ts';
@@ -56,9 +57,20 @@ export function actionsBlock(marked: MarkedLine[]): string {
  * первый элемент ответа как содержимое цели. Общий блок решает это без хитростей; плата —
  * панель отбора перерисовывается при каждом изменении, и её значения приходят С СЕРВЕРА.
  */
-export async function linesPanel(
-  operation: string,
-  filters: FilterValues = {},
+export async function linesPanel(operation: string, filters: FilterValues, /**
+   * Роль: по ней таблица решает, какие колонки показывать.
+   *
+   * БЕЗ ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ, И ЭТО ГЛАВНОЕ ЗДЕСЬ. Сначала стояло `role = 'admin'` — и
+   * это была ловушка: забыл передать, компилятор молчит, а таблица показывает ВСЁ. То есть
+   * умолчание означало не «безопасно», а «показать всё» — ровно то, чего быть не должно.
+   *
+   * Так и вышло: роль донесли до четырёх вызовов из шести, а два забыли. Страница рисовала
+   * таблицу без цен, а HTMX-фрагмент после отметки строки приходил С ценами — таблица
+   * менялась на глазах.
+   *
+   * Теперь забыть нельзя: TypeScript назовёт каждое место.
+   */
+  role: string,
 ): Promise<string> {
   const [rows, marked] = await Promise.all([loadRows(operation, filters), loadMarked()]);
   const active = filterCount({ ...filters, view: 'sales' } as LineFilters);
@@ -80,18 +92,18 @@ export async function linesPanel(
          <a href="/lines">Сбросить отбор</a>.
        </p>`
     : ''}
-  ${linesTable(rows, operation)}
+  ${linesTable(rows, operation, role)}
 </div>`;
 }
 
 /** Страница целиком: панель вставки и область списка. */
-async function linesPage(operation: string, filters: FilterValues = {}): Promise<string> {
+async function linesPage(operation: string, filters: FilterValues, role: string): Promise<string> {
   return layout({
     active: 'lines',
     title: 'Строки заказов',
     testId: 'page-lines',
     body: `${importPanel()}
-    ${await linesPanel(operation, filters)}`,
+    ${await linesPanel(operation, filters, role)}`,
   });
 }
 
@@ -106,7 +118,7 @@ const operation = (view: string | undefined): string => (view === 'purchases' ? 
 // в этом файле: он тоже часть контракта фильтра.
 linesUi.get('/ui/lines/panel', async (c) => {
   const op = operation(c.req.query('view'));
-  return c.html(await linesPanel(op, filtersOf(c.req.query()) as FilterValues));
+  return c.html(await linesPanel(op, filtersOf(c.req.query()) as FilterValues, roleOf(c)));
 });
 
 // --- POST /lines/{id}/toggle — отметка переключателем ---------------------------------
@@ -122,7 +134,7 @@ linesUi.post('/ui/lines/:id/toggle', async (c) => {
      on conflict (id) do update set marked = not line_mark.marked`,
     [id],
   );
-  return c.html(await linesPanel(operation(c.req.query('view'))));
+  return c.html(await linesPanel(operation(c.req.query('view')), {}, roleOf(c)));
 });
 
 // --- POST /ui/lines/unmark — снять выделение со всех ----------------------------------
@@ -134,7 +146,7 @@ linesUi.post('/ui/lines/unmark', async (c) => {
   const form = await c.req.parseBody();
   const op = operation(typeof form.view === 'string' ? form.view : undefined);
   await pool.query(`update line_mark set marked = false where marked`);
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 // --- POST /ui/lines/step — сдвиг по шагам процесса ------------------------------------
@@ -153,7 +165,7 @@ linesUi.post('/ui/lines/step', async (c) => {
     body: JSON.stringify({ dir }),
   });
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 // --- POST /ui/lines/transition — переход по отмеченным --------------------------------
@@ -180,7 +192,7 @@ linesUi.post('/ui/lines/transition', async (c) => {
   });
 
   // Панель возвращается целиком: и список, и кнопки пересчитываются на сервере.
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 export { linesPage, wantsHtml as htmlRequested };

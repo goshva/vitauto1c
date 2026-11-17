@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { roleOf } from './auth.ts';
 import { pool } from './db.ts';
 import { linesPanel } from './lines-ui.ts';
 
@@ -50,7 +51,7 @@ linesUiActions.post('/ui/lines/job', async (c) => {
     );
   }
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 // --- M7, P2: канбан снабжения ---------------------------------------------------------
@@ -73,7 +74,7 @@ linesUiActions.post('/ui/lines/supply', async (c) => {
 
   if (!rule) {
     return c.html(
-      (await linesPanel(op)).replace(
+      (await linesPanel(op, {}, roleOf(c))).replace(
         '<div id="actions"',
         `<p class="hint-partial" data-testid="supply-error">Неизвестный статус снабжения</p><div id="actions"`,
       ),
@@ -89,7 +90,7 @@ linesUiActions.post('/ui/lines/supply', async (c) => {
     await pool.query(`update line_mark set marked = false where id = $1`, [l.id]);
   }
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 // --- N1 → M1: загрузка листа ----------------------------------------------------------
@@ -101,7 +102,7 @@ linesUiActions.post('/ui/lines/import', async (c) => {
   const name = String(form.name ?? '').trim();
   if (!name) {
     return c.html(
-      (await linesPanel(op)).replace(
+      (await linesPanel(op, {}, roleOf(c))).replace(
         '<div id="actions"',
         `<p class="hint-partial" data-testid="import-error">Укажите наименование</p><div id="actions"`,
       ),
@@ -135,7 +136,7 @@ linesUiActions.post('/ui/lines/import', async (c) => {
   );
   await pool.query(`insert into line_mark (id, marked) values ($1, false)`, [line.rows[0]!.id]);
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 // --- POST /ui/lines/{id}/offer — выбрать вариант поставки (ФТ v2 п. 12) ---------------
@@ -171,5 +172,5 @@ linesUiActions.post('/ui/lines/:id/offer', async (c) => {
     }
   }
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });

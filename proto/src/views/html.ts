@@ -1,5 +1,6 @@
 import { icon } from './icons.ts';
 import { UI_SCRIPT } from './ui-script.ts';
+import { navItems } from './nav.ts';
 
 // Каркас HTML и экранирование.
 //
@@ -33,18 +34,6 @@ export const cell = (v: unknown): string => {
   return s === '' ? '<span class="empty">—</span>' : esc(s);
 };
 
-/** Пункты боковой панели. "key" совпадает с тем, что экран передаёт в "active". */
-const NAV: { key: string; href: string; title: string; icon: string; testId: string }[] = [
-  { key: 'dashboard', href: '/', title: 'Сводка', icon: 'summary', testId: 'nav-dashboard' },
-  { key: 'lines', href: '/lines', title: 'Строки', icon: 'lines', testId: 'nav-lines' },
-  { key: 'supply', href: '/supply', title: 'Снабжение', icon: 'supply', testId: 'nav-supply' },
-  { key: 'documents', href: '/documents/returns', title: 'Документы', icon: 'documents', testId: 'nav-documents' },
-  { key: 'fleet', href: '/fleet', title: 'Автопарк', icon: 'fleet', testId: 'nav-fleet' },
-  { key: 'stock', href: '/stock', title: 'Склад', icon: 'stock', testId: 'nav-stock' },
-  { key: 'unidentified', href: '/unidentified', title: 'Неопознанные', icon: 'unidentified', testId: 'nav-unidentified' },
-  { key: 'invoices', href: '/invoices', title: 'Счета', icon: 'invoices', testId: 'nav-invoices' },
-  { key: 'processes', href: '/processes', title: 'Карта процессов', icon: 'processes', testId: 'nav-process' },
-];
 
 export interface LayoutProps {
   title: string;
@@ -106,15 +95,7 @@ export function layout({ title, body, testId, active, role }: LayoutProps): stri
   const who = role ?? null;
   const whoTitle = who ? (ROLE_TITLES[who] ?? who) : '…';
 
-  // "title" и "aria-label" стоят ВСЕГДА, а не только при свёрнутой панели, как в
-  // legacy. Причина: разметку рисует сервер и про состояние панели не знает.
-  // Подсказка у подписанного пункта безвредна, а безымянный пункт при свёрнутой
-  // панели — дефект доступности.
-  const items = NAV.map((n) => `<a href="${n.href}" data-testid="${n.testId}"
-      title="${esc(n.title)}" aria-label="${esc(n.title)}"${
-    n.key === active ? ' class="active"' : ''}>
-      <span class="pill">${icon(n.icon)}</span><span class="label">${esc(n.title)}</span>
-    </a>`).join('\n    ');
+  const items = navItems(active);
 
   return `<!doctype html>
 <html lang="ru">

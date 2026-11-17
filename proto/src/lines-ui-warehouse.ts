@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { roleOf } from './auth.ts';
 import { pool } from './db.ts';
 import { linesPanel } from './lines-ui.ts';
 import { esc } from './views/html.ts';
@@ -36,7 +37,7 @@ linesUiWarehouse.post('/ui/lines/zone', async (c) => {
   );
   if (zone.rowCount === 0) {
     return c.html(
-      (await linesPanel(op)).replace(
+      (await linesPanel(op, {}, roleOf(c))).replace(
         '<div id="actions"',
         '<p class="hint-partial" data-testid="zone-error">Зона не найдена</p><div id="actions"',
       ),
@@ -60,7 +61,7 @@ linesUiWarehouse.post('/ui/lines/zone', async (c) => {
     await pool.query(`update line_mark set marked = false where id = $1`, [l.id]);
   }
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });
 
 linesUiWarehouse.post('/ui/lines/cell', async (c) => {
@@ -77,7 +78,7 @@ linesUiWarehouse.post('/ui/lines/cell', async (c) => {
     // Причину показываем рядом с панелью, а не молча ничего не делаем.
     const why = cell.rowCount === 0 ? 'Ячейка не найдена' : `Ячейка ${cell.rows[0]!.code} заблокирована`;
     return c.html(
-      (await linesPanel(op)).replace(
+      (await linesPanel(op, {}, roleOf(c))).replace(
         '<div id="actions"',
         `<p class="hint-partial" data-testid="cell-error">${esc(why)}</p><div id="actions"`,
       ),
@@ -92,5 +93,5 @@ linesUiWarehouse.post('/ui/lines/cell', async (c) => {
     await pool.query(`update line_mark set marked = false where id = $1`, [l.id]);
   }
 
-  return c.html(await linesPanel(op));
+  return c.html(await linesPanel(op, {}, roleOf(c)));
 });

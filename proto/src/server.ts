@@ -5,6 +5,7 @@ import { invoicesPage } from './invoices-ui.ts';
 import { unidentifiedPage } from './unidentified-ui.ts';
 import { linesPage, wantsHtml } from './lines-ui.ts';
 import { filtersOf } from './lines-filters.ts';
+import { roleOf } from './auth.ts';
 import type { FilterValues } from './views/filters.ts';
 import { startScheduler } from './scheduler.ts';
 import { Problem, problemResponse } from './problem.ts';
@@ -46,6 +47,10 @@ app.get('/lines', async (c, next) => {
   return c.html(await linesPage(
     view === 'purchases' ? 'purchase' : 'sale',
     filtersOf(c.req.query()) as FilterValues,
+    // Роль передаётся на страницу: по ней таблица решает, какие колонки показывать.
+    // Без неё страница показала бы всё, а фрагмент после отметки — скрыл: таблица
+    // менялась бы на глазах.
+    roleOf(c),
   ));
 });
 
