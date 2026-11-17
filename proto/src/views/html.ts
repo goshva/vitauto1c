@@ -77,9 +77,34 @@ const ROLE_TITLES: Record<string, string> = {
  * может быть недоступно, и падение скрипта оставило бы страницу без оболочки.
  */
 
+// МЕНЮ ПОЛЬЗОВАТЕЛЯ: имя роли, выход и смена роли.
+//
+// РАНЬШЕ ЗДЕСЬ БЫЛА ТОЛЬКО НАДПИСЬ, и ВЫЙТИ БЫЛО НЕОТКУДА: маршрут `/logout` в коде был,
+// а добраться до него из интерфейса — нет. Роль в прототипе меняют часто (её и показывают
+// заказчику), и каждый раз править адресную строку руками — не работа.
+//
+// РАСКРЫТИЕ СДЕЛАНО НА `details`, БЕЗ СКРИПТА: меню должно открываться и там, где скрипт
+// ещё не загрузился, и это надёжнее обработчика на клиенте. Закрывается повторным нажатием
+// и переходом по ссылке внутри.
 export function layout({ title, body, testId, active, role }: LayoutProps): string {
-  const who = role ?? 'admin';
-  const whoTitle = ROLE_TITLES[who] ?? who;
+  // РОЛЬ БЕРЁТСЯ ИЗ СЕССИИ, А НЕ ИЗ ПАРАМЕТРА СТРАНИЦЫ.
+  //
+  // Раньше здесь стояло `role ?? 'admin'` — и это была ЛОЖЬ НА ЭКРАНЕ. Параметр `role`
+  // передают не все страницы: из 23 вызовов `layout` его не передавал НИ ОДИН, и меню
+  // показывало «Администратор» независимо от того, кто вошёл. Нашлось это тестом на смену
+  // роли: вошли менеджером, а в меню остался администратор.
+  //
+  // ПРОБЛЕМА БЫЛА В ИСТОЧНИКЕ, А НЕ В ЗНАЧЕНИИ. Роль лежит в сессии, и сервер её знает, —
+  // но `layout` чистый и запроса не видит. Протянуть её через 23 вызова значило бы
+  // повторить одно и то же в 23 местах и однажды снова забыть.
+  //
+  // Поэтому роль ПОДСТАВЛЯЕТСЯ ОДНИМ МЕСТОМ: разметка отдаёт пустое поле с пометкой, а
+  // скрипт страницы спрашивает `/api/whoami` и заполняет его. Одно место — один ответ.
+  //
+  // БЕЗ СКРИПТА МЕНЮ НЕ ВРЁТ: вместо чужой роли там стоит «…» — видно, что значение ещё не
+  // получено, а не что вошёл администратор.
+  const who = role ?? null;
+  const whoTitle = who ? (ROLE_TITLES[who] ?? who) : '…';
 
   // `title` и `aria-label` стоят ВСЕГДА, а не только при свёрнутой панели, как в
   // legacy. Причина: разметку рисует сервер и про состояние панели не знает.
@@ -115,10 +140,21 @@ export function layout({ title, body, testId, active, role }: LayoutProps): stri
       title="Сменить тему" aria-label="Сменить тему">
       <span class="pill">${icon('theme')}</span><span class="label">Тема</span>
     </button>
-    <div class="who" data-testid="user-menu">
-      <span class="who-icon">${icon('user')}</span>
-      <div class="who-text"><b>${esc(whoTitle)}</b><span class="muted">${esc(who)}</span></div>
-    </div>
+    <details class="who" data-testid="user-menu">
+      <summary>
+        <span class="who-icon">${icon('user')}</span>
+        <span class="who-text"><b data-testid="user-menu-role-name">${esc(whoTitle)}</b><span class="muted" data-testid="user-menu-role-code">${esc(who ?? '')}</span></span>
+      </summary>
+      <div class="who-menu" data-testid="user-menu-list">
+        <p class="hint" data-testid="user-menu-role">Вы вошли как
+          <b data-testid="user-menu-role-name">${esc(whoTitle)}</b>
+          (<span data-testid="user-menu-role-code">${esc(who ?? '')}</span>)</p>
+        <form method="post" action="/logout" data-testid="logout-form">
+          <button type="submit" data-testid="logout">Выйти</button>
+        </form>
+        <a href="/login" data-testid="switch-role">Войти под другой ролью</a>
+      </div>
+    </details>
   </nav>
 
   <div class="content">

@@ -467,6 +467,48 @@ table.lines td[data-filter]:hover {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+/* ---------- меню пользователя ----------
+ * Раскрывается по нажатию на имя роли. Сделано на `details`: работает без скрипта, и это
+ * важно — меню должно открываться и там, где скрипт ещё не загрузился.
+ *
+ * МЕНЮ СТОИТ ПОВЕРХ СТРАНИЦЫ (`position: absolute`), а не раздвигает панель: иначе при
+ * раскрытии дёргалась бы вся шапка.
+ */
+.who { position: relative; }
+.who summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.who summary::-webkit-details-marker { display: none; }
+.who-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 50;
+  min-width: 240px; display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px; font-size: 13px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m);
+  box-shadow: var(--shadow-1);
+}
+.who-menu .hint { margin: 0; font-size: 12px; }
+.who-menu form { margin: 0; }
+.who-menu button, .who-menu a {
+  display: block; width: 100%; text-align: left; text-decoration: none;
+  padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--surface); color: var(--fg);
+}
+.who-menu button:hover, .who-menu a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- демонстрационный вход ----------
+ * Кнопки по ролям: прототип показывают заказчику и проверяющему, и каждый раз набирать
+ * логин с паролем руками — потеря времени и повод ошибиться.
+ *
+ * Логин и пароль НАПИСАНЫ НА САМОЙ КНОПКЕ, а не спрятаны: смысл кнопки в том, чтобы было
+ * видно, под кем входишь. Мелким шрифтом — чтобы не спорить с названием роли.
+ */
+.demo-logins { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.demo-login { margin: 0; }
+.demo-login button {
+  width: 100%; display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; text-align: left;
+}
+.demo-creds { font-size: 11px; font-weight: 400; color: var(--fg-2); font-family: ui-monospace, monospace; }
+
 /* ---------- бланк: возврат и печать ----------
  * Кнопки стоят НАД бланком и слева: так они читаются как «служебное», а не как часть формы.
  * `no-print` обязателен — на бумаге они бессмысленны, а место занимают.

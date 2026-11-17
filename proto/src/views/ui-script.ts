@@ -73,4 +73,30 @@ document.addEventListener('click',function(e){
    * отбор: иначе выбор варианта поставки заодно навязывал бы отбор. */
   if(e.target.closest('input,select,button,a,label'))return;
   armFilter(td);
-});`;
+});
+/* РОЛЬ В МЕНЮ ПОЛЬЗОВАТЕЛЯ — ОДНИМ МЕСТОМ.
+ *
+ * Раньше роль брали из параметра страницы, и его не передавал НИ ОДИН из 23 вызовов
+ * разметки: меню показывало «Администратор» независимо от того, кто вошёл. Нашлось тестом
+ * на смену роли.
+ *
+ * Протянуть роль через 23 вызова значило бы повторить одно и то же в 23 местах и однажды
+ * снова забыть. Здесь она спрашивается у сервера один раз — и всегда верна.
+ *
+ * БЕЗ СКРИПТА МЕНЮ НЕ ВРЁТ: там стоит «…», а не чужая роль.
+ */
+function armWho(){
+  var slots=document.querySelectorAll('[data-testid="user-menu-role-name"]');
+  if(!slots.length)return;
+  fetch('/api/whoami',{headers:{accept:'application/json'}})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(u){
+      if(!u||!u.role)return;
+      for(var i=0;i<slots.length;i++)slots[i].textContent=u.fullName||u.role;
+      var codes=document.querySelectorAll('[data-testid="user-menu-role-code"]');
+      for(var j=0;j<codes.length;j++)codes[j].textContent=u.role;
+    })
+    .catch(function(){});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',armWho);
+else armWho();`;
