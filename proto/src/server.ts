@@ -1,74 +1,22 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { serveStatic } from 'hono/bun';
-import { health } from './health.ts';
-import { dashboardUi } from './dashboard-ui.ts';
-import { lines } from './lines.ts';
-import { fields } from './lines-fields.ts';
-import { transitions } from './lines-transitions.ts';
-import { imports } from './imports.ts';
-import { operations } from './operations.ts';
-import { supply } from './supply.ts';
-import { print } from './print.ts';
-import { printRepair } from './print-repair-routes.ts';
-import { supplyUi } from './supply-ui.ts';
-import { loginUi } from './login-ui.ts';
-import { purchaseUi } from './purchase-ui.ts';
-import { refs } from './refs.ts';
-import { refCells } from './ref-cells.ts';
-import { returns } from './returns.ts';
-import { returnsFlow } from './returns-flow.ts';
-import { shipments } from './shipments.ts';
-import { shipmentsFlow } from './shipments-flow.ts';
-import { workOrders } from './work-orders.ts';
-import { workOrdersFlow } from './work-orders-flow.ts';
-import { workOrdersStatus } from './work-orders-status.ts';
-import { workOrdersParts } from './work-orders-parts.ts';
-import { workOrdersCancel } from './work-orders-cancel.ts';
-import { receipts } from './receipts.ts';
-import { receiptsFlow } from './receipts-flow.ts';
-import { stock } from './stock.ts';
-import { zones } from './zones.ts';
-import { unidentified } from './unidentified.ts';
-import { processesUi } from './processes-ui.ts';
-import { fleet } from './fleet.ts';
-import { fleetUi, fleetPage, loadFleet, fleetCardPage, fleetMissingPage } from './fleet-ui.ts';
-import { invoicesUi, invoicesPage } from './invoices-ui.ts';
-import { stockUi } from './stock-ui.ts';
-import { unidentifiedUi, unidentifiedPage } from './unidentified-ui.ts';
-import { fleetCard } from './fleet-card.ts';
-import { staff } from './staff.ts';
-import { invoices } from './invoices.ts';
-import { invoicesFlow } from './invoices-flow.ts';
-import { supplierOrders } from './supplier-orders.ts';
-import { purchase } from './purchase.ts';
-import { supplyOptions } from './supply-options.ts';
-import { supplierOrdersFlow } from './supplier-orders-flow.ts';
-import { linesBulk } from './lines-bulk.ts';
-import { linesLifecycle } from './lines-lifecycle.ts';
-import { documentsUi } from './documents-ui.ts';
-import { testHooks } from './test-hooks.ts';
-import { orders } from './orders.ts';
-import { ordersEdit } from './orders-edit.ts';
-import { ordersRefusal } from './orders-refusal.ts';
-import { linesPage, linesUi, wantsHtml } from './lines-ui.ts';
-import { linesUiActions } from './lines-ui-actions.ts';
-import { importPaste } from './import-paste.ts';
-import { returnsFind } from './returns-find.ts';
-import { auditApi } from './audit-api.ts';
-import { auditUi } from './audit-ui.ts';
-import { jobsUi } from './jobs-ui.ts';
-import { matchingRoutes } from './matching-routes.ts';
-import { reports } from './reports.ts';
-import { reportsUi } from './reports-ui.ts';
-import { lineSteps } from './lines-steps.ts';
+import { fleetPage, loadFleet } from './fleet-ui.ts';
+import { invoicesPage } from './invoices-ui.ts';
+import { unidentifiedPage } from './unidentified-ui.ts';
+import { linesPage, wantsHtml } from './lines-ui.ts';
+import { filtersOf } from './lines-filters.ts';
+import type { FilterValues } from './views/filters.ts';
 import { startScheduler } from './scheduler.ts';
-import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { requestId } from './request-id.ts';
 import { idempotency } from './idempotency.ts';
 import type { AppEnv } from './env.ts';
+import { registerRoutes } from './routes.ts';
 
-// Сборка приложения. Всё явно: без init(), без глобальных переменных (prototype-spec.md §12: anti-patterns, которые убивают AI-разработку).
+// Сборка приложения: middleware, обработчик ошибок, статика и экраны.
+//
+// СОСТАВ МАРШРУТОВ живёт в `routes.ts` — там перечень того, что смонтировано и в каком
+// порядке. Здесь только СБОРКА: без init(), без глобальных переменных (prototype-spec.md §12).
 export const app = new OpenAPIHono<AppEnv>();
 
 app.use('*', requestId);
@@ -87,14 +35,21 @@ app.onError((err, c) => {
   return problemResponse(c, new Problem(500, 'internal', err.message));
 });
 
-// `GET /lines` — адрес экрана. Браузер просит HTML и получает страницу, тест и агент просят JSON и получают данные. Один URL, два представления. Регистрируется ДО JSON-маршрута: иначе JSON перехватил бы браузер.
+// `GET /lines` — адрес ЭКРАНА: браузер получает HTML, агент — JSON. Регистрируется ДО
+// JSON-маршрута: иначе JSON перехватил бы браузер.
 app.get('/lines', async (c, next) => {
   if (!wantsHtml(c)) return next();
   const view = c.req.query('view');
-  return c.html(await linesPage(view === 'purchases' ? 'purchase' : 'sale'));
+  // Отбор передаётся и на СТРАНИЦУ: панель отбора живёт внутри области списка и
+  // перерисовывается вместе с ней, поэтому её значения приходят с сервера, а не хранятся
+  // в полях браузера. Ссылку с отбором можно переслать — она откроется тем же списком.
+  return c.html(await linesPage(
+    view === 'purchases' ? 'purchase' : 'sale',
+    filtersOf(c.req.query()) as FilterValues,
+  ));
 });
 
-// То же для новых экранов: `/fleet` и `/invoices` — адреса ЭКРАНОВ, а не только API. Браузер получает страницу, агент — данные. Без этого браузер видел бы JSON, а отдельный адрес для экрана разошёлся бы с API.
+// То же для `/fleet` и `/invoices`: адреса ЭКРАНОВ, а не только API.
 app.get('/fleet', async (c, next) => {
   if (!wantsHtml(c)) return next();
   const q = c.req.query();
@@ -112,80 +67,7 @@ app.get('/invoices', async (c, next) => {
 });
 
 // Дашборд — домашний экран администратора: GET /. Монтируется ПЕРЕД остальными, иначе / перехватил бы кто-то другой.
-app.route('/', dashboardUi);
-app.route('/', health);
-// linesBulk монтируется ДО lines: иначе /lines/{id} перехватил бы /lines/summary.
-app.route('/', linesBulk);
-app.route('/', linesLifecycle);
-app.route('/', documentsUi);
-app.route('/', auditUi);
-app.route('/', returnsFind);
-
-// Тестовые хуки: только при PROTO_TEST_HOOKS=1. В обычном запуске адресов, меняющих данные в обход API, не должно быть.
-if (Bun.env.PROTO_TEST_HOOKS === '1') app.route('/', testHooks);
-app.route('/', lines);
-app.route('/', auditApi);
-app.route('/', fields);
-app.route('/', transitions);
-app.route('/', imports);
-app.route('/', operations);
-app.route('/', supply);
-// Документные формы ремонта — ДО построчных: иначе /print/{kind} перехватил бы /print/work_order и ответил «формы нет».
-app.route('/', printRepair);
-app.route('/', print);
-app.route('/', supplyUi);
-// Вход и выход — рядом с экранами, до API: `/login` не должен попасть под согласование формата, иначе агент получил бы HTML вместо отказа.
-app.route('/', loginUi);
-app.route('/', purchaseUi);
-app.route('/', refs);
-app.route('/', refCells);
-app.route('/', returns);
-app.route('/', returnsFlow);
-app.route('/', shipments);
-app.route('/', shipmentsFlow);
-app.route('/', workOrders);
-app.route('/', workOrdersFlow);
-app.route('/', workOrdersStatus);
-app.route('/', workOrdersParts);
-app.route('/', workOrdersCancel);
-app.route('/', receipts);
-app.route('/', receiptsFlow);
-app.route('/', stock);
-app.route('/', zones);
-app.route('/', unidentified);
-app.route('/', processesUi);
-app.route('/', fleet);
-app.route('/', fleetUi);
-
-app.get('/fleet/:id', async (c, next) => {
-  if (!wantsHtml(c)) return next();
-  const id = c.req.param('id');
-  const page = await fleetCardPage(id);
-  return page ? c.html(page) : c.html(fleetMissingPage(id), 404);
-});
-app.route('/', invoicesUi);
-app.route('/', stockUi);
-app.route('/', unidentifiedUi);
-app.route('/', fleetCard);
-app.route('/', staff);
-app.route('/', invoices);
-app.route('/', invoicesFlow);
-app.route('/', supplierOrders);
-app.route('/', purchase);
-app.route('/', supplyOptions);
-app.route('/', supplierOrdersFlow);
-app.route('/', orders);
-app.route('/', ordersEdit);
-app.route('/', ordersRefusal);
-app.route('/', linesUi);
-app.route('/', linesUiActions);
-app.route('/', importPaste);
-app.route('/', linesUiWarehouse);
-app.route('/', jobsUi);
-app.route('/', matchingRoutes);
-app.route('/', reports);
-app.route('/', reportsUi);
-app.route('/', lineSteps);
+registerRoutes(app);
 
 export type App = typeof app;
 

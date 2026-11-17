@@ -4,6 +4,7 @@ import { pool } from './db.ts';
 import { layout } from './views/html.ts';
 import { linesTable } from './views/lines.ts';
 import { actionsPanel, type MarkedLine } from './views/actions.ts';
+import { importPanel } from './lines-import-panel.ts';
 import { filtersPanel, type FilterValues } from './views/filters.ts';
 import { filterCount, filtersOf, type LineFilters } from './lines-filters.ts';
 import { loadRows } from './lines-query.ts';
@@ -38,15 +39,42 @@ async function loadMarked(): Promise<MarkedLine[]> {
   return r.rows;
 }
 
-/** Панель целиком: действия + таблица. HTMX подменяет её после каждого действия. */
+/**
+ * Панель действий — отдельным блоком: её же отдают обработчики действий.
+ */
+export function actionsBlock(marked: MarkedLine[]): string {
+  return `<div id="actions">${actionsPanel(marked)}</div>`;
+}
+
+/**
+ * ОБЛАСТЬ СПИСКА: панель действий, переключатель раздела, отбор и таблица — ОДНИМ БЛОКОМ.
+ *
+ * ПОЧЕМУ ОДНИМ. Панель действий стоит выше строки отбора, таблица — ниже, но обновляться они
+ * должны ВМЕСТЕ: отметил строку — появились кнопки, сменил отбор — пересчитался список.
+ *
+ * Сначала я связал их `hx-swap-oob` — и получил ДВЕ панели действий на экране: HTMX брал
+ * первый элемент ответа как содержимое цели. Общий блок решает это без хитростей; плата —
+ * панель отбора перерисовывается при каждом изменении, и её значения приходят С СЕРВЕРА.
+ */
 export async function linesPanel(
   operation: string,
   filters: FilterValues = {},
 ): Promise<string> {
   const [rows, marked] = await Promise.all([loadRows(operation, filters), loadMarked()]);
+  const active = filterCount({ ...filters, view: 'sales' } as LineFilters);
+
   return `<div id="lines-panel" data-testid="lines-panel" data-rows="${rows.length}">
-  ${actionsPanel(marked)}
-  ${rows.length === 0 && filterCount({ ...filters, view: 'sales' } as LineFilters) > 0
+  ${actionsBlock(marked)}
+  <form class="filter" data-testid="view-filter">
+    <label><input type="radio" name="view" value="sales" data-testid="view-sales"
+      ${operation === 'sale' ? 'checked' : ''}
+      hx-get="/ui/lines/panel" hx-vals='{"view":"sales"}' hx-target="#lines-panel" hx-swap="outerHTML"> Продажи</label>
+    <label><input type="radio" name="view" value="purchases" data-testid="view-purchases"
+      ${operation === 'purchase' ? 'checked' : ''}
+      hx-get="/ui/lines/panel" hx-vals='{"view":"purchases"}' hx-target="#lines-panel" hx-swap="outerHTML"> Закупки</label>
+  </form>
+  ${filtersPanel(filters, { operation, active })}
+  ${rows.length === 0 && active > 0
     ? `<p class="hint" data-testid="lines-filtered-empty">
          Под заданный отбор не подходит ни одна строка.
          <a href="/lines">Сбросить отбор</a>.
@@ -56,41 +84,14 @@ export async function linesPanel(
 </div>`;
 }
 
-/** Страница целиком. */
-async function linesPage(operation: string): Promise<string> {
+/** Страница целиком: панель вставки и область списка. */
+async function linesPage(operation: string, filters: FilterValues = {}): Promise<string> {
   return layout({
     active: 'lines',
     title: 'Строки заказов',
     testId: 'page-lines',
-    body: `<details class="import" data-testid="import-panel">
-      <summary>Загрузить лист клиента (N1 → M1)</summary>
-
-      <p class="hint">Вставить заявку таблицей из Excel —
-        <a href="/ui/lines/paste-form" data-testid="paste-open"
-           hx-get="/ui/lines/paste-form" hx-target="#paste-panel" hx-swap="outerHTML">открыть
-        вставку из буфера</a>: скачайте шаблон, заполните и вставьте целиком.</p>
-      <div id="paste-panel" data-testid="paste-panel"></div>
-
-      <form data-testid="import-form" hx-post="/ui/lines/import"
-            hx-target="#lines-panel" hx-swap="outerHTML">
-        <label>Наименование <input name="name" data-testid="import-name" required></label>
-        <label>Артикул <input name="article" data-testid="import-article"></label>
-        <label>Кол-во <input name="qty" data-testid="import-qty" size="4"></label>
-        <label>Ед. <input name="unit" data-testid="import-unit" size="4" value="шт"></label>
-        <label>№ заказа клиента <input name="clientNumber" data-testid="import-client-number"></label>
-        <button type="submit" data-testid="import-submit">Создать заказ</button>
-      </form>
-    </details>
-    <form class="filter" data-testid="view-filter">
-      <label><input type="radio" name="view" value="sales" data-testid="view-sales"
-        ${operation === 'sale' ? 'checked' : ''}
-        hx-get="/ui/lines/panel" hx-vals='{"view":"sales"}' hx-target="#lines-panel" hx-swap="outerHTML"> Продажи</label>
-      <label><input type="radio" name="view" value="purchases" data-testid="view-purchases"
-        ${operation === 'purchase' ? 'checked' : ''}
-        hx-get="/ui/lines/panel" hx-vals='{"view":"purchases"}' hx-target="#lines-panel" hx-swap="outerHTML"> Закупки</label>
-    </form>
-    ${filtersPanel({}, { operation, active: 0 })}
-    ${await linesPanel(operation)}`,
+    body: `${importPanel()}
+    ${await linesPanel(operation, filters)}`,
   });
 }
 
