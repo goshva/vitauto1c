@@ -467,32 +467,55 @@ table.lines td[data-filter]:hover {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-/* ---------- меню пользователя ----------
- * Раскрывается по нажатию на имя роли. Сделано на `details`: работает без скрипта, и это
- * важно — меню должно открываться и там, где скрипт ещё не загрузился.
+/* ---------- меню пользователя и модальное окно ----------
+ * Кнопка в шапке открывает МОДАЛЬНОЕ ОКНО ПО ЦЕНТРУ ЭКРАНА.
  *
- * МЕНЮ СТОИТ ПОВЕРХ СТРАНИЦЫ (`position: absolute`), а не раздвигает панель: иначе при
- * раскрытии дёргалась бы вся шапка.
+ * РАНЬШЕ БЫЛ РАСКРЫВАЮЩИЙСЯ СПИСОК В УГЛУ, и заказчик его не видел: он появлялся сбоку, в
+ * узкой колонке навигации, и выход в нём приходилось искать.
+ *
+ * Взят НАТИВНЫЙ `<dialog>`: он даёт окно по центру, подложку, закрытие по ESC и top layer —
+ * слой поверх всей страницы, независимый от того, где окно лежит в разметке. Своё модальное
+ * окно пришлось бы писать руками, с ловушкой фокуса и блокировкой прокрутки.
  */
-.who { position: relative; }
-.who summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
-.who summary::-webkit-details-marker { display: none; }
-.who-menu {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 50;
-  min-width: 240px; display: flex; flex-direction: column; gap: 8px;
-  padding: 10px 12px; font-size: 13px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m);
+.who {
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: 0; padding: 6px 8px; cursor: pointer;
+  font: inherit; color: var(--fg-2); text-align: left;
+}
+.who:hover { color: var(--fg); }
+
+.modal {
+  /* `dialog` по умолчанию по центру; задаём ширину и вид. */
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px 22px;
+  border: 1px solid var(--line); border-radius: var(--r-m);
+  background: var(--surface); color: var(--fg);
   box-shadow: var(--shadow-1);
 }
-.who-menu .hint { margin: 0; font-size: 12px; }
-.who-menu form { margin: 0; }
-.who-menu button, .who-menu a {
-  display: block; width: 100%; text-align: left; text-decoration: none;
-  padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer;
+/* РАСКЛАДКА ТОЛЬКО У ОТКРЫТОГО ОКНА.
+ *
+ * Здесь стояло `display: flex` без условия — и оно ПЕРЕБИЛО браузерное правило
+ * `dialog:not([open]) { display: none }`. Закрытое окно оставалось видимым и висело на
+ * странице постоянно: выход был бы виден всегда, а не по нажатию.
+ *
+ * Поймал это тест, проверяющий, что до открытия выхода не видно.
+ */
+.modal[open] { display: flex; flex-direction: column; gap: 12px; }
+.modal::backdrop { background: rgba(0, 0, 0, 0.45); }
+.modal h2 { margin: 0; font-size: 16px; }
+.modal .hint { margin: 0; font-size: 13px; }
+.modal form { margin: 0; }
+.modal button, .modal a {
+  display: block; width: 100%; box-sizing: border-box; text-align: center;
+  padding: 9px 12px; font: inherit; font-size: 14px; cursor: pointer;
   border: 1px solid var(--line); border-radius: var(--r-s);
-  background: var(--surface); color: var(--fg);
+  background: var(--surface); color: var(--fg); text-decoration: none;
 }
-.who-menu button:hover, .who-menu a:hover { border-color: var(--accent); color: var(--accent); }
+/* ВЫХОД — ГЛАВНОЕ ДЕЙСТВИЕ В ЭТОМ ОКНЕ, и оно выделено: остальное здесь служебное. */
+.modal .modal-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.modal .modal-primary:hover { opacity: 0.9; }
+.modal .modal-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.modal .modal-close button { border-color: transparent; color: var(--fg-2); }
 
 /* ---------- демонстрационный вход ----------
  * Кнопки по ролям: прототип показывают заказчику и проверяющему, и каждый раз набирать

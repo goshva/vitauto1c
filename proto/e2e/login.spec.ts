@@ -122,12 +122,53 @@ test.describe('выход и смена роли', () => {
     await expect(menu, 'в шапке нет меню пользователя').toHaveCount(1);
 
     // До раскрытия пунктов не видно: это `details`, а не постоянно открытый блок.
+    // До открытия окна выхода не видно: это модальное окно, а не постоянно открытый блок.
     await expect(page.getByTestId('logout')).not.toBeVisible();
 
-    await menu.locator('summary').click();
-    await expect(page.getByTestId('user-menu-list'), 'меню не раскрылось').toBeVisible();
-    await expect(page.getByTestId('user-menu-role'), 'в меню не сказано, кто вошёл')
+    // Меню — МОДАЛЬНОЕ ОКНО: нажатие на кнопку в шапке открывает его.
+    await menu.click();
+    await expect(page.getByTestId('user-modal'), 'модальное окно не открылось').toBeVisible();
+    await expect(page.getByTestId('user-menu-role'), 'в окне не сказано, кто вошёл')
       .toContainText('Менеджер');
+  });
+
+  test('ОКНО ПОСЕРЕДИНЕ ЭКРАНА, А НЕ В БОКУ', async ({ page }) => {
+    // ТРЕБОВАНИЕ ЗАКАЗЧИКА: «перемести выход в отдельное модальное окно поверх и посередине,
+    // а не в боку, где его не видно». Прежний список раскрывался в углу шапки, в узкой
+    // колонке навигации, и выход в нём приходилось искать.
+    //
+    // Проверяем ПОЛОЖЕНИЕМ, а не словами: окно должно стоять по центру экрана.
+    await page.goto('/login');
+    await page.getByTestId('demo-manager').click();
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('user-menu').click();
+    const modal = page.getByTestId('user-modal');
+    await expect(modal, 'модальное окно не открылось').toBeVisible();
+
+    const box = await modal.boundingBox();
+    const view = page.viewportSize()!;
+    expect(box, 'окно не найдено').toBeTruthy();
+
+    const centerX = box!.x + box!.width / 2;
+    const centerY = box!.y + box!.height / 2;
+    // Допуск 40 пикселей: окно центрируется браузером, и требовать совпадения до пикселя
+    // значило бы проверять не центрирование, а округление.
+    expect(Math.abs(centerX - view.width / 2), 'окно не по центру по горизонтали')
+      .toBeLessThan(40);
+    expect(Math.abs(centerY - view.height / 2), 'окно не по центру по вертикали')
+      .toBeLessThan(60);
+
+    // И ОНО ПОВЕРХ СТРАНИЦЫ: модальное окно не должно оказаться под содержимым.
+    const onTop = await page.evaluate(() => {
+      const d = document.getElementById('user-modal');
+      if (!d) return false;
+      const r = d.getBoundingClientRect();
+      // Точка в центре окна должна принадлежать САМОМУ ОКНУ, а не тому, что под ним.
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + 4);
+      return d.contains(el) || el === d;
+    });
+    expect(onTop, 'окно не поверх страницы — его перекрывает содержимое').toBe(true);
   });
 
   test('ВЫХОД действительно разлогинивает', async ({ page }) => {
@@ -136,7 +177,7 @@ test.describe('выход и смена роли', () => {
     await page.waitForLoadState('networkidle');
     expect(await whoami(page), 'вход не состоялся').toBe('manager');
 
-    await page.getByTestId('user-menu').locator('summary').click();
+    await page.getByTestId('user-menu').click();
     await page.getByTestId('logout').click();
     await page.waitForLoadState('networkidle');
 
@@ -156,7 +197,7 @@ test.describe('выход и смена роли', () => {
       { headers: { accept: 'application/json' } })).status(), 'менеджеру отчёт закрыт').toBe(200);
 
     // Выходим и входим кладовщиком — тот же адрес обязан отказать.
-    await page.getByTestId('user-menu').locator('summary').click();
+    await page.getByTestId('user-menu').click();
     await page.getByTestId('logout').click();
     await page.waitForLoadState('networkidle');
 
@@ -173,7 +214,7 @@ test.describe('выход и смена роли', () => {
     await page.getByTestId('demo-store').click();
     await page.waitForLoadState('networkidle');
 
-    await page.getByTestId('user-menu').locator('summary').click();
+    await page.getByTestId('user-menu').click();
     await page.getByTestId('switch-role').click();
     await page.waitForLoadState('networkidle');
 
