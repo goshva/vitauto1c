@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -18,11 +18,11 @@ const PIECE_UNIT = '77777777-7777-7777-7777-7777777777a1';
 const LITER_UNIT = '77777777-7777-7777-7777-7777777777a2';
 
 const json = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'application/json' } });
+  const r = await request(url, { headers: { accept: 'application/json' } });
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const post = async (url: string, body?: unknown) => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -30,7 +30,7 @@ const post = async (url: string, body?: unknown) => {
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const html = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };
 };
 

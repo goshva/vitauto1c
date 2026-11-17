@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { PROCESSES } from '../../src/domain/process-map.ts';
@@ -17,10 +17,10 @@ import { PROCESSES } from '../../src/domain/process-map.ts';
 const UI = '/ui/lines';
 
 const html = async (url: string, init?: RequestInit) =>
-  (await app.request(url, { headers: { accept: 'text/html' }, ...init }));
+  (await request(url, { headers: { accept: 'text/html' }, ...init }));
 
 const uiPost = (url: string, body: Record<string, string>) =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body).toString(),

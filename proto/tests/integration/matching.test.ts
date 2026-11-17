@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { encodeSession } from '../../src/session.ts';
@@ -15,20 +15,20 @@ const manager = '11111111-aaaa-1111-1111-111111111102';
 const asManager = `arm_session=${encodeSession({ userId: manager, role: 'manager' })}`;
 
 const json = async (url: string, init: RequestInit = {}) => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     ...init,
     headers: { accept: 'application/json', ...(init.headers ?? {}) },
   });
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const html = async (url: string) => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     headers: { accept: 'text/html', cookie: asManager },
   });
   return { status: r.status, body: await r.text() };
 };
 const uiPost = (url: string) =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: asManager },
     body: '',
@@ -265,7 +265,7 @@ describe('п. 2 · право', () => {
   test('кладовщику подставлять нельзя — это сопоставление, а не приёмка', async () => {
     const store = '11111111-aaaa-1111-1111-111111111103';
     const cookie = `arm_session=${encodeSession({ userId: store, role: 'storekeeper' })}`;
-    const r = await app.request('/ui/unidentified/auto-match-apply', {
+    const r = await request('/ui/unidentified/auto-match-apply', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
       body: '',

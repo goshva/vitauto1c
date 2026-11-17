@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -13,7 +13,7 @@ const HAPPY = 'b0000000-0000-0000-0000-000000000001';
 const STOCK = 'b0000000-0000-0000-0000-000000000002';
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   const type = r.headers.get('content-type') ?? '';
   if (type.includes('json')) return { status: r.status, body: (await r.json()) as Record<string, unknown>, text: '' };
   return { status: r.status, body: {} as Record<string, unknown>, text: await r.text() };

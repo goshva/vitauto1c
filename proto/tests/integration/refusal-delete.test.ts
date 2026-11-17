@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { STATUS_TITLES } from '../../src/domain/status.ts';
@@ -24,7 +24,7 @@ type Role = 'admin' | 'municipality' | 'manager' | 'mechanic' | 'storekeeper';
 const as = (role: Role) => ({ 'x-role': role });
 
 const req = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const withRole = (role?: Role) => (role ? as(role) : {});
@@ -39,7 +39,7 @@ const post = (url: string, body?: unknown, role?: Role) =>
 const del = (url: string, role?: Role) =>
   req(url, { method: 'DELETE', headers: withRole(role) });
 const html = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };
 };
 

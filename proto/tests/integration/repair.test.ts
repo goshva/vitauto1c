@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -14,7 +14,7 @@ const CAR = 'cccccccc-cccc-cccc-cccc-cccccccccc01';
 const SERVICE = '22222222-2222-2222-2222-222222222201';
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -16,7 +16,7 @@ const CUSTOMER = '66666666-6666-6666-6666-666666666601';
 const NOM = '77777777-7777-7777-7777-777777777702';
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const post = (url: string, body?: unknown) =>
@@ -184,7 +184,7 @@ describe('ФТ п. 6 · заказ-наряд нужен для «детали �
       nomenclatureId: NOM, quantity: '1', salePrice: '500',
     });
 
-    const r = await app.request(`/print/work_order?workOrderId=${String(order.id)}`,
+    const r = await request(`/print/work_order?workOrderId=${String(order.id)}`,
       { headers: { accept: 'text/html' } });
     expect(r.status, 'печать наряда без работ сломалась').toBe(200);
     expect(await r.text()).toContain('Фильтр');

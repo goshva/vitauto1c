@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { encodeSession } from '../../src/session.ts';
@@ -24,13 +24,13 @@ const asAdmin = `arm_session=${encodeSession({ userId: admin, role: 'admin' })}`
 const asManager = `arm_session=${encodeSession({ userId: manager, role: 'manager' })}`;
 
 const html = async (url: string, cookie = '') => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     headers: { accept: 'text/html', ...(cookie ? { cookie } : {}) },
   });
   return { status: r.status, body: await r.text() };
 };
 const uiPost = (url: string, cookie = '') =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', ...(cookie ? { cookie } : {}) },
     body: '',

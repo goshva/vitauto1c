@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -12,7 +12,7 @@ import { pool } from '../../src/db.ts';
 const CELL = '88888888-8888-8888-8888-888888888802';
 
 const form = (url: string, data: Record<string, string> = {}) =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: {
       accept: 'text/html',

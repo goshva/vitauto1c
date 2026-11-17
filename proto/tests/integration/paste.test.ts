@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { parsePasted, templateText } from '../../src/import-template.ts';
@@ -15,14 +15,14 @@ import { parseQuantity } from '../../src/import-numbers.ts';
 const CUSTOMER = '66666666-6666-6666-6666-666666666601';
 
 const uiPost = (url: string, body: Record<string, string>) =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body).toString(),
   });
 
 const text = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text(), headers: r.headers };
 };
 
@@ -34,7 +34,7 @@ beforeEach(async () => {
 
 describe('№8 · шаблон, который можно заполнить', () => {
   test('шаблон отдаётся ФАЙЛОМ, а не текстом на экране', async () => {
-    const r = await app.request('/ui/lines/template');
+    const r = await request('/ui/lines/template');
     expect(r.status).toBe(200);
     expect(r.headers.get('content-type') ?? '').toContain('text/csv');
     // Заполняют его в Excel и копируют оттуда: без скачивания шаблон бесполезен.

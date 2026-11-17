@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -13,10 +13,10 @@ import { pool } from '../../src/db.ts';
 const HAPPY = 'b0000000-0000-0000-0000-000000000001';
 
 const html = (url: string, init: RequestInit = {}) =>
-  app.request(url, { ...init, headers: { accept: 'text/html', ...(init.headers ?? {}) } });
+  request(url, { ...init, headers: { accept: 'text/html', ...(init.headers ?? {}) } });
 
 const form = (url: string, data: Record<string, string>) =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: {
       accept: 'text/html',
@@ -44,7 +44,7 @@ describe('GET /lines — один адрес, два представления'
   });
 
   test('агент получает JSON — API не сломан', async () => {
-    const r = await app.request('/lines', { headers: { accept: 'application/json' } });
+    const r = await request('/lines', { headers: { accept: 'application/json' } });
     expect(r.headers.get('content-type')).toContain('application/json');
     const b = (await r.json()) as { items: unknown[] };
     expect(Array.isArray(b.items)).toBe(true);
@@ -160,14 +160,14 @@ describe('статика отдаётся локально', () => {
   // `public/static/app.css` и отдавал 404 — страница при этом выглядела рабочей,
   // но HTMX не загружался и клики не работали.
   test('таблица стилей', async () => {
-    const r = await app.request('/static/app.css');
+    const r = await request('/static/app.css');
     expect(r.status).toBe(200);
     expect(r.headers.get('content-type')).toContain('text/css');
     expect((await r.text()).length).toBeGreaterThan(100);
   });
 
   test('HTMX лежит локально, а не тянется из сети', async () => {
-    const r = await app.request('/static/htmx.min.js');
+    const r = await request('/static/htmx.min.js');
     expect(r.status).toBe(200);
     expect(r.headers.get('content-type')).toContain('javascript');
     const body = await r.text();

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -14,7 +14,7 @@ const HAPPY = 'b0000000-0000-0000-0000-000000000001';
 const STOCK = 'b0000000-0000-0000-0000-000000000002';
 
 const page = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text(), type: r.headers.get('content-type') ?? '' };
 };
 
@@ -131,7 +131,7 @@ describe('свод и фильтр по заказу', () => {
 
   test('POST /print совместим с legacy и даёт ту же форму', async () => {
     await setStatus(HAPPY, 'assembly');
-    const r = await app.request('/print', {
+    const r = await request('/print', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ kind: 'assembly_sheet' }).toString(),

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -10,7 +10,7 @@ import { pool } from '../../src/db.ts';
 // строк на этом шаге». Схема, оторванная от данных, — это картинка.
 
 const html = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };
 };
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { encodeSession } from '../../src/session.ts';
@@ -25,7 +25,7 @@ const NOM = '77777777-7777-7777-7777-777777777702';
 const CAR = 'cccccccc-cccc-cccc-cccc-cccccccccc01';
 
 const html = async (url: string, cookie = '') => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     headers: { accept: 'text/html', ...(cookie ? { cookie } : {}) },
   });
   return { status: r.status, body: await r.text() };
@@ -36,7 +36,7 @@ const uiPost = (url: string, body: Record<string, string | string[]>, cookie = '
     if (Array.isArray(v)) for (const x of v) params.append(k, x);
     else params.append(k, v);
   }
-  return app.request(url, {
+  return request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', ...(cookie ? { cookie } : {}) },
     body: params.toString(),
@@ -287,7 +287,7 @@ describe('БТ п. 18 · право на возврат появилось у AP
       `insert into line_mark (id, marked) values ($1, true)
        on conflict (id) do update set marked = true`, [id]);
 
-    const denied = await app.request('/returns', {
+    const denied = await request('/returns', {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: asMechanic },
       body: JSON.stringify({ kind: 'client' }),
@@ -304,7 +304,7 @@ describe('БТ п. 18 · право на возврат появилось у AP
         `insert into line_mark (id, marked) values ($1, true)
          on conflict (id) do update set marked = true`, [id]);
 
-      const r = await app.request('/returns', {
+      const r = await request('/returns', {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ kind: 'client' }),

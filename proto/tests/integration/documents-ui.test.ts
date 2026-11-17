@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -12,7 +12,7 @@ import { pool } from '../../src/db.ts';
 const RETURN_LINE = 'b0000000-0000-0000-0000-000000000008';
 
 const html = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, { ...init, headers: { accept: 'text/html', ...(init?.headers ?? {}) } });
+  const r = await request(url, { ...init, headers: { accept: 'text/html', ...(init?.headers ?? {}) } });
   return { status: r.status, body: await r.text() };
 };
 
@@ -53,11 +53,11 @@ describe('экран документов', () => {
 describe('документ на экране и его действия', () => {
   /** Оформляет возврат по отмеченной строке и возвращает его id из списка. */
   async function makeReturn(): Promise<string> {
-    await app.request(`/lines/${RETURN_LINE}/mark`, {
+    await request(`/lines/${RETURN_LINE}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
-    const r = await app.request('/returns', {
+    const r = await request('/returns', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ kind: 'client' }),
     });
@@ -117,11 +117,11 @@ describe('документ на экране и его действия', () => 
 
   test('отгрузка проходит через тот же экран', async () => {
     await pool.query(`update line set status = 'ready_to_ship' where id = $1`, [RETURN_LINE]);
-    await app.request(`/lines/${RETURN_LINE}/mark`, {
+    await request(`/lines/${RETURN_LINE}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
-    const created = await app.request('/shipments', {
+    const created = await request('/shipments', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
     });
     const id = String(((await created.json()) as { id: string }).id);

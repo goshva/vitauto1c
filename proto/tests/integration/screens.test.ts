@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedRefs } from '../../db/seed.ts';
 
 // Экраны автопарка, счетов и склада (Q2, Q6). Тесты до реализации.
@@ -15,12 +15,12 @@ const CELL = '88888888-8888-8888-8888-888888888802';
 const COUNTERPARTY = '66666666-6666-6666-6666-666666666601';
 
 const html = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };
 };
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const post = (url: string, body?: unknown) =>
@@ -132,7 +132,7 @@ describe('карточка ТС /fleet/:id', () => {
     const before = await html('/fleet/maintenance');
     expect(before.body).toContain('АВТ-003');
 
-    const done = await app.request('/ui/fleet/service', {
+    const done = await request('/ui/fleet/service', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ carId: CAR_DUE_KM, view: 'fleet' }).toString(),
@@ -183,7 +183,7 @@ describe('экран счетов /invoices', () => {
     const id = String(body.id);
     await post(`/invoices/${id}/transition`, { to: 'sent' });
 
-    const paid = await app.request('/ui/invoices/transition', {
+    const paid = await request('/ui/invoices/transition', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ id, to: 'paid' }).toString(),

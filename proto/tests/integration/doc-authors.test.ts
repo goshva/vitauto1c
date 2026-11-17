@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { encodeSession } from '../../src/session.ts';
@@ -32,7 +32,7 @@ const asOtherManager = `arm_session=${encodeSession({ userId: admin, role: 'mana
 const asStore = `arm_session=${encodeSession({ userId: store, role: 'storekeeper' })}`;
 
 const json = async (url: string, init: RequestInit = {}, cookie = '') => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     ...init,
     headers: { accept: 'application/json', ...(cookie ? { cookie } : {}), ...(init.headers ?? {}) },
   });
@@ -147,7 +147,7 @@ describe('БТ п. 20 · чужое удалить нельзя', () => {
     await post(`/lines/${id}/mark`, { marked: true }, asStore);
     const r = await post('/receipts', {}, asStore);
 
-    const login = await app.request('/login', {
+    const login = await request('/login', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ login: 'admin', password: 'admin123' }).toString(),

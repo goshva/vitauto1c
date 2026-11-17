@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { encodeSession } from '../../src/session.ts';
@@ -24,7 +24,7 @@ const as = (id: string, role: string): string =>
   `arm_session=${encodeSession({ userId: id, role })}`;
 
 const html = async (url: string, userId: string, role: string) => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     headers: { accept: 'text/html', cookie: as(userId, role) },
   });
   return { status: r.status, body: await r.text() };

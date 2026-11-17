@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -31,7 +31,7 @@ const ZONE_REP = '99999999-9999-9999-9999-999999999906';
 const ZONE_WO = '99999999-9999-9999-9999-999999999912';
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const post = (url: string, body?: unknown) =>
@@ -102,7 +102,7 @@ describe('A. Приём авто и оформление', () => {
 
     // И оно попадает на бумагу: печатные формы умели выводить примечание,
     // но брать его было негде.
-    const printed = await app.request(
+    const printed = await request(
       `/print/work_order?workOrderId=${String(created.body.id)}`,
       { headers: { accept: 'text/html' } },
     );
@@ -398,7 +398,7 @@ describe('E. Контроль', () => {
   });
 
   test('E2 ✅ видеть загрузку по этапам на карте процессов', async () => {
-    const r = await app.request('/processes', { headers: { accept: 'text/html' } });
+    const r = await request('/processes', { headers: { accept: 'text/html' } });
     expect(r.status).toBe(200);
     const html = await r.text();
     expect(html).toContain('data-testid="stats-by-status"');

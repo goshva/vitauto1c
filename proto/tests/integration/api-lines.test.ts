@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -23,7 +23,7 @@ beforeEach(async () => {
 
 describe('GET /lines', () => {
   test('возвращает строки и общее число', async () => {
-    const r = await app.request('/lines?view=sales');
+    const r = await request('/lines?view=sales');
     expect(r.status).toBe(200);
     const b = await json(r);
     expect(Array.isArray(b.items)).toBe(true);
@@ -32,14 +32,14 @@ describe('GET /lines', () => {
   });
 
   test('фильтр по известному статусу сужает выборку', async () => {
-    const all = await json(await app.request('/lines?view=sales'));
-    const only = await json(await app.request('/lines?view=sales&status=new'));
+    const all = await json(await request('/lines?view=sales'));
+    const only = await json(await request('/lines?view=sales&status=new'));
     expect((only.items as unknown[]).length).toBeLessThanOrEqual((all.items as unknown[]).length);
     for (const it of only.items as { status: string }[]) expect(it.status).toBe('new');
   });
 
   test('НЕИЗВЕСТНЫЙ статус → 400, а не весь список (C18)', async () => {
-    const r = await app.request('/lines?view=sales&status=нетакого');
+    const r = await request('/lines?view=sales&status=нетакого');
     expect(r.status, 'молчаливый игнор фильтра — это C18').toBe(400);
     const b = await json(r);
     expect(String(b.code)).toBe('bad_request');
@@ -47,7 +47,7 @@ describe('GET /lines', () => {
   });
 
   test('у каждой строки есть id и статус', async () => {
-    const b = await json(await app.request('/lines?view=sales'));
+    const b = await json(await request('/lines?view=sales'));
     for (const it of b.items as { id: string; status: string }[]) {
       expect(it.id).toMatch(/^[0-9a-f-]{36}$/);
       expect(typeof it.status).toBe('string');
@@ -57,13 +57,13 @@ describe('GET /lines', () => {
 
 describe('GET /lines/{id}', () => {
   test('находит засеянную строку', async () => {
-    const r = await app.request(`/lines/${HAPPY}`);
+    const r = await request(`/lines/${HAPPY}`);
     expect(r.status).toBe(200);
     expect((await json(r)).id).toBe(HAPPY);
   });
 
   test('несуществующая строка → 404 с problem+json', async () => {
-    const r = await app.request('/lines/00000000-0000-0000-0000-0000000000ff');
+    const r = await request('/lines/00000000-0000-0000-0000-0000000000ff');
     expect(r.status).toBe(404);
     const b = await json(r);
     expect(b.code).toBe('not_found');
@@ -73,10 +73,10 @@ describe('GET /lines/{id}', () => {
 
 describe('PATCH /lines/{id}', () => {
   test('меняет поле и увеличивает версию', async () => {
-    const before = await json(await app.request(`/lines/${HAPPY}`));
+    const before = await json(await request(`/lines/${HAPPY}`));
     const v0 = Number((await pool.query<{ v: string }>(`select version::text v from line where id=$1`, [HAPPY])).rows[0]!.v);
 
-    const r = await app.request(`/lines/${HAPPY}`, {
+    const r = await request(`/lines/${HAPPY}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'if-match': String(v0) },
       body: JSON.stringify({ field: 'quantity', value: 5 }),
@@ -88,7 +88,7 @@ describe('PATCH /lines/{id}', () => {
 
   test('устаревший If-Match → 409 с указанием версий', async () => {
     const v = Number((await pool.query<{ v: string }>(`select version::text v from line where id=$1`, [HAPPY])).rows[0]!.v);
-    const r = await app.request(`/lines/${HAPPY}`, {
+    const r = await request(`/lines/${HAPPY}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'if-match': String(v - 1) },
       body: JSON.stringify({ field: 'quantity', value: 7 }),
@@ -100,7 +100,7 @@ describe('PATCH /lines/{id}', () => {
   });
 
   test('нередактируемое поле → 400 field_readonly', async () => {
-    const r = await app.request(`/lines/${HAPPY}`, {
+    const r = await request(`/lines/${HAPPY}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ field: 'status', value: 'closed' }),
@@ -112,14 +112,14 @@ describe('PATCH /lines/{id}', () => {
 
 describe('POST /lines/{id}/mark', () => {
   test('ставит и снимает отметку', async () => {
-    const on = await app.request(`/lines/${HAPPY}/mark`, {
+    const on = await request(`/lines/${HAPPY}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
     expect(on.status).toBe(200);
     expect((await json(on)).marked).toBe(true);
 
-    const off = await app.request(`/lines/${HAPPY}/mark`, {
+    const off = await request(`/lines/${HAPPY}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: false }),
     });
@@ -129,7 +129,7 @@ describe('POST /lines/{id}/mark', () => {
 
 describe('POST /lines/transition', () => {
   test('без отметок → 409 nothing_marked', async () => {
-    const r = await app.request('/lines/transition', {
+    const r = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'reserve' }),
     });
@@ -138,12 +138,12 @@ describe('POST /lines/transition', () => {
   });
 
   test('переход reserve из new выполняется: статус меняется, отметка снимается', async () => {
-    await app.request(`/lines/${HAPPY}/mark`, {
+    await request(`/lines/${HAPPY}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
 
-    const r = await app.request('/lines/transition', {
+    const r = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'reserve' }),
     });
@@ -152,27 +152,27 @@ describe('POST /lines/transition', () => {
     expect(b.processed).toBe(1);
     expect(b.skipped).toEqual([]);
 
-    const after = await json(await app.request(`/lines/${HAPPY}`));
+    const after = await json(await request(`/lines/${HAPPY}`));
     expect(after.status).toBe('reserve');
     expect(after.marked, 'после перехода отметка снимается').toBe(false);
   });
 
   test('переход из недопустимого статуса даёт КОНКРЕТНУЮ причину (C21)', async () => {
     // Строка stock в new; переводим в reserve, затем пробуем ready_to_ship (нужен assembly).
-    await app.request(`/lines/${STOCK}/mark`, {
+    await request(`/lines/${STOCK}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
-    await app.request('/lines/transition', {
+    await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'reserve' }),
     });
 
-    await app.request(`/lines/${STOCK}/mark`, {
+    await request(`/lines/${STOCK}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
-    const r = await app.request('/lines/transition', {
+    const r = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'ready_to_ship' }),
     });
@@ -188,7 +188,7 @@ describe('POST /lines/transition', () => {
   });
 
   test('неизвестный переход → 400 со списком допустимых', async () => {
-    const r = await app.request('/lines/transition', {
+    const r = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'нетакого' }),
     });
@@ -201,12 +201,12 @@ describe('POST /lines/transition', () => {
     // из ready_to_ship, поэтому идём reserve → assembly → ready_to_ship, затем
     // ставим статус shipped напрямую (сид-подобно) и проверяем условие закрытия.
     await pool.query(`update line set status = 'shipped', signed_original = false where id = $1`, [HAPPY]);
-    await app.request(`/lines/${HAPPY}/mark`, {
+    await request(`/lines/${HAPPY}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
 
-    const r = await app.request('/lines/transition', {
+    const r = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'closed' }),
     });
@@ -218,11 +218,11 @@ describe('POST /lines/transition', () => {
 
     // С галкой — закрывается.
     await pool.query(`update line set signed_original = true where id = $1`, [HAPPY]);
-    await app.request(`/lines/${HAPPY}/mark`, {
+    await request(`/lines/${HAPPY}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
-    const r2 = await app.request('/lines/transition', {
+    const r2 = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'closed' }),
     });

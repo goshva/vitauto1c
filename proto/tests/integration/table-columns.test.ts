@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -17,7 +17,7 @@ async function page(): Promise<string> {
   await seedRefs();
   await seedExtra.clear();
   await seedProcess('happy');
-  const r = await app.request('/lines', { headers: { accept: 'text/html' } });
+  const r = await request('/lines', { headers: { accept: 'text/html' } });
   return r.text();
 }
 
@@ -78,7 +78,7 @@ describe('таблица строк · колонки не съезжают', ()
       `update line set urgency = 'Срочно'
         where id = (select id from line where not deleted order by id limit 1)`);
 
-    const r = await app.request('/lines', { headers: { accept: 'text/html' } });
+    const r = await request('/lines', { headers: { accept: 'text/html' } });
     const html = await r.text();
 
     const th = headers(html);

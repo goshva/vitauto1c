@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -12,7 +12,7 @@ import { pool } from '../../src/db.ts';
 const HAPPY = 'b0000000-0000-0000-0000-000000000001';
 const STOCK = 'b0000000-0000-0000-0000-000000000002';
 
-const html = (url: string) => app.request(url, { headers: { accept: 'text/html' } });
+const html = (url: string) => request(url, { headers: { accept: 'text/html' } });
 const setStatus = (id: string, status: string) =>
   pool.query(`update line set status = $2 where id = $1`, [id, status]);
 

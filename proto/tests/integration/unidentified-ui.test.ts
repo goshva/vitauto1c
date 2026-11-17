@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -13,11 +13,11 @@ const NOM = '77777777-7777-7777-7777-777777777701';
 const ZONE_SM = '99999999-9999-9999-9999-999999999902';
 
 const html = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };
 };
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 
@@ -27,7 +27,7 @@ const firstUnidentified = async (): Promise<string> =>
     `select id from line where nomenclature_id is null and not deleted limit 1`)).rows[0]!.id);
 
 const bindForm = (lineId: string, nomenclatureId: string, zoneId = '') =>
-  app.request('/ui/unidentified/bind', {
+  request('/ui/unidentified/bind', {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ lineId, nomenclatureId, zoneId }).toString(),

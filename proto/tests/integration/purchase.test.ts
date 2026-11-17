@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { checkAccess } from '../../src/domain/access.ts';
@@ -20,15 +20,15 @@ const NOM = '77777777-7777-7777-7777-777777777702';
 const NOM_ANALOG = '77777777-7777-7777-7777-777777777709';
 
 const json = async (url: string, role: Role = 'admin') => {
-  const r = await app.request(url, { headers: { accept: 'application/json', 'x-role': role } });
+  const r = await request(url, { headers: { accept: 'application/json', 'x-role': role } });
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const html = async (url: string, role: Role = 'admin') => {
-  const r = await app.request(url, { headers: as(role) });
+  const r = await request(url, { headers: as(role) });
   return { status: r.status, body: await r.text() };
 };
 const uiPost = (url: string, body: Record<string, string>, role: Role = 'admin') =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-role': role },
     body: new URLSearchParams(body).toString(),
@@ -40,7 +40,7 @@ async function markedSupplyLine(): Promise<string> {
     `select id from line where not deleted limit 1`)).rows[0]!.id);
   await pool.query(
     `update line set nomenclature_id = $2, status = 'ordered' where id = $1`, [id, NOM]);
-  await app.request(`/lines/${id}/mark`, {
+  await request(`/lines/${id}/mark`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ marked: true }),
   });
@@ -246,7 +246,7 @@ describe('№16 · создание закупки из формы', () => {
     const id = String((await pool.query<{ id: string }>(
       `select id from line where not deleted limit 1`)).rows[0]!.id);
     await pool.query(`update line set nomenclature_id = null, status = 'ordered' where id = $1`, [id]);
-    await app.request(`/lines/${id}/mark`, {
+    await request(`/lines/${id}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { resetTo, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -17,7 +17,7 @@ const BLOCKED_CELL = '88888888-8888-8888-8888-888888888804';
 
 const json = async (r: Response) => (await r.json()) as Record<string, unknown>;
 const post = (url: string, body: unknown, headers: Record<string, string> = {}) =>
-  app.request(url, {
+  request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
@@ -46,7 +46,7 @@ describe('POST /imports — N1 → M1, первый шаг каждого про
     expect(String(b.number)).toMatch(/^ЗК-\d{4}$/);
 
     // Строки в new, факт заявки на месте, отметка снята.
-    const line = await json(await app.request(`/lines/${(b.lineIds as string[])[0]}`));
+    const line = await json(await request(`/lines/${(b.lineIds as string[])[0]}`));
     expect(line.status).toBe('new');
     expect(line.factName).toBe('Фильтр масляный');
     expect(line.clientOrderNumber).toBe('ИМП-1');
@@ -116,7 +116,7 @@ describe('POST /sales/jobs — M4/K5, задание без 1С', () => {
     expect(after, 'заказ поставщику создался сам').toBe(before);
     expect(b, 'поле автосоздания осталось в ответе').not.toHaveProperty('supplierOrderId');
 
-    const line = await json(await app.request(`/lines/b0000000-0000-0000-0000-000000000001`));
+    const line = await json(await request(`/lines/b0000000-0000-0000-0000-000000000001`));
     expect(line.status).toBe('ordered');
     expect(line.marked).toBe(false);
   });
@@ -133,17 +133,17 @@ describe('POST /supply/status — M7, P2', () => {
     const line = 'b0000000-0000-0000-0000-000000000001';
     await post(`/lines/${line}/mark`, { marked: true });
     await post('/sales/jobs', {});
-    expect((await json(await app.request(`/lines/${line}`))).status).toBe('ordered');
+    expect((await json(await request(`/lines/${line}`))).status).toBe('ordered');
 
     await post(`/lines/${line}/mark`, { marked: true });
     const paid = await json(await post('/supply/status', { status: 'paid' }));
     expect(paid.processed).toBe(1);
-    expect((await json(await app.request(`/lines/${line}`))).status).toBe('paid');
+    expect((await json(await request(`/lines/${line}`))).status).toBe('paid');
 
     await post(`/lines/${line}/mark`, { marked: true });
     const transit = await json(await post('/supply/status', { status: 'in_transit' }));
     expect(transit.processed).toBe(1);
-    expect((await json(await app.request(`/lines/${line}`))).status).toBe('in_transit');
+    expect((await json(await request(`/lines/${line}`))).status).toBe('in_transit');
   });
 
   test('из неподходящего статуса — конкретная причина', async () => {
@@ -163,10 +163,10 @@ describe('сквозная цепочка happy по API', () => {
       rows: [{ article: 'FLT-OIL-001', name: 'Фильтр масляный', qty: '1', clientNumber: 'ХЭППИ-1' }],
     }));
     const line = (imp.lineIds as string[])[0]!;
-    expect((await json(await app.request(`/lines/${line}`))).status).toBe('new');
+    expect((await json(await request(`/lines/${line}`))).status).toBe('new');
 
     const mark = () => post(`/lines/${line}/mark`, { marked: true });
-    const status = async () => String((await json(await app.request(`/lines/${line}`))).status);
+    const status = async () => String((await json(await request(`/lines/${line}`))).status);
 
     // 2. M4 — задание: закупка у поставщика.
     await mark();

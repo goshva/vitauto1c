@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -18,7 +18,7 @@ const OFFER_FAST = 'aa000000-0000-0000-0000-000000000003';  // 520 ₽, 1 ден
 const OFFER_OTHER = 'aa000000-0000-0000-0000-000000000004'; // другое номенклатура
 
 const json = async (url: string, init: RequestInit = {}, role = 'admin') => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     ...init,
     headers: { accept: 'application/json', 'x-role': role, ...(init.headers ?? {}) },
   });
@@ -31,7 +31,7 @@ const post = (url: string, body: unknown, role = 'admin') =>
     body: JSON.stringify(body),
   }, role);
 const html = async (url: string, role = 'admin') => {
-  const r = await app.request(url, { headers: { accept: 'text/html', 'x-role': role } });
+  const r = await request(url, { headers: { accept: 'text/html', 'x-role': role } });
   return { status: r.status, body: await r.text() };
 };
 
@@ -198,7 +198,7 @@ describe('№12 · поле выбора В САМОЙ СТРОКЕ', () => {
 
   test('UI-выбор делегирует в API — цена не пересчитывается второй раз', async () => {
     const id = await lineWith(NOM);
-    const r = await app.request(`/ui/lines/${id}/offer`, {
+    const r = await request(`/ui/lines/${id}/offer`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ offerId: OFFER_CHEAP }).toString(),
@@ -213,7 +213,7 @@ describe('№12 · поле выбора В САМОЙ СТРОКЕ', () => {
     const id = await lineWith(NOM);
     await post(`/lines/${id}/supply-option`, { offerId: OFFER_CHEAP });
 
-    const r = await app.request(`/ui/lines/${id}/offer`, {
+    const r = await request(`/ui/lines/${id}/offer`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ offerId: '' }).toString(),

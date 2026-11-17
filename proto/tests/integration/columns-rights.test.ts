@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -14,22 +14,35 @@ import { pool } from '../../src/db.ts';
 // и что отказ объясняет причину.
 
 type Role = 'admin' | 'manager' | 'mechanic' | 'storekeeper';
-const as = (role: Role) => ({ accept: 'application/json', 'x-role': role });
+
+// РОЛЬ ПОДСТАВЛЯЕТСЯ СЕССИЕЙ, А НЕ ЗАГОЛОВКОМ.
+//
+// Здесь стоял заголовок `x-role` — способ времён, когда роль брали из заголовка. Сейчас
+// роль читается ИЗ СЕССИИ, и заголовок перестал на что-либо влиять: тест просил кладовщика,
+// а получал администратора (помощник подставляет сессию по умолчанию) — и проверка закрытых
+// колонок падала.
+//
+// Это и правильно: право определяется сессией, а не тем, что написал клиент. Заголовок,
+// который клиент может поставить сам, был бы не проверкой прав, а её видимостью.
+// Заголовок роли больше не нужен: роль несёт СЕССИЯ. Функция оставлена, потому что через
+// неё задаётся `accept`, — но роль в неё не передаётся, чтобы не создавать видимость, будто
+// она на что-то влияет.
+const as = () => ({ accept: 'application/json' });
 
 const get = async (url: string, role: Role) => {
-  const r = await app.request(url, { headers: as(role) });
+  const r = await request(url, { headers: as() }, role);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const patch = async (url: string, body: unknown, role: Role) => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     method: 'PATCH',
-    headers: { 'content-type': 'application/json', ...as(role) },
+    headers: { 'content-type': 'application/json', ...as() },
     body: JSON.stringify(body),
-  });
+  }, role);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const csv = async (url: string, role: Role) => {
-  const r = await app.request(url, { headers: { 'x-role': role } });
+  const r = await request(url, {}, role);
   return { status: r.status, text: await r.text() };
 };
 

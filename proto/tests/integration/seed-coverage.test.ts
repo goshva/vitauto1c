@@ -1,3 +1,4 @@
+import { request } from '../helpers/request.ts';
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { pool } from '../../src/db.ts';
@@ -291,12 +292,11 @@ describe('3. с каждого узла можно идти дальше', () =>
     const id = r.rows[0]?.id;
     expect(id, 'в витрине нет строки happy в комплектации').toBeTruthy();
 
-    const { app } = await import('../../src/server.ts');
-    await app.request(`/lines/${id}/mark`, {
+    await request(`/lines/${id}/mark`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ marked: true }),
     });
-    const moved = await app.request('/lines/transition', {
+    const moved = await request('/lines/transition', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to: 'ready_to_ship' }),
     });

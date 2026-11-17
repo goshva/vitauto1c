@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { buildFilter, LineFilters } from '../../src/lines-filters.ts';
@@ -14,11 +14,11 @@ import { buildFilter, LineFilters } from '../../src/lines-filters.ts';
 const NOM = '77777777-7777-7777-7777-777777777702';
 
 const json = async (url: string, role = 'admin') => {
-  const r = await app.request(url, { headers: { accept: 'application/json', 'x-role': role } });
+  const r = await request(url, { headers: { accept: 'application/json', 'x-role': role } });
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const html = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'text/html' } });
+  const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };
 };
 

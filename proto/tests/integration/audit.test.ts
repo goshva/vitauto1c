@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedProcess, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 import { encodeSession } from '../../src/session.ts';
@@ -22,7 +22,7 @@ const asStore = `arm_session=${encodeSession({ userId: store, role: 'storekeeper
 const asMechanic = `arm_session=${encodeSession({ userId: mechanic, role: 'mechanic' })}`;
 
 const json = async (url: string, init: RequestInit = {}, cookie = '') => {
-  const r = await app.request(url, {
+  const r = await request(url, {
     ...init,
     headers: { accept: 'application/json', ...(cookie ? { cookie } : {}), ...(init.headers ?? {}) },
   });
@@ -41,7 +41,7 @@ const post = (url: string, body: unknown, cookie = '') =>
     body: JSON.stringify(body),
   }, cookie);
 const html = async (url: string, cookie = '') => {
-  const r = await app.request(url, { headers: { accept: 'text/html', cookie } });
+  const r = await request(url, { headers: { accept: 'text/html', cookie } });
   return { status: r.status, body: await r.text() };
 };
 
@@ -276,14 +276,14 @@ describe('аудит · чтение закрыто по праву', () => {
     await patch(id, 'sale_price', '1800', asManager);
     await patch(id, 'comment', 'ждём', asManager);
 
-    const r = await app.request('/audit?field=sale_price', {
+    const r = await request('/audit?field=sale_price', {
       headers: { accept: 'application/json', 'x-role': 'admin' },
     });
     const body = (await r.json()) as { items: { field: string }[] };
     expect(body.items.length, 'отбор по полю не сработал').toBe(1);
     expect(body.items[0]!.field).toBe('sale_price');
 
-    const other = await app.request('/audit?field=coefficient', {
+    const other = await request('/audit?field=coefficient', {
       headers: { accept: 'application/json', 'x-role': 'admin' },
     });
     expect(((await other.json()) as { items: unknown[] }).items.length,

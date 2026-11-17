@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedExtra, seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -15,7 +15,7 @@ const CAR_NEVER = 'cccccccc-cccc-cccc-cccc-cccccccccc04';       // ТО не д�
 const DEPT_TC = 'dddddddd-dddd-dddd-dddd-dddddddddd01';
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const get = (url: string) => json(url, { headers: { accept: 'application/json' } });

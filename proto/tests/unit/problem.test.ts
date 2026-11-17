@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 
 // Гейт §7 задания: «`Problem` — один тип ошибки на всё; `grep 'type Problem'` = 1».
 //
@@ -27,7 +27,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 const json = async (url: string, init?: RequestInit) => {
-  const r = await app.request(url, init);
+  const r = await request(url, init);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 
@@ -85,7 +85,7 @@ describe('ошибка валидации приходит как Problem', () =
   });
 
   test('в любой ошибке есть traceId — он же X-Request-ID', async () => {
-    const r = await app.request('/lines/00000000-0000-0000-0000-0000000000ff', {
+    const r = await request('/lines/00000000-0000-0000-0000-0000000000ff', {
       headers: { 'x-request-id': 'trace-check-1' },
     });
     const body = (await r.json()) as Record<string, unknown>;

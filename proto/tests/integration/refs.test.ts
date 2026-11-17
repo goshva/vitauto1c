@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { app } from '../../src/server.ts';
+import { request } from '../helpers/request.ts';
 import { seedRefs } from '../../db/seed.ts';
 import { pool } from '../../src/db.ts';
 
@@ -10,7 +10,7 @@ import { pool } from '../../src/db.ts';
 // записи не видны и что `%` в запросе — это символ, а не шаблон LIKE.
 
 const json = async (url: string) => {
-  const r = await app.request(url, { headers: { accept: 'application/json' } });
+  const r = await request(url, { headers: { accept: 'application/json' } });
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 
