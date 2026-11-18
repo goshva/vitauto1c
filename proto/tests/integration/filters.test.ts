@@ -14,7 +14,7 @@ import { buildFilter, LineFilters } from '../../src/lines-filters.ts';
 const NOM = '77777777-7777-7777-7777-777777777702';
 
 const json = async (url: string, role = 'admin') => {
-  const r = await request(url, { headers: { accept: 'application/json', 'x-role': role } });
+  const r = await request(url, { headers: { accept: 'application/json' } }, role);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const html = async (url: string) => {

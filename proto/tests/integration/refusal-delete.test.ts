@@ -21,23 +21,24 @@ const CELL = '88888888-8888-8888-8888-888888888802';
 const CUSTOMER = '66666666-6666-6666-6666-666666666601';
 
 type Role = 'admin' | 'municipality' | 'manager' | 'mechanic' | 'storekeeper';
-const as = (role: Role) => ({ 'x-role': role });
-
-const req = async (url: string, init?: RequestInit) => {
-  const r = await request(url, init);
+// РОЛЬ ПЕРЕДАЁТСЯ ТРЕТЬИМ АРГУМЕНТОМ ПОМОЩНИКА, а не заголовком.
+//
+// Обёртки сохранили свои подписи с ролью — так вызовы в тестах не пришлось менять вовсе:
+// меняется только то, КУДА роль попадает.
+const req = async (url: string, init?: RequestInit, role = 'admin') => {
+  const r = await request(url, init, role);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
-const withRole = (role?: Role) => (role ? as(role) : {});
 const get = (url: string, role?: Role) =>
-  req(url, { headers: { accept: 'application/json', ...withRole(role) } });
+  req(url, { headers: { accept: 'application/json' } }, role ?? 'admin');
 const post = (url: string, body?: unknown, role?: Role) =>
   req(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...withRole(role) },
+    headers: { 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  }, role ?? 'admin');
 const del = (url: string, role?: Role) =>
-  req(url, { method: 'DELETE', headers: withRole(role) });
+  req(url, { method: 'DELETE' }, role ?? 'admin');
 const html = async (url: string) => {
   const r = await request(url, { headers: { accept: 'text/html' } });
   return { status: r.status, body: await r.text() };

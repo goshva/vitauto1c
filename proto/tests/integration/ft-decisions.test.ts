@@ -174,9 +174,10 @@ describe('ФТ п. 13 · признак из колонки AD хранится 
 
 describe('ФТ п. 5 · себестоимость закрыта кладовщику', () => {
   test('кладовщик не получает себестоимость в списке', async () => {
-    const r = await request('/lines?limit=3', {
-      headers: { accept: 'application/json', 'x-role': 'storekeeper' },
-    });
+    // РОЛЬ ПЕРЕДАЁТСЯ СЕССИЕЙ, а не заголовком: заголовок, который клиент ставит сам,
+    // права не определяет — это была бы не проверка прав, а её видимость.
+    const r = await request('/lines?limit=3',
+      { headers: { accept: 'application/json' } }, 'storekeeper');
     const body = (await r.json()) as { items: Record<string, unknown>[] };
     expect(body.items[0]).not.toHaveProperty('costPrice');
   });

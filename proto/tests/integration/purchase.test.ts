@@ -12,27 +12,26 @@ import { checkAccess } from '../../src/domain/access.ts';
 // администратора; право вшито в роль менеджера и администратора.
 
 type Role = 'admin' | 'manager' | 'storekeeper' | 'mechanic';
-const as = (role: Role) => ({
-  accept: 'text/html', 'x-role': role,
-});
+// Роль несёт СЕССИЯ, а не заголовок: помощник ставит её третьим аргументом.
+const as = () => ({ accept: 'text/html' });
 
 const NOM = '77777777-7777-7777-7777-777777777702';
 const NOM_ANALOG = '77777777-7777-7777-7777-777777777709';
 
 const json = async (url: string, role: Role = 'admin') => {
-  const r = await request(url, { headers: { accept: 'application/json', 'x-role': role } });
+  const r = await request(url, { headers: { accept: 'application/json' } }, role);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const html = async (url: string, role: Role = 'admin') => {
-  const r = await request(url, { headers: as(role) });
+  const r = await request(url, { headers: as() }, role);
   return { status: r.status, body: await r.text() };
 };
 const uiPost = (url: string, body: Record<string, string>, role: Role = 'admin') =>
   request(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-role': role },
+    headers: { 'content-type': 'application/x-www-form-urlencoded'},
     body: new URLSearchParams(body).toString(),
-  });
+  }, role);
 
 /** Строка снабжения с номенклатурой, отмеченная для закупки. */
 async function markedSupplyLine(): Promise<string> {

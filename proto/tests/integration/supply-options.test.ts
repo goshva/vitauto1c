@@ -20,8 +20,8 @@ const OFFER_OTHER = 'aa000000-0000-0000-0000-000000000004'; // другое но
 const json = async (url: string, init: RequestInit = {}, role = 'admin') => {
   const r = await request(url, {
     ...init,
-    headers: { accept: 'application/json', 'x-role': role, ...(init.headers ?? {}) },
-  });
+    headers: { accept: 'application/json', ...(init.headers ?? {}) },
+  }, role);
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 const post = (url: string, body: unknown, role = 'admin') =>
@@ -31,7 +31,7 @@ const post = (url: string, body: unknown, role = 'admin') =>
     body: JSON.stringify(body),
   }, role);
 const html = async (url: string, role = 'admin') => {
-  const r = await request(url, { headers: { accept: 'text/html', 'x-role': role } });
+  const r = await request(url, { headers: { accept: 'text/html'} }, role);
   return { status: r.status, body: await r.text() };
 };
 

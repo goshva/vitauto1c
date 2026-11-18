@@ -241,7 +241,7 @@ describe('аудит · чтение закрыто по праву', () => {
     const denied = await json(`/lines/${id}/history`, {}, asManager);
     expect(denied.status, 'менеджер прочитал журнал с себестоимостью').toBe(403);
 
-    const admin = await json(`/lines/${id}/history`, { headers: { 'x-role': 'admin' } });
+    const admin = await json(`/lines/${id}/history`, { headers: {} });
     expect(admin.status).toBe(200);
     expect((admin.body.items as unknown[]).length).toBeGreaterThan(0);
   });
@@ -277,14 +277,14 @@ describe('аудит · чтение закрыто по праву', () => {
     await patch(id, 'comment', 'ждём', asManager);
 
     const r = await request('/audit?field=sale_price', {
-      headers: { accept: 'application/json', 'x-role': 'admin' },
+      headers: { accept: 'application/json'},
     });
     const body = (await r.json()) as { items: { field: string }[] };
     expect(body.items.length, 'отбор по полю не сработал').toBe(1);
     expect(body.items[0]!.field).toBe('sale_price');
 
     const other = await request('/audit?field=coefficient', {
-      headers: { accept: 'application/json', 'x-role': 'admin' },
+      headers: { accept: 'application/json'},
     });
     expect(((await other.json()) as { items: unknown[] }).items.length,
       'отбор не сузил выдачу').toBe(0);
