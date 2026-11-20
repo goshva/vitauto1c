@@ -1,8 +1,8 @@
 -- ВИТРИНА: по строке на каждый этап каждого процесса + необходимые документы.
 --
 -- Сгенерировано scripts/gen-showcase-seed.ts из db/process-map.json.
--- Строк: 61 (уникальные пары «процесс × состояние» из 11 процессов,
--- 121 шагов).
+-- Строк: 66 (уникальные пары «процесс × состояние» из 12 процессов,
+-- 131 шагов).
 --
 -- Запуск ОТДЕЛЬНО: bun run db:seed --showcase
 -- В --all не входит намеренно: 63 строки и десятки документов сделали бы
@@ -1182,4 +1182,102 @@ insert into receipt (id, number, date, operation, counterparty_id, warehouse_id,
 values ('f1000000-0000-0000-0000-00000A080000', 'ВИТ-CAR_REPA-09', current_date, 'purchase', '66666666-6666-6666-6666-666666666604', '44444444-4444-4444-4444-444444444401', true);
 insert into shipment (id, number, date, status, operation, counterparty_id, customer_order_id, warehouse_id, zone_id, car_id)
 values ('f2000000-0000-0000-0000-00000A080000', 'ВИТ-CAR_REPA-09', current_date, 'closed', 'sale', '66666666-6666-6666-6666-666666666601', 'e0000000-0000-0000-0000-00000A080000', '44444444-4444-4444-4444-444444444401', '99999999-9999-9999-9999-999999999909', 'cccccccc-cccc-cccc-cccc-cccccccccc01');
+
+-- repair_stock/new (шаги 1, 2, 3)
+insert into customer_order (id, number, date, operation, client_order_number, counterparty_id, contract_id, organization_id, ship_date, total)
+values ('e0000000-0000-0000-0000-00000B000000', 'ВИТ-REPAIR_S-01', current_date, 'sale', 'ВИТ-REPAIR_S-01', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555501', current_date + 7, 1200);
+
+insert into line (id, customer_order_id, operation, status, quantity, nomenclature_id, customer_id, contract_id,
+                  order_date, warehouse_id, cell_id, zone_id, supplier_id, batch_id, internal_order_number)
+values ('d0000000-0000-0000-0000-00000B000000', 'e0000000-0000-0000-0000-00000B000000', 'sale', 'new', 1, '77777777-7777-7777-7777-777777777701', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003',
+        current_date, '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888801', '99999999-9999-9999-9999-999999999901', '66666666-6666-6666-6666-666666666604', 'dd000000-0000-0000-0000-000000000001', 'ВИТ-REPAIR_S-01');
+
+insert into line_fact (id, client_order_number, fact_name, fact_qty, fact_article, fact_unit, vehicle_plate)
+values ('d0000000-0000-0000-0000-00000B000000', 'ВИТ-REPAIR_S-01', 'Масло моторное 5W-30 (5л)', '1', 'MOT5W30-5L', 'шт', 'А123ВС777');
+insert into line_mark (id, marked, marked_by_id) values ('d0000000-0000-0000-0000-00000B000000', false, null)
+on conflict (id) do update set marked = false;
+
+-- repair_stock/reserve (шаги 4)
+insert into customer_order (id, number, date, operation, client_order_number, counterparty_id, contract_id, organization_id, ship_date, total)
+values ('e0000000-0000-0000-0000-00000B010000', 'ВИТ-REPAIR_S-02', current_date, 'sale', 'ВИТ-REPAIR_S-02', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555501', current_date + 7, 1200);
+
+insert into line (id, customer_order_id, operation, status, quantity, nomenclature_id, customer_id, contract_id,
+                  order_date, warehouse_id, cell_id, zone_id, supplier_id, batch_id, internal_order_number)
+values ('d0000000-0000-0000-0000-00000B010000', 'e0000000-0000-0000-0000-00000B010000', 'sale', 'reserve', 1, '77777777-7777-7777-7777-777777777702', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003',
+        current_date, '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888809', '99999999-9999-9999-9999-999999999908', '66666666-6666-6666-6666-666666666604', 'dd000000-0000-0000-0000-000000000001', 'ВИТ-REPAIR_S-02');
+
+insert into line_fact (id, client_order_number, fact_name, fact_qty, fact_article, fact_unit, vehicle_plate)
+values ('d0000000-0000-0000-0000-00000B010000', 'ВИТ-REPAIR_S-02', 'Фильтр масляный', '1', 'FLT-OIL-001', 'шт', 'А123ВС777');
+insert into line_mark (id, marked, marked_by_id) values ('d0000000-0000-0000-0000-00000B010000', false, null)
+on conflict (id) do update set marked = false;
+insert into stock_move (nomenclature_id, warehouse_id, cell_id, kind, quantity, line_id, comment)
+values ('77777777-7777-7777-7777-777777777702', '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888809', 'receipt', 5, 'd0000000-0000-0000-0000-00000B010000', 'Витрина: repair_stock/reserve');
+insert into stock_move (nomenclature_id, warehouse_id, cell_id, kind, quantity, line_id, comment)
+values ('77777777-7777-7777-7777-777777777702', '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888809', 'reserve', 1, 'd0000000-0000-0000-0000-00000B010000', 'Витрина: резерв repair_stock/reserve');
+insert into supplier_order (id, number, date, status, operation, counterparty_id, customer_order_id, organization_id, receipt_date, total)
+values ('f3000000-0000-0000-0000-00000B010000', 'ВИТ-REPAIR_S-02', current_date, 'confirmed', 'purchase', '66666666-6666-6666-6666-666666666604', 'e0000000-0000-0000-0000-00000B010000', '55555555-5555-5555-5555-555555555501', current_date + 3, 900);
+insert into receipt (id, number, date, operation, counterparty_id, warehouse_id, posted)
+values ('f1000000-0000-0000-0000-00000B010000', 'ВИТ-REPAIR_S-02', current_date, 'purchase', '66666666-6666-6666-6666-666666666604', '44444444-4444-4444-4444-444444444401', true);
+
+-- repair_stock/assembly (шаги 5, 6, 8)
+insert into customer_order (id, number, date, operation, client_order_number, counterparty_id, contract_id, organization_id, ship_date, total)
+values ('e0000000-0000-0000-0000-00000B020000', 'ВИТ-REPAIR_S-03', current_date, 'sale', 'ВИТ-REPAIR_S-03', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555501', current_date + 7, 1200);
+
+insert into line (id, customer_order_id, operation, status, quantity, nomenclature_id, customer_id, contract_id,
+                  order_date, warehouse_id, cell_id, zone_id, supplier_id, batch_id, internal_order_number)
+values ('d0000000-0000-0000-0000-00000B020000', 'e0000000-0000-0000-0000-00000B020000', 'sale', 'assembly', 1, '77777777-7777-7777-7777-777777777703', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003',
+        current_date, '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888809', '99999999-9999-9999-9999-999999999908', '66666666-6666-6666-6666-666666666604', 'dd000000-0000-0000-0000-000000000001', 'ВИТ-REPAIR_S-03');
+
+insert into line_fact (id, client_order_number, fact_name, fact_qty, fact_article, fact_unit, vehicle_plate)
+values ('d0000000-0000-0000-0000-00000B020000', 'ВИТ-REPAIR_S-03', 'Колодки тормозные передние', '1', 'BRK-FR-001', 'шт', 'А123ВС777');
+insert into line_mark (id, marked, marked_by_id) values ('d0000000-0000-0000-0000-00000B020000', false, null)
+on conflict (id) do update set marked = false;
+insert into stock_move (nomenclature_id, warehouse_id, cell_id, kind, quantity, line_id, comment)
+values ('77777777-7777-7777-7777-777777777703', '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888809', 'receipt', 5, 'd0000000-0000-0000-0000-00000B020000', 'Витрина: repair_stock/assembly');
+insert into stock_move (nomenclature_id, warehouse_id, cell_id, kind, quantity, line_id, comment)
+values ('77777777-7777-7777-7777-777777777703', '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888809', 'reserve', 1, 'd0000000-0000-0000-0000-00000B020000', 'Витрина: резерв repair_stock/assembly');
+insert into supplier_order (id, number, date, status, operation, counterparty_id, customer_order_id, organization_id, receipt_date, total)
+values ('f3000000-0000-0000-0000-00000B020000', 'ВИТ-REPAIR_S-03', current_date, 'confirmed', 'purchase', '66666666-6666-6666-6666-666666666604', 'e0000000-0000-0000-0000-00000B020000', '55555555-5555-5555-5555-555555555501', current_date + 3, 900);
+insert into receipt (id, number, date, operation, counterparty_id, warehouse_id, posted)
+values ('f1000000-0000-0000-0000-00000B020000', 'ВИТ-REPAIR_S-03', current_date, 'purchase', '66666666-6666-6666-6666-666666666604', '44444444-4444-4444-4444-444444444401', true);
+
+-- repair_stock/ready_to_ship (шаги 7)
+insert into customer_order (id, number, date, operation, client_order_number, counterparty_id, contract_id, organization_id, ship_date, total)
+values ('e0000000-0000-0000-0000-00000B030000', 'ВИТ-REPAIR_S-04', current_date, 'sale', 'ВИТ-REPAIR_S-04', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555501', current_date + 7, 1200);
+
+insert into line (id, customer_order_id, operation, status, quantity, nomenclature_id, customer_id, contract_id,
+                  order_date, warehouse_id, cell_id, zone_id, supplier_id, batch_id, internal_order_number)
+values ('d0000000-0000-0000-0000-00000B030000', 'e0000000-0000-0000-0000-00000B030000', 'sale', 'ready_to_ship', 1, '77777777-7777-7777-7777-777777777707', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003',
+        current_date, '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999907', '66666666-6666-6666-6666-666666666604', 'dd000000-0000-0000-0000-000000000001', 'ВИТ-REPAIR_S-04');
+
+insert into line_fact (id, client_order_number, fact_name, fact_qty, fact_article, fact_unit, vehicle_plate)
+values ('d0000000-0000-0000-0000-00000B030000', 'ВИТ-REPAIR_S-04', 'Фильтр салонный', '1', 'FLT-CAB-001', 'шт', 'А123ВС777');
+insert into line_mark (id, marked, marked_by_id) values ('d0000000-0000-0000-0000-00000B030000', false, null)
+on conflict (id) do update set marked = false;
+insert into stock_move (nomenclature_id, warehouse_id, cell_id, kind, quantity, line_id, comment)
+values ('77777777-7777-7777-7777-777777777707', '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888808', 'receipt', 5, 'd0000000-0000-0000-0000-00000B030000', 'Витрина: repair_stock/ready_to_ship');
+insert into supplier_order (id, number, date, status, operation, counterparty_id, customer_order_id, organization_id, receipt_date, total)
+values ('f3000000-0000-0000-0000-00000B030000', 'ВИТ-REPAIR_S-04', current_date, 'confirmed', 'purchase', '66666666-6666-6666-6666-666666666604', 'e0000000-0000-0000-0000-00000B030000', '55555555-5555-5555-5555-555555555501', current_date + 3, 900);
+insert into receipt (id, number, date, operation, counterparty_id, warehouse_id, posted)
+values ('f1000000-0000-0000-0000-00000B030000', 'ВИТ-REPAIR_S-04', current_date, 'purchase', '66666666-6666-6666-6666-666666666604', '44444444-4444-4444-4444-444444444401', true);
+
+-- repair_stock/closed (шаги 10)
+insert into customer_order (id, number, date, operation, client_order_number, counterparty_id, contract_id, organization_id, ship_date, total)
+values ('e0000000-0000-0000-0000-00000B040000', 'ВИТ-REPAIR_S-05', current_date, 'sale', 'ВИТ-REPAIR_S-05', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555501', current_date + 7, 1200);
+
+insert into line (id, customer_order_id, operation, status, quantity, nomenclature_id, customer_id, contract_id,
+                  order_date, warehouse_id, cell_id, zone_id, supplier_id, batch_id, internal_order_number)
+values ('d0000000-0000-0000-0000-00000B040000', 'e0000000-0000-0000-0000-00000B040000', 'sale', 'closed', 1, '77777777-7777-7777-7777-777777777708', '66666666-6666-6666-6666-666666666601', 'ee000000-0000-0000-0000-000000000003',
+        current_date, '44444444-4444-4444-4444-444444444401', '88888888-8888-8888-8888-888888888810', '99999999-9999-9999-9999-999999999909', '66666666-6666-6666-6666-666666666604', 'dd000000-0000-0000-0000-000000000001', 'ВИТ-REPAIR_S-05');
+
+insert into line_fact (id, client_order_number, fact_name, fact_qty, fact_article, fact_unit, vehicle_plate)
+values ('d0000000-0000-0000-0000-00000B040000', 'ВИТ-REPAIR_S-05', 'Замена масла (работа)', '1', 'SRV-OIL-001', 'шт', 'А123ВС777');
+insert into line_mark (id, marked, marked_by_id) values ('d0000000-0000-0000-0000-00000B040000', false, null)
+on conflict (id) do update set marked = false;
+insert into supplier_order (id, number, date, status, operation, counterparty_id, customer_order_id, organization_id, receipt_date, total)
+values ('f3000000-0000-0000-0000-00000B040000', 'ВИТ-REPAIR_S-05', current_date, 'confirmed', 'purchase', '66666666-6666-6666-6666-666666666604', 'e0000000-0000-0000-0000-00000B040000', '55555555-5555-5555-5555-555555555501', current_date + 3, 900);
+insert into receipt (id, number, date, operation, counterparty_id, warehouse_id, posted)
+values ('f1000000-0000-0000-0000-00000B040000', 'ВИТ-REPAIR_S-05', current_date, 'purchase', '66666666-6666-6666-6666-666666666604', '44444444-4444-4444-4444-444444444401', true);
+insert into shipment (id, number, date, status, operation, counterparty_id, customer_order_id, warehouse_id, zone_id, car_id)
+values ('f2000000-0000-0000-0000-00000B040000', 'ВИТ-REPAIR_S-05', current_date, 'closed', 'sale', '66666666-6666-6666-6666-666666666601', 'e0000000-0000-0000-0000-00000B040000', '44444444-4444-4444-4444-444444444401', '99999999-9999-9999-9999-999999999909', 'cccccccc-cccc-cccc-cccc-cccccccccc01');
 

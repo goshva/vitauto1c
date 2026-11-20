@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
-// e2e: КАЖДЫЙ из 11 процессов проводится от сида до конечного состояния
+// e2e: КАЖДЫЙ из 12 процессов проводится от сида до конечного состояния
 // через реальный HTTP-стек.
 //
 // Отличие от интеграционных тестов: там вызывается `app.request()` в том же
@@ -163,9 +163,20 @@ const SCENARIOS: Scenario[] = [
       { call: (r, l) => act(r, l, '/lines/transition', { to: 'closed' }), to: 'closed' },
     ],
   },
+  {
+    // Ремонт со склада: запчасть есть, закупка не нужна — путь короче на весь блок
+    // поставщика (решение заказчика 20.11.2026).
+    id: 'repair_stock', title: 'Ремонт со склада (без закупки)', line: 'b0000000-0000-0000-0000-00000000000c', from: 'new',
+    steps: [
+      { call: (r, l) => act(r, l, '/lines/transition', { to: 'reserve' }), to: 'reserve' },
+      { call: (r, l) => act(r, l, '/lines/transition', { to: 'assembly' }), to: 'assembly' },
+      { call: (r, l) => act(r, l, '/lines/transition', { to: 'ready_to_ship' }), to: 'ready_to_ship' },
+      { call: (r, l) => act(r, l, '/lines/transition', { to: 'closed' }), to: 'closed' },
+    ],
+  },
 ];
 
-test.describe('все 11 процессов проходятся через HTTP', () => {
+test.describe('все 12 процессов проходятся через HTTP', () => {
   for (const s of SCENARIOS) {
     test(`${s.id}: ${s.title}`, async ({ request }) => {
       const seeded = await request.post('/__test__/seed', { data: { process: s.id, reset: true } });

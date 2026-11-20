@@ -23,6 +23,7 @@ import { workOrdersFlow } from './work-orders-flow.ts';
 import { workOrdersStatus } from './work-orders-status.ts';
 import { workOrdersParts } from './work-orders-parts.ts';
 import { workOrdersCancel } from './work-orders-cancel.ts';
+import { workOrdersHistory } from './work-orders-history.ts';
 import { receipts } from './receipts.ts';
 import { receiptsFlow } from './receipts-flow.ts';
 import { stock } from './stock.ts';
@@ -60,6 +61,7 @@ import { matchingRoutes } from './matching-routes.ts';
 import { reports } from './reports.ts';
 import { reportsUi } from './reports-ui.ts';
 import { lineSteps } from './lines-steps.ts';
+import { lineProcess } from './lines-process.ts';
 import { linesUiWarehouse } from './lines-ui-warehouse.ts';
 import type { AppEnv } from './env.ts';
 
@@ -113,6 +115,8 @@ export function registerRoutes(app: OpenAPIHono<AppEnv>): void {
   app.route('/', workOrdersStatus);
   app.route('/', workOrdersParts);
   app.route('/', workOrdersCancel);
+  // История наряда — рядом с нарядом: она читается карточкой, а не общим журналом.
+  app.route('/', workOrdersHistory);
   app.route('/', receipts);
   app.route('/', receiptsFlow);
   app.route('/', stock);
@@ -160,4 +164,6 @@ export function registerRoutes(app: OpenAPIHono<AppEnv>): void {
   app.route('/', reports);
   app.route('/', reportsUi);
   app.route('/', lineSteps);
+  // Назначение процесса — рядом с шагами: без процесса строка по шагам не двигается.
+  app.route('/', lineProcess);
 }

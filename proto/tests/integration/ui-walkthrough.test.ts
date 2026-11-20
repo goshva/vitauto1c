@@ -117,7 +117,7 @@ describe('цепочка проходится ЦЕЛИКОМ через инте
 });
 
 describe('каждый процесс двигается через интерфейс', () => {
-  test('у всех 11 процессов первый узел берётся кнопкой', async () => {
+  test('у всех 12 процессов первый узел берётся кнопкой', async () => {
     const stuck: string[] = [];
     for (const p of PROCESSES) {
       const id = await seedFirstLine(p.id);

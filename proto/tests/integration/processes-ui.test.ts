@@ -21,7 +21,7 @@ beforeEach(async () => {
 });
 
 describe('GET /processes — общая схема', () => {
-  test('страница открывается и показывает все 11 процессов', async () => {
+  test('страница открывается и показывает все 12 процессов', async () => {
     const { status, body } = await html('/processes');
     expect(status).toBe(200);
     expect(body).toContain('data-testid="page-processes"');
@@ -36,8 +36,10 @@ describe('GET /processes — общая схема', () => {
     const { body } = await html('/processes');
     expect(body).toContain('Основной: закупка → отгрузка');
     expect(body).toContain('Возврат от клиента');
-    // 121 шаг — из модели.
-    expect(body).toContain('121');
+    // 131 шаг — из модели: 120 было до возврата шага M3 в сценарий ремонта
+    // («зарезервировали, не хватило — заказали») и добавления сценария
+    // «ремонт со склада» (docs/fix-plan.md §3.1).
+    expect(body).toContain('131');
   });
 
   test('показана общая статистика по состояниям', async () => {
@@ -89,7 +91,7 @@ describe('переключение на процесс', () => {
     expect(body).toContain('happy');
   });
 
-  test('все 11 процессов открываются карточкой', async () => {
+  test('все 12 процессов открываются карточкой', async () => {
     const ids = ['happy', 'stock', 'mixed_order', 'delivery_split', 'virtual_buy',
       'defect', 'cancel_supplier', 'return', 'return_mgr', 'return_internal', 'car_repair_in'];
     for (const id of ids) {

@@ -210,3 +210,181 @@ describe('отмена наряда', () => {
     expect(String(body.message)).toContain('Закрытый заказ-наряд');
   });
 });
+
+// ЖУРНАЛ РЕМОНТА. Находка прогона месяца: 200 узлов механика и НОЛЬ записей в
+// журнале — работа, запчасть и переход наряда не журналировались вовсе. Здесь
+// проверяется, что каждое из трёх действий оставляет след и что отказ следа не оставляет.
+
+const MECHANIC = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee04';
+const OIL = '77777777-7777-7777-7777-777777777701';
+
+/** Записи журнала по наряду: свежие первыми. */
+async function journalOf(id: string): Promise<{
+  action: string; field: string | null; role: string | null;
+  old_value: string | null; new_value: string | null;
+  details: Record<string, unknown>;
+}[]> {
+  const r = await pool.query<{
+    action: string; field: string | null; role: string | null;
+    old_value: string | null; new_value: string | null; details: Record<string, unknown>;
+  }>(
+    `select action, field, role, old_value, new_value, details
+       from audit_log where entity = 'work_order' and entity_id = $1
+      order by at desc, id desc`,
+    [id],
+  );
+  return r.rows;
+}
+
+describe('журнал ремонта: работа, запчасть, переход', () => {
+  test('добавление работы записывается на механика с исполнителем', async () => {
+    const id = await openOrder();
+    const { status } = await request(
+      `/work-orders/${id}/labor`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Замена масла', normHours: '1.5', salePrice: '1500', executorId: MECHANIC,
+        }),
+      },
+      'mechanic',
+    );
+    expect(status).toBe(201);
+
+    const rows = await journalOf(id);
+    const labor = rows.find((r) => r.field === 'labor');
+    expect(labor, 'работа не попала в журнал').toBeTruthy();
+    expect(labor!.action).toBe('update');
+    expect(labor!.role, 'работа записана не на механика').toBe('mechanic');
+    expect(labor!.new_value).toBe('Замена масла');
+    expect(labor!.details.normHours).toBe('1.5');
+    expect(labor!.details.executorId, 'исполнитель не сохранён в журнале').toBe(MECHANIC);
+  });
+
+  test('добавление запчасти записывается с количеством и ценами', async () => {
+    const id = await openOrder();
+    const { status } = await post(`/work-orders/${id}/part`, {
+      nomenclatureId: OIL, quantity: '2', salePrice: '1800', costPrice: '1200',
+    });
+    expect(status).toBe(201);
+
+    const part = (await journalOf(id)).find((r) => r.field === 'part');
+    expect(part, 'запчасть не попала в журнал').toBeTruthy();
+    expect(part!.details.quantity).toBe('2');
+    expect(part!.details.costPrice).toBe('1200');
+    expect(String(part!.details.lineId)).toHaveLength(36);
+  });
+
+  test('переход наряда записывается со старым и новым состоянием', async () => {
+    const id = await openOrder();
+    await request(
+      `/work-orders/${id}/transition`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ to: 'in_work' }),
+      },
+      'mechanic',
+    );
+
+    const move = (await journalOf(id)).find((r) => r.action === 'transition');
+    expect(move, 'переход не попал в журнал').toBeTruthy();
+    expect(move!.old_value).toBe('new');
+    expect(move!.new_value).toBe('in_work');
+    expect(move!.role).toBe('mechanic');
+  });
+
+  test('отказ не оставляет записи: работа в закрытый наряд', async () => {
+    const id = await openOrder();
+    await post(`/work-orders/${id}/transition`, { to: 'closed' });
+
+    const before = (await journalOf(id)).length;
+    const { status } = await post(`/work-orders/${id}/labor`, { name: 'Поздняя', normHours: '1' });
+    expect(status).toBe(409);
+    expect((await journalOf(id)).length, 'отказ попал в журнал').toBe(before);
+  });
+
+  test('история наряда читается отбором журнала по записи', async () => {
+    const id = await openOrder();
+    await post(`/work-orders/${id}/labor`, { name: 'Работа', normHours: '1' });
+
+    // Тот же отбор, что у экрана журнала: entity + entityId (src/audit-api.ts:99-100).
+    const { status, body } = await get(`/audit?entity=work_order&entityId=${id}`);
+    expect(status).toBe(200);
+    expect(Number(body.total)).toBeGreaterThan(0);
+  });
+});
+
+// ИСТОРИЯ НАРЯДА ОТДЕЛЬНЫМ АДРЕСОМ. Решение заказчика (20.11.2026): её видит
+// администратор и механик, НО БЕЗ СЕБЕСТОИМОСТИ. Общий журнал `/audit` для этого не
+// годится: он только у администратора и показывает закупочные цены.
+describe('GET /work-orders/{id}/history — история без себестоимости', () => {
+  /** Наряд с работой и запчастью: у запчасти в журнале есть себестоимость. */
+  async function orderWithWorkAndPart(): Promise<string> {
+    const id = await openOrder();
+    await post(`/work-orders/${id}/labor`, {
+      name: 'Замена масла', normHours: '1.5', salePrice: '1500', executorId: MECHANIC,
+    });
+    await post(`/work-orders/${id}/part`, {
+      nomenclatureId: OIL, quantity: '2', salePrice: '1800', costPrice: '1200',
+    });
+    return id;
+  }
+
+  const history = async (id: string, role: string) => {
+    const r = await request(
+      `/work-orders/${id}/history`,
+      { headers: { accept: 'application/json' } },
+      role,
+    );
+    return { status: r.status, body: (await r.json()) as Record<string, unknown> };
+  };
+
+  test('механик видит историю: работа, запчасть, исполнитель', async () => {
+    const id = await orderWithWorkAndPart();
+    const { status, body } = await history(id, 'mechanic');
+    expect(status, JSON.stringify(body)).toBe(200);
+
+    const items = body.items as { field: string | null; details: Record<string, unknown> }[];
+    const labor = items.find((x) => x.field === 'labor');
+    expect(labor, 'работы в истории нет').toBeTruthy();
+    expect(labor!.details.normHours).toBe('1.5');
+    expect(labor!.details.executorId).toBe(MECHANIC);
+
+    const part = items.find((x) => x.field === 'part');
+    expect(part, 'запчасти в истории нет').toBeTruthy();
+    expect(part!.details.quantity).toBe('2');
+  });
+
+  test('СЕБЕСТОИМОСТЬ В ОТВЕТЕ ОТСУТСТВУЕТ', async () => {
+    const id = await orderWithWorkAndPart();
+    const r = await request(`/work-orders/${id}/history`, {
+      headers: { accept: 'application/json' },
+    }, 'mechanic');
+    const text = await r.text();
+
+    // 1200 — закупочная цена запчасти из журнала. Её в ответе быть не должно.
+    expect(text, 'себестоимость утекла в историю').not.toContain('costPrice');
+    expect(text, 'закупочная цена утекла в историю').not.toContain('1200');
+    // А цена продажи и часы — остаются: это рабочие данные механика.
+    expect(text).toContain('1800');
+  });
+
+  test('администратор видит историю', async () => {
+    const id = await orderWithWorkAndPart();
+    expect((await history(id, 'admin')).status).toBe(200);
+  });
+
+  test('менеджеру и кладовщику история наряда закрыта', async () => {
+    const id = await orderWithWorkAndPart();
+    expect((await history(id, 'manager')).status).toBe(403);
+    expect((await history(id, 'storekeeper')).status).toBe(403);
+  });
+
+  test('история несуществующего наряда → 404', async () => {
+    const { status, body } = await history('00000000-0000-0000-0000-0000000000ff', 'admin');
+    expect(status).toBe(404);
+    expect(body.code).toBe('not_found');
+  });
+});

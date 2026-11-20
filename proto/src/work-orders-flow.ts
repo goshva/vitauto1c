@@ -5,6 +5,7 @@ import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { canExecuteWork } from './domain/roles.ts';
+import { record } from './audit.ts';
 
 // Движение заказ-наряда: добавление работы (G3). Перевод состояния — в
 // `work-orders-status.ts`, отмена — в `work-orders-cancel.ts`.
@@ -114,8 +115,9 @@ workOrdersFlow.openapi(createRoute({
     const line = await client.query<{ id: string }>(
       `insert into line (work_order_id, operation, status, quantity, nomenclature_id,
                          service_type_id, norm_hours, sale_price, executor_id,
-                         order_date, comment)
-       values ($1, 'sale', 'new', 1, $2, $3, $4, $5, $6, current_date, $7)
+                         order_date, comment, process_id, process_step)
+       values ($1, 'sale', 'new', 1, $2, $3, $4, $5, $6, current_date, $7,
+               'car_repair_in', 1)
        returning id`,
       [id, body.nomenclatureId ?? null, body.serviceTypeId ?? null,
         body.normHours, body.salePrice ?? null, body.executorId ?? null, body.name],
@@ -147,6 +149,17 @@ workOrdersFlow.openapi(createRoute({
     await client.query(`update work_order set total = $2 where id = $1`, [id, total.rows[0]!.t]);
 
     await client.query('commit');
+
+    // Журнал: «кто выполнил работу» — первый вопрос по сдельной выработке. До этой
+    // записи работы не попадали в журнал вовсе (0 записей при 200 узлах за месяц).
+    await record(c, {
+      entity: 'work_order', entityId: id, action: 'update', field: 'labor',
+      newValue: body.name,
+      details: {
+        lineId, normHours: body.normHours, salePrice: body.salePrice ?? null,
+        executorId: body.executorId ?? null,
+      },
+    });
     return c.json({ lineId, total: total.rows[0]!.t }, 201);
   } catch (e) {
     await client.query('rollback');

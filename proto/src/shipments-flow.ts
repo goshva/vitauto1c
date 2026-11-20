@@ -8,7 +8,7 @@ import { SHIPMENT_STATES, checkShipmentTransition } from './domain/shipment-stat
 import { checkDocAuthor } from './doc-author.ts';
 import { record } from './audit.ts';
 
-// Движение отгрузки: отгрузить (M12, N4) и закрыть (M15). Плюс отмена.
+// Движение отгрузки: отгрузить (K5, N4) и закрыть (M15). Плюс отмена.
 // Вынесено из `shipments.ts` (лимит 200 строк на файл).
 //
 // Строки переходят ВМЕСТЕ с документом: иначе товар «застревает» в статусе отгрузки
@@ -88,7 +88,7 @@ function addTransition(path: string, to: 'shipped' | 'closed', title: string): v
   });
 }
 
-addTransition('/shipments/{id}/ship', 'shipped', 'Отгрузить: товар покинул склад (M12)');
+addTransition('/shipments/{id}/ship', 'shipped', 'Отгрузить: товар покинул склад (K5)');
 addTransition('/shipments/{id}/close', 'closed', 'Закрыть: документы проверены (M15)');
 
 // --- DELETE /shipments/{id} — отмена отгрузки ----------------------------------------

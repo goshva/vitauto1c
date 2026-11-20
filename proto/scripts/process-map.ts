@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// Карта процессов: 11 сценариев и 45 узлов модели → `db/process-map.json`.
+// Карта процессов: 12 сценариев и 45 узлов модели → `db/process-map.json`.
 //
 // Тот же приём, что у `scripts/map.ts` (карта 82 столбцов): документ модели
 // превращается в машинный артефакт, и приложение читает АРТЕФАКТ, а не markdown
@@ -42,8 +42,8 @@ const scenarios = (model.scenarios ?? []).map((s) => ({
   }),
 }));
 
-if (scenarios.length !== 11) {
-  throw new Error(`сценариев ${scenarios.length}, ожидалось 11 — модель изменилась`);
+if (scenarios.length !== 12) {
+  throw new Error(`сценариев ${scenarios.length}, ожидалось 12 — модель изменилась`);
 }
 if (nodes.length !== 45) {
   throw new Error(`узлов ${nodes.length}, ожидалось 45 — модель изменилась`);

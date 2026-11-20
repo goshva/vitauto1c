@@ -255,3 +255,125 @@ describe('отчётность · зависшие строки', () => {
       'строка не попала при меньшем сроке').toBeTruthy();
   });
 });
+
+// РЕМОНТ В ОТЧЁТЕ О ПРИБЫЛИ. Находка прогона месяца: наряд не отгружается, а отчёт
+// требовал дату отгрузки — и две трети оборота проходили мимо (670 214,50 ₽
+// из 1 003 087,80 ₽). Датой признания ремонта стало `work_order.closed_at`.
+describe('отчётность · ремонт', () => {
+  const WO = 'aa100000-0000-0000-0000-000000000001';
+  const LABOR = 'aa200000-0000-0000-0000-000000000001';
+  const PART = 'aa300000-0000-0000-0000-000000000001';
+  const CAR = 'cccccccc-cccc-cccc-cccc-cccccccccc01';
+
+  /**
+   * Наряд с работой (2 ч × 1500 = 3000) и запчастью (себестоимость 400, цена 600).
+   * `closed` управляет датой признания: у закрытого наряда она есть, у открытого нет.
+   */
+  async function repairOrder(o: { closed: boolean; daysAgo?: number }): Promise<void> {
+    const days = o.daysAgo ?? 5;
+    await pool.query(`delete from line where work_order_id = $1`, [WO]);
+    await pool.query(`delete from work_order where id = $1`, [WO]);
+
+    await pool.query(
+      `insert into work_order (id, number, date, status, car_id, counterparty_id,
+         organization_id, service_type_id, closed_at)
+       values ($1, 'ЗН-ОТЧЁТ-1', current_date - $2::int, $3, $4,
+               '66666666-6666-6666-6666-666666666602',
+               '55555555-5555-5555-5555-555555555501',
+               '22222222-2222-2222-2222-222222222201',
+               case when $3 = 'closed'
+                    then now() - ($2::int || ' days')::interval else null end)`,
+      [WO, days, o.closed ? 'closed' : 'new', CAR],
+    );
+
+    // Работа: заполнены нормо-часы — по ним она и отличается от запчасти.
+    await pool.query(
+      `insert into line (id, work_order_id, operation, status, quantity, service_type_id,
+         norm_hours, sale_price, order_date, comment)
+       values ($1, $2, 'sale', 'closed', 1, '22222222-2222-2222-2222-222222222201',
+               2, 1500, current_date - $3::int, 'ОТЧЁТ-РЕМОНТ')`, [LABOR, WO, days]);
+
+    // Запчасть: нормо-часов нет, считается как продажа.
+    await pool.query(
+      `insert into line (id, work_order_id, operation, status, quantity, nomenclature_id,
+         cost_price, sale_price, order_date, comment)
+       values ($1, $2, 'sale', 'closed', 1, '77777777-7777-7777-7777-777777777702',
+               400, 600, current_date - $3::int, 'ОТЧЁТ-РЕМОНТ')`, [PART, WO, days]);
+  }
+
+  test('ЗАКРЫТЫЙ наряд входит в отчёт: работа по часам, запчасть как продажа', async () => {
+    await repairOrder({ closed: true });
+    const t = totalsOf((await report('/reports/repair', asManager)).body);
+
+    // Работа: 2 × 1500 = 3000, себестоимости нет. Запчасть: 600 − 400 = 200 прибыли.
+    expect(t.revenue, 'выручка ремонта не попала в отчёт').toBe(3600);
+    expect(t.cost, 'себестоимость запчасти наряда').toBe(400);
+    expect(t.profit, 'прибыль ремонта').toBe(3200);
+    expect(t.units, 'нормо-часы попали в штуки').toBe(1);
+  });
+
+  test('НЕЗАКРЫТЫЙ наряд в отчёт не входит', async () => {
+    await repairOrder({ closed: false });
+    const t = totalsOf((await report('/reports/repair', asManager)).body);
+    expect(t.revenue, 'незакрытый наряд попал в выручку').toBe(0);
+  });
+
+  test('период фильтрует ремонт по дате закрытия наряда', async () => {
+    await repairOrder({ closed: true, daysAgo: 10 });
+    const today = new Date().toISOString().slice(0, 10);
+
+    const inside = await report(
+      `/reports/repair?dateFrom=${today}&dateTo=${today}`, asManager);
+    expect(totalsOf(inside.body).revenue, 'старый наряд попал в сегодняшний день').toBe(0);
+
+    const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+    const outside = await report(
+      `/reports/repair?dateFrom=${tenDaysAgo}&dateTo=${tenDaysAgo}`, asManager);
+    expect(totalsOf(outside.body).revenue, 'наряд не попал в свой день').toBe(3600);
+  });
+
+  test('СТРОКА С ОТГРУЗКОЙ И НАРЯДОМ СЧИТАЕТСЯ ОДИН РАЗ', async () => {
+    // Товар из наряда всё-таки отгрузили. С раздельными отчётами он уходит из ремонта
+    // в продажи — и не попадает в оба сразу.
+    await repairOrder({ closed: true });
+    const shipment = 'ff100000-0000-0000-0000-000000000001';
+    await pool.query(
+      `insert into shipment (id, number, date, status, operation, warehouse_id)
+       values ($1, 'ОТ-ОТЧЁТ-1', current_date - 5, 'shipped', 'sale',
+               '44444444-4444-4444-4444-444444444401') on conflict (id) do nothing`, [shipment]);
+    await pool.query(`update line set shipment_doc_id = $2 where id = $1`, [PART, shipment]);
+
+    const repair = totalsOf((await report('/reports/repair', asManager)).body);
+    const sales = totalsOf((await report('/reports/profitability', asManager)).body);
+
+    // В ремонте остаётся только работа (3000), запчасть (600) ушла в продажи.
+    expect(repair.revenue, 'отгруженная запчасть осталась в ремонте').toBe(3000);
+    expect(sales.revenue, 'запчасть не попала в продажи').toBe(600);
+    expect(sales.cost, 'себестоимость запчасти').toBe(400);
+    expect(repair.revenue + sales.revenue, 'строка посчитана дважды').toBe(3600);
+  });
+
+  test('оговорка говорит, что вошли и наряды', async () => {
+    await repairOrder({ closed: true });
+    const note = String((await report('/reports/repair', asManager)).body.note ?? '');
+    expect(note, 'в оговорке нет ремонта').toContain('заказ-наряды');
+    expect(note, 'не сказано, что работы считаются по нормо-часам').toContain('нормо-часам');
+  });
+
+  test('ПРОДАЖИ И РЕМОНТ РАЗДЕЛЕНЫ: в отчёте о продажах ремонта нет', async () => {
+    // Решение заказчика 20.11.2026: у ремонта свой отчёт. Смешав их, нельзя было бы
+    // ответить «сколько дала торговля» отдельно от «сколько дал ремонт».
+    await repairOrder({ closed: true });
+
+    const sales = totalsOf((await report('/reports/profitability', asManager)).body);
+    const repair = totalsOf((await report('/reports/repair', asManager)).body);
+
+    expect(sales.revenue, 'ремонт попал в отчёт о продажах').toBe(0);
+    expect(repair.revenue, 'ремонт не попал в свой отчёт').toBe(3600);
+    expect(sales.revenue + repair.revenue, 'вместе — вся выручка').toBe(3600);
+
+    // И в оговорке продаж сказано, где искать ремонт.
+    const salesNote = String((await report('/reports/profitability', asManager)).body.note ?? '');
+    expect(salesNote, 'не сказано, что ремонт — отдельный отчёт').toContain('отдельным отчётом');
+  });
+});

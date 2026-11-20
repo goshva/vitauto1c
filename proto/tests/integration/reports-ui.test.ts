@@ -207,3 +207,54 @@ describe('экран отчётов · вход', () => {
     expect(body, 'входа в отчёты нет').toContain('data-testid="dash-reports"');
   });
 });
+
+// РЕМОНТ — ОТДЕЛЬНЫЙ РАЗДЕЛ (решение заказчика 20.11.2026). Здесь проверяется то, что
+// видит человек: вкладка есть, считает по закрытым нарядам и не подмешивается в продажи.
+describe('экран отчётов · ремонт', () => {
+  /** Закрытый наряд: работа 2 ч × 1500 = 3000 и запчасть 400/600. Итого 3600. */
+  async function closedOrder(): Promise<void> {
+    const wo = 'ab100000-0000-0000-0000-000000000001';
+    await pool.query(`delete from line where work_order_id = $1`, [wo]);
+    await pool.query(`delete from work_order where id = $1`, [wo]);
+    await pool.query(
+      `insert into work_order (id, number, date, status, car_id, organization_id, closed_at)
+       values ($1, 'ЗН-ЭКР-1', current_date - 3, 'closed',
+               'cccccccc-cccc-cccc-cccc-cccccccccc01',
+               '55555555-5555-5555-5555-555555555501', now() - interval '3 days')`, [wo]);
+    await pool.query(
+      `insert into line (id, work_order_id, operation, status, quantity, norm_hours, sale_price,
+                         order_date, comment)
+       values ('ab200000-0000-0000-0000-000000000001', $1, 'sale', 'closed', 1, 2, 1500,
+               current_date - 3, 'ЭКР-РЕМОНТ')`, [wo]);
+    await pool.query(
+      `insert into line (id, work_order_id, operation, status, quantity, nomenclature_id,
+                         cost_price, sale_price, order_date, comment)
+       values ('ab300000-0000-0000-0000-000000000001', $1, 'sale', 'closed', 1,
+               '77777777-7777-7777-7777-777777777702', 400, 600, current_date - 3, 'ЭКР-РЕМОНТ')`,
+      [wo]);
+  }
+
+  test('вкладка «Ремонт» есть, открывается и считает по наряду', async () => {
+    await closedOrder();
+    const { status, body } = await html('/reports?tab=repair', manager, 'manager');
+
+    expect(status).toBe(200);
+    expect(body, 'вкладки ремонта нет').toContain('data-testid="report-tab-repair"');
+    expect(body, 'панель открылась не на ремонте').toContain('data-tab="repair"');
+    expect(body, 'ремонт не посчитан').toContain('3600.00');
+    expect(body, 'период подписан датой отгрузки').toContain('С даты закрытия наряда');
+  });
+
+  test('в отчёте о продажах ремонта нет', async () => {
+    await closedOrder();
+    const { body } = await html('/reports?tab=profitability', manager, 'manager');
+    expect(body, 'ремонт подмешан в продажи').not.toContain('3600.00');
+    expect(body, 'не сказано, где искать ремонт').toContain('отдельным отчётом');
+  });
+
+  test('механику раздел ремонта закрыт: там себестоимость', async () => {
+    const { body } = await html('/reports?tab=repair', mechanic, 'mechanic');
+    expect(body, 'отказ не показан').toContain('data-testid="report-denied"');
+    expect(body, 'отказ без названия права').toContain('report.cost');
+  });
+});

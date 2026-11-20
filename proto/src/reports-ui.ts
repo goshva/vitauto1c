@@ -3,8 +3,8 @@ import { guard, roleOf } from './auth.ts';
 import { isAllowed } from './domain/access.ts';
 import { esc, layout } from './views/html.ts';
 import { problemResponse } from './problem.ts';
-import { byMonth, totals, totalsBy } from './domain/reports.ts';
-import { loadSales, loadStuck } from './reports-data.ts';
+import { byMonth, totals, totalsBy, type SaleRow } from './domain/reports.ts';
+import { loadRepair, loadSales, loadStuck } from './reports-data.ts';
 import {
   reportDenied, reportNote, stuckTable, totalsSummary, totalsTable,
 } from './views/reports.ts';
@@ -27,6 +27,7 @@ export const reportsUi = new Hono();
 /** Разделы отчёта. Порядок — порядок вкладок. */
 const TABS = [
   { key: 'profitability', title: 'Рентабельность', needs: 'report.cost' },
+  { key: 'repair', title: 'Ремонт', needs: 'report.cost' },
   { key: 'stuck', title: 'Зависшие строки', needs: 'request.view' },
 ] as const;
 
@@ -34,18 +35,8 @@ type TabKey = (typeof TABS)[number]['key'];
 
 const isTab = (s: string | undefined): s is TabKey => TABS.some((t) => t.key === s);
 
-/** Рентабельность: итог, разрезы и месяцы. */
-async function profitability(c: { dateFrom?: string; dateTo?: string; groupBy?: string }): Promise<string> {
-  const rows = await loadSales(c);
-
-  // Строки без себестоимости: их выручка учтена, прибыль нет. Без этой оговорки цифру
-  // принимают за полную — и решение примут по неполным данным.
-  const withoutCost = rows.filter((r) => r.costPrice === null).length;
-  const note = 'В расчёт вошли только состоявшиеся продажи: отгруженные и не отменённые.'
-    + (withoutCost > 0
-      ? ` Строк без себестоимости: ${withoutCost} — их выручка учтена, прибыль нет.`
-      : '');
-
+/** Рентабельность: итог, разрезы и месяцы. Общее тело для продаж и ремонта. */
+function totalsBody(rows: SaleRow[], note: string): string {
   // Расчёт отдаёт `key`, показ ждёт `label`: подпись — понятие ЭКРАНА, и расчёту
   // знать о ней нечего. Преобразование делаем здесь, а не в доменном модуле.
   const named = (g: { key: string; totals: ReturnType<typeof totals> }): { label: string; totals: ReturnType<typeof totals> } =>
@@ -64,6 +55,33 @@ async function profitability(c: { dateFrom?: string; dateTo?: string; groupBy?: 
   <h3>По месяцам</h3>
   <p class="hint">Месяцы без продаж не показаны: это отсутствие данных, а не спад.</p>
   ${totalsTable(months, { label: 'Месяц', testId: 'by-month' })}`;
+}
+
+/** Рентабельность продаж. */
+async function profitability(c: { dateFrom?: string; dateTo?: string; groupBy?: string }): Promise<string> {
+  const rows = await loadSales(c);
+
+  // Строки без себестоимости: их выручка учтена, прибыль нет. Без этой оговорки цифру
+  // принимают за полную — и решение примут по неполным данным.
+  const withoutCost = rows.filter((r) => r.costPrice === null).length;
+  return totalsBody(rows,
+    'В расчёт вошли состоявшиеся продажи: отгруженные и не отменённые. '
+    + 'Ремонт считается отдельным отчётом: у наряда своя дата признания.'
+    + (withoutCost > 0
+      ? ` Строк без себестоимости: ${withoutCost} — их выручка учтена, прибыль нет.`
+      : ''));
+}
+
+/** Рентабельность ремонта: отдельный отчёт (решение заказчика 20.11.2026). */
+async function repair(c: { dateFrom?: string; dateTo?: string; groupBy?: string }): Promise<string> {
+  const rows = await loadRepair(c);
+  const works = rows.filter((r) => r.kind === 'repair-labor').length;
+  const parts = rows.filter((r) => r.kind === 'repair-part').length;
+
+  return totalsBody(rows,
+    `В расчёт вошли закрытые заказ-наряды: работы ${works} — по нормо-часам, `
+    + `запчасти ${parts} — как продажа. Дата признания — дата закрытия наряда. `
+    + 'Открытые наряды в отчёт не входят.');
 }
 
 /** Зависшие строки. */
@@ -101,12 +119,15 @@ export async function reportsPanel(params: {
   }).join('');
 
   // Период показываем только тому, кто вправе видеть сам отчёт: пустая форма периода у
-  // закрытого раздела выглядела бы как «вот-вот загрузится».
-  const form = active.key === 'profitability' && allowed
+  // закрытого раздела выглядела бы как «вот-вот загрузится». У продаж и ремонта период
+  // свой, но поле одно — и оно подписано тем, к чему относится.
+  const withPeriod = active.key !== 'stuck';
+  const form = withPeriod && allowed
     ? `<form class="filters" method="get" action="/reports" data-testid="report-period">
-        <input type="hidden" name="tab" value="profitability">
+        <input type="hidden" name="tab" value="${esc(active.key)}">
         <div class="filters-row">
-          <label class="f"><span>С даты отгрузки</span>
+          <label class="f"><span>${active.key === 'repair'
+            ? 'С даты закрытия наряда' : 'С даты отгрузки'}</span>
             <input type="date" name="dateFrom" data-testid="report-from"
                    value="${esc(params.dateFrom ?? '')}"></label>
           <label class="f"><span>По</span>
@@ -115,7 +136,7 @@ export async function reportsPanel(params: {
         </div>
         <div class="filters-actions">
           <button type="submit" data-testid="report-apply">Показать</button>
-          <a href="/reports" data-testid="report-reset">Весь период</a>
+          <a href="/reports?tab=${esc(active.key)}" data-testid="report-reset">Весь период</a>
         </div>
       </form>`
     : '';
@@ -124,7 +145,9 @@ export async function reportsPanel(params: {
     ? reportDenied(active.title, active.needs)
     : active.key === 'profitability'
       ? await profitability(params)
-      : await stuck(params.days ?? 3);
+      : active.key === 'repair'
+        ? await repair(params)
+        : await stuck(params.days ?? 3);
 
   return `<div id="reports-panel" data-testid="reports-panel" data-tab="${esc(tab)}">
   <nav class="tabs" data-testid="report-tabs">${tabs}</nav>

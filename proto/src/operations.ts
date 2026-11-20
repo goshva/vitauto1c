@@ -13,8 +13,15 @@ import { uuid } from './domain/uuid.ts';
 
 export const operations = createApi();
 
-/** Статусы, из которых задание забирает строки в закупку. */
-const JOB_FROM = ['new', 'in_work', 'ready_to_ship'];
+/**
+ * Статусы, из которых задание забирает строки в закупку.
+ *
+ * `reserve` здесь потому, что «зарезервировали, а остатка не хватило — заказали» —
+ * это реальный процесс (решение заказчика 20.11.2026), а не обход правила. Переход
+ * `reserve → ordered` есть и в модели (`docs/migration/ddd/domain-model.json`), и в
+ * сценарии ремонта: M3 (резерв) → M4 (заказ поставщику).
+ */
+const JOB_FROM = ['new', 'in_work', 'ready_to_ship', 'reserve'];
 
 const CELL_MISSING = new Problem(400, 'bad_request', 'Ячейка не найдена', 'cellId');
 
@@ -64,13 +71,13 @@ operations.openapi(cellRoute, async (c) => {
   return c.json({ id, cell: cell.rows[0]!.code, version: Number(r.rows[0]!.version) }, 200);
 });
 
-// --- M4, K5: задание («В работе») -----------------------------------------------------
+// --- M4: задание («В работе») -----------------------------------------------------
 
 const jobRoute = createRoute({
   method: 'post',
   path: '/sales/jobs',
   tags: ['jobs'],
-  summary: 'Задание: отмеченные строки в «Заказано», заказ поставщику (M4, K5)',
+  summary: 'Задание: отмеченные строки в «Заказано», заказ поставщику (M4)',
   request: {
     body: { content: { 'application/json': { schema: z.object({
       allowSplit: z.boolean().optional().default(false),

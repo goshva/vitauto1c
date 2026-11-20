@@ -16,6 +16,22 @@ const sale = (o: Partial<SaleRow> = {}): SaleRow => ({
   nomenclature: 'Фильтр масляный',
   shippedAt: new Date('2026-08-10'),
   status: 'closed',
+  kind: 'sale',
+  hours: null,
+  ...o,
+});
+
+/** Строка работы закрытого наряда: количество 1, деньги — в нормо-часах. */
+const labor = (o: Partial<SaleRow> = {}): SaleRow => ({
+  quantity: 1,
+  costPrice: null,
+  salePrice: 1500,
+  customer: 'ООО АвтоЛюкс',
+  nomenclature: 'Замена масла',
+  shippedAt: new Date('2026-08-10'),
+  status: 'closed',
+  kind: 'repair-labor',
+  hours: 2,
   ...o,
 });
 
@@ -175,5 +191,60 @@ describe('отчёты · по месяцам', () => {
       sale({ shippedAt: new Date('2027-01-01'), salePrice: 100 }),
     ]);
     expect(r.map((x) => x.key)).toEqual(['2026-12', '2027-01']);
+  });
+});
+
+// РЕМОНТ В ОТЧЁТЕ. Наряд не отгружается — он выполняется, и считается иначе, чем
+// продажа: работа измеряется нормо-часами, а не штуками. Эти проверки закрывают
+// находку прогона месяца: выручка ремонта в отчёт не попадала вовсе.
+describe('отчёты · ремонт', () => {
+  test('работа считается по нормо-часам, а не по количеству', () => {
+    // 2 часа по 1500 = 3000. Если бы работа считалась как «количество × цена»,
+    // получилось бы 1500 — цена нормо-часа вместо стоимости работы.
+    const t = totals([labor({ hours: 2, salePrice: 1500 })]);
+    expect(t.revenue).toBe(3000);
+  });
+
+  test('у работы нет себестоимости: прибыль равна выручке, убытка не бывает', () => {
+    const t = totals([labor({ hours: 3, salePrice: 1000 })]);
+    expect(t.cost).toBe(0);
+    expect(t.profit).toBe(3000);
+    expect(t.lossLines).toBe(0);
+    // Себестоимости нет ни у одной строки — наценку считать не от чего.
+    expect(t.markupPct).toBeNull();
+  });
+
+  test('ЧАСЫ НЕ СКЛАДЫВАЮТСЯ СО ШТУКАМИ', () => {
+    // Продажа 2 шт + работа 5 часов: «штук» ровно 2, а не 7.
+    const t = totals([sale({ quantity: 2 }), labor({ hours: 5, salePrice: 1000 })]);
+    expect(t.units, 'часы попали в штуки').toBe(2);
+    expect(t.revenue).toBe(300 + 5000);
+    expect(t.cost).toBe(200);
+    expect(t.profit).toBe(5100);
+  });
+
+  test('запчасть закрытого наряда считается как продажа', () => {
+    const t = totals([
+      sale({ kind: 'repair-part', quantity: 2, costPrice: 400, salePrice: 600 }),
+    ]);
+    expect(t.units).toBe(2);
+    expect(t.revenue).toBe(1200);
+    expect(t.cost).toBe(800);
+    expect(t.profit).toBe(400);
+  });
+
+  test('работа без нормо-часов не даёт выдуманной выручки', () => {
+    // Пустые часы — это «неизвестно сколько», а не «ноль часов»: выручки нет,
+    // но и отрицательной она быть не может.
+    const t = totals([labor({ hours: null, salePrice: 1500 })]);
+    expect(t.revenue).toBe(0);
+  });
+
+  test('разрез по номенклатуре видит название работы', () => {
+    const groups = totalsBy(
+      [sale(), labor({ nomenclature: 'Замена масла' })],
+      (r) => r.nomenclature,
+    );
+    expect(groups.map((g) => g.key).sort()).toEqual(['Замена масла', 'Фильтр масляный']);
   });
 });

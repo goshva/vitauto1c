@@ -693,10 +693,168 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "Состояние строки"
             },
             "required": false,
+            "description": "Состояние строки",
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Любой номер: наш, клиента или заказа"
+            },
+            "required": false,
+            "description": "Любой номер: наш, клиента или заказа",
+            "name": "number",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Наименование или факт заявки"
+            },
+            "required": false,
+            "description": "Наименование или факт заявки",
+            "name": "name",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Наш артикул или код поставщика"
+            },
+            "required": false,
+            "description": "Наш артикул или код поставщика",
+            "name": "article",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Номер заказа клиента"
+            },
+            "required": false,
+            "description": "Номер заказа клиента",
+            "name": "clientNumber",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Заказчик"
+            },
+            "required": false,
+            "description": "Заказчик",
+            "name": "customer",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поставщик"
+            },
+            "required": false,
+            "description": "Поставщик",
+            "name": "supplier",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Метка «Срочно»"
+            },
+            "required": false,
+            "description": "Метка «Срочно»",
+            "name": "urgency",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "База (территория)"
+            },
+            "required": false,
+            "description": "База (территория)",
+            "name": "base",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Гос. номер"
+            },
+            "required": false,
+            "description": "Гос. номер",
+            "name": "plate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Комментарий"
+            },
+            "required": false,
+            "description": "Комментарий",
+            "name": "comment",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Дата заявки, с (ГГГГ-ММ-ДД)"
+            },
+            "required": false,
+            "description": "Дата заявки, с (ГГГГ-ММ-ДД)",
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Дата заявки, по (ГГГГ-ММ-ДД)"
+            },
+            "required": false,
+            "description": "Дата заявки, по (ГГГГ-ММ-ДД)",
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "nullable": true,
+              "description": "Количество, от"
+            },
+            "required": false,
+            "description": "Количество, от",
+            "name": "qtyFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "nullable": true,
+              "description": "Количество, до"
+            },
+            "required": false,
+            "description": "Количество, до",
+            "name": "qtyTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "description": "Только отмеченные"
+            },
+            "required": false,
+            "description": "Только отмеченные",
+            "name": "marked",
             "in": "query"
           },
           {
@@ -791,6 +949,274 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/lines/{id}/history": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "История строки: кто что менял и когда",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "История от свежих к старым",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entityId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string",
+                            "description": "Когда, ISO"
+                          },
+                          "login": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Логин на момент действия"
+                          },
+                          "role": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "action": {
+                            "type": "string",
+                            "description": "create, update, delete, transition"
+                          },
+                          "field": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "oldValue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "newValue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "at",
+                          "login",
+                          "role",
+                          "action",
+                          "field",
+                          "oldValue",
+                          "newValue",
+                          "comment"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "entityId",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет права читать журнал"
+          }
+        }
+      }
+    },
+    "/audit": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "Журнал действий: отбор по записи, пользователю, полю и периоду",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Таблица: line, customer_order…"
+            },
+            "required": false,
+            "description": "Таблица: line, customer_order…",
+            "name": "entity",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": false,
+            "name": "entityId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "login",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поле, по которому ищем: sale_price, cost_price…"
+            },
+            "required": false,
+            "description": "Поле, по которому ищем: sale_price, cost_price…",
+            "name": "field",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Записи журнала",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string",
+                            "description": "Когда, ISO"
+                          },
+                          "login": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Логин на момент действия"
+                          },
+                          "role": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "action": {
+                            "type": "string",
+                            "description": "create, update, delete, transition"
+                          },
+                          "field": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "oldValue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "newValue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "entity": {
+                            "type": "string"
+                          },
+                          "entityId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "at",
+                          "login",
+                          "role",
+                          "action",
+                          "field",
+                          "oldValue",
+                          "newValue",
+                          "comment",
+                          "entity",
+                          "entityId"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет права читать журжурналал"
           }
         }
       }
@@ -1120,7 +1546,7 @@
         "tags": [
           "jobs"
         ],
-        "summary": "Задание: отмеченные строки в «Заказано», заказ поставщику (M4, K5)",
+        "summary": "Задание: отмеченные строки в «Заказано», заказ поставщику (M4)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1162,11 +1588,6 @@
                       "items": {
                         "type": "string"
                       }
-                    },
-                    "supplierOrderId": {
-                      "type": "string",
-                      "nullable": true,
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
                     }
                   },
                   "required": [
@@ -1174,8 +1595,7 @@
                     "state",
                     "processed",
                     "total",
-                    "skipped",
-                    "supplierOrderId"
+                    "skipped"
                   ]
                 }
               }
@@ -1286,6 +1706,67 @@
         "responses": {
           "200": {
             "description": "Номенклатура: список",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refs/brands": {
+      "get": {
+        "tags": [
+          "refs"
+        ],
+        "summary": "Бренды",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Поиск по названию, коду или артикулу"
+            },
+            "required": false,
+            "description": "Поиск по названию, коду или артикулу",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Бренды: список",
             "content": {
               "application/json": {
                 "schema": {
@@ -2251,7 +2732,7 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Создать отгрузку по отмеченным строкам (K5)",
+        "summary": "Создать отгрузку по отмеченным строкам (M12)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2422,7 +2903,7 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Отгрузить: товар покинул склад (M12)",
+        "summary": "Отгрузить: товар покинул склад (K5)",
         "parameters": [
           {
             "schema": {
@@ -2614,6 +3095,10 @@
                   "serviceTypeId": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                  },
+                  "comment": {
+                    "type": "string",
+                    "description": "Заявленная неисправность или примечание"
                   }
                 },
                 "required": [
@@ -3022,6 +3507,124 @@
         }
       }
     },
+    "/work-orders/{id}/history": {
+      "get": {
+        "tags": [
+          "repair"
+        ],
+        "summary": "История заказ-наряда: кто и что делал (без себестоимости)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Записи журнала по наряду, свежие первыми",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entityId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "login": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "role": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "field": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "oldValue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "newValue": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "details": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "nullable": true
+                            },
+                            "description": "Без себестоимости: закупочные цены вырезаны"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "login",
+                          "role",
+                          "action",
+                          "field",
+                          "oldValue",
+                          "newValue",
+                          "comment",
+                          "details"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "entityId",
+                    "total",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "История наряда доступна администратору и механику"
+          },
+          "404": {
+            "description": "Заказ-наряд не найден"
+          }
+        }
+      }
+    },
     "/receipts": {
       "get": {
         "tags": [
@@ -3102,6 +3705,11 @@
                 "properties": {
                   "comment": {
                     "type": "string"
+                  },
+                  "zoneId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Зона, куда кладовщик размещает товар"
                   }
                 }
               }
@@ -3262,7 +3870,7 @@
         "tags": [
           "warehouse"
         ],
-        "summary": "Провести приёмку: товар поступает на склад (M12)",
+        "summary": "Провести приёмку: товар поступает на склад (K1)",
         "parameters": [
           {
             "schema": {
@@ -3551,10 +4159,14 @@
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
             },
             "required": false,
-            "name": "purpose",
+            "name": "predefined",
             "in": "query"
           }
         ],
@@ -3587,6 +4199,10 @@
                           },
                           "sort": {
                             "type": "number"
+                          },
+                          "predefined": {
+                            "type": "boolean",
+                            "description": "Зона из утверждённой схемы (ФТ v2 п. 7)"
                           },
                           "cells": {
                             "type": "array",
@@ -3622,6 +4238,7 @@
                           "name",
                           "purpose",
                           "sort",
+                          "predefined",
                           "cells",
                           "lines"
                         ]
@@ -5516,6 +6133,398 @@
         }
       }
     },
+    "/nomenclature/{id}/purchase-history": {
+      "get": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "У кого и по какой цене покупали, остаток и аналоги (ФТ v2 п. 16)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Данные для закупки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "article": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "extCode": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "brand": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "price": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "onHand": {
+                      "type": "string",
+                      "description": "Остаток на складе"
+                    },
+                    "onOrder": {
+                      "type": "string",
+                      "description": "Уже заказано, но не пришло"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "supplierId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "supplier": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "price": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Цена закупки в той поставке"
+                          },
+                          "quantity": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "date": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "orderNumber": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "supplierId",
+                          "supplier",
+                          "price",
+                          "quantity",
+                          "date",
+                          "orderNumber"
+                        ]
+                      }
+                    },
+                    "analogs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "article": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "extCode": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "price": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "onHand": {
+                            "type": "string",
+                            "description": "Остаток на складе — замена нужна, только если пусто"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "article",
+                          "extCode",
+                          "price",
+                          "onHand"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "article",
+                    "extCode",
+                    "brand",
+                    "price",
+                    "onHand",
+                    "onOrder",
+                    "history",
+                    "analogs"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Номенклатура не найдена"
+          }
+        }
+      }
+    },
+    "/suppliers": {
+      "get": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Поставщики по алфавиту",
+        "responses": {
+          "200": {
+            "description": "Поставщики",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "inn": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "purchases": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "inn",
+                          "purchases"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/{id}/supply-options": {
+      "get": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Варианты поставки для строки: у кого, по какой цене и в какой срок",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Варианты",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lineId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "nomenclature": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "chosen": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Идентификатор выбранного варианта"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "supplierId": {
+                            "type": "string"
+                          },
+                          "supplier": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "string"
+                          },
+                          "deliveryDays": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "article": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "chosen": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "supplierId",
+                          "supplier",
+                          "price",
+                          "deliveryDays",
+                          "article",
+                          "comment",
+                          "chosen"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "lineId",
+                    "nomenclature",
+                    "chosen",
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Строка не найдена"
+          }
+        }
+      }
+    },
+    "/lines/{id}/supply-option": {
+      "post": {
+        "tags": [
+          "purchase"
+        ],
+        "summary": "Выбрать вариант поставки: цена и срок переносятся в строку",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i",
+                    "description": "Идентификатор предложения поставщика"
+                  }
+                },
+                "required": [
+                  "offerId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Вариант выбран",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "supplier": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "deliveryDays": {
+                      "type": "integer",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "supplier",
+                    "price",
+                    "deliveryDays"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Предложение не подходит этой строке"
+          },
+          "404": {
+            "description": "Строка или предложение не найдены"
+          }
+        }
+      }
+    },
     "/supplier-orders/{id}/confirm": {
       "post": {
         "tags": [
@@ -6011,6 +7020,781 @@
           },
           "409": {
             "description": "Нет строк или все уже закрыты"
+          }
+        }
+      }
+    },
+    "/orders/{id}/refuse": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Отказ клиента: состояние ЗАКАЗА (ФТ v2 п. 15)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "enum": [
+                      "cancelled",
+                      "refused"
+                    ],
+                    "description": "cancelled — до выдачи, refused — при получении"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Причина отказа со слов клиента"
+                  }
+                },
+                "required": [
+                  "to"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Отказ зафиксирован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "type": "integer"
+                    },
+                    "shipped": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "lines",
+                    "shipped"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Недопустимое состояние отказа"
+          },
+          "404": {
+            "description": "Заказ не найден"
+          },
+          "409": {
+            "description": "Заказ уже закрыт или уже отменён"
+          }
+        }
+      }
+    },
+    "/reports/profitability": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Рентабельность продаж: выручка, себестоимость, прибыль, наценка",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "С даты отгрузки, ГГГГ-ММ-ДД"
+            },
+            "required": false,
+            "description": "С даты отгрузки, ГГГГ-ММ-ДД",
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "По дату отгрузки включительно"
+            },
+            "required": false,
+            "description": "По дату отгрузки включительно",
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "nomenclature",
+                "customer",
+                "month"
+              ],
+              "default": "nomenclature"
+            },
+            "required": false,
+            "name": "groupBy",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Итоги с разрезом",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "lines": {
+                          "type": "integer"
+                        },
+                        "units": {
+                          "type": "number"
+                        },
+                        "revenue": {
+                          "type": "number"
+                        },
+                        "cost": {
+                          "type": "number"
+                        },
+                        "profit": {
+                          "type": "number"
+                        },
+                        "markupPct": {
+                          "type": "number",
+                          "nullable": true,
+                          "description": "Наценка в % от себестоимости; пусто — делить нельзя"
+                        },
+                        "lossLines": {
+                          "type": "integer",
+                          "description": "Строк продано ниже себестоимости"
+                        }
+                      },
+                      "required": [
+                        "lines",
+                        "units",
+                        "revenue",
+                        "cost",
+                        "profit",
+                        "markupPct",
+                        "lossLines"
+                      ]
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "totals": {
+                            "type": "object",
+                            "properties": {
+                              "lines": {
+                                "type": "integer"
+                              },
+                              "units": {
+                                "type": "number"
+                              },
+                              "revenue": {
+                                "type": "number"
+                              },
+                              "cost": {
+                                "type": "number"
+                              },
+                              "profit": {
+                                "type": "number"
+                              },
+                              "markupPct": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Наценка в % от себестоимости; пусто — делить нельзя"
+                              },
+                              "lossLines": {
+                                "type": "integer",
+                                "description": "Строк продано ниже себестоимости"
+                              }
+                            },
+                            "required": [
+                              "lines",
+                              "units",
+                              "revenue",
+                              "cost",
+                              "profit",
+                              "markupPct",
+                              "lossLines"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "totals"
+                        ]
+                      }
+                    },
+                    "byMonth": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "totals": {
+                            "type": "object",
+                            "properties": {
+                              "lines": {
+                                "type": "integer"
+                              },
+                              "units": {
+                                "type": "number"
+                              },
+                              "revenue": {
+                                "type": "number"
+                              },
+                              "cost": {
+                                "type": "number"
+                              },
+                              "profit": {
+                                "type": "number"
+                              },
+                              "markupPct": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Наценка в % от себестоимости; пусто — делить нельзя"
+                              },
+                              "lossLines": {
+                                "type": "integer",
+                                "description": "Строк продано ниже себестоимости"
+                              }
+                            },
+                            "required": [
+                              "lines",
+                              "units",
+                              "revenue",
+                              "cost",
+                              "profit",
+                              "markupPct",
+                              "lossLines"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "totals"
+                        ]
+                      }
+                    },
+                    "note": {
+                      "type": "string",
+                      "description": "Оговорки к цифрам: что не попало и почему"
+                    }
+                  },
+                  "required": [
+                    "totals",
+                    "rows",
+                    "byMonth",
+                    "note"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Себестоимость закрыта для роли"
+          }
+        }
+      }
+    },
+    "/reports/repair": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Рентабельность ремонта: работы по нормо-часам и запчасти закрытых нарядов",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "С даты отгрузки, ГГГГ-ММ-ДД"
+            },
+            "required": false,
+            "description": "С даты отгрузки, ГГГГ-ММ-ДД",
+            "name": "dateFrom",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "По дату отгрузки включительно"
+            },
+            "required": false,
+            "description": "По дату отгрузки включительно",
+            "name": "dateTo",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "nomenclature",
+                "customer",
+                "month"
+              ],
+              "default": "nomenclature"
+            },
+            "required": false,
+            "name": "groupBy",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Итоги с разрезом",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "lines": {
+                          "type": "integer"
+                        },
+                        "units": {
+                          "type": "number"
+                        },
+                        "revenue": {
+                          "type": "number"
+                        },
+                        "cost": {
+                          "type": "number"
+                        },
+                        "profit": {
+                          "type": "number"
+                        },
+                        "markupPct": {
+                          "type": "number",
+                          "nullable": true,
+                          "description": "Наценка в % от себестоимости; пусто — делить нельзя"
+                        },
+                        "lossLines": {
+                          "type": "integer",
+                          "description": "Строк продано ниже себестоимости"
+                        }
+                      },
+                      "required": [
+                        "lines",
+                        "units",
+                        "revenue",
+                        "cost",
+                        "profit",
+                        "markupPct",
+                        "lossLines"
+                      ]
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "totals": {
+                            "type": "object",
+                            "properties": {
+                              "lines": {
+                                "type": "integer"
+                              },
+                              "units": {
+                                "type": "number"
+                              },
+                              "revenue": {
+                                "type": "number"
+                              },
+                              "cost": {
+                                "type": "number"
+                              },
+                              "profit": {
+                                "type": "number"
+                              },
+                              "markupPct": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Наценка в % от себестоимости; пусто — делить нельзя"
+                              },
+                              "lossLines": {
+                                "type": "integer",
+                                "description": "Строк продано ниже себестоимости"
+                              }
+                            },
+                            "required": [
+                              "lines",
+                              "units",
+                              "revenue",
+                              "cost",
+                              "profit",
+                              "markupPct",
+                              "lossLines"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "totals"
+                        ]
+                      }
+                    },
+                    "byMonth": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "totals": {
+                            "type": "object",
+                            "properties": {
+                              "lines": {
+                                "type": "integer"
+                              },
+                              "units": {
+                                "type": "number"
+                              },
+                              "revenue": {
+                                "type": "number"
+                              },
+                              "cost": {
+                                "type": "number"
+                              },
+                              "profit": {
+                                "type": "number"
+                              },
+                              "markupPct": {
+                                "type": "number",
+                                "nullable": true,
+                                "description": "Наценка в % от себестоимости; пусто — делить нельзя"
+                              },
+                              "lossLines": {
+                                "type": "integer",
+                                "description": "Строк продано ниже себестоимости"
+                              }
+                            },
+                            "required": [
+                              "lines",
+                              "units",
+                              "revenue",
+                              "cost",
+                              "profit",
+                              "markupPct",
+                              "lossLines"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "totals"
+                        ]
+                      }
+                    },
+                    "note": {
+                      "type": "string",
+                      "description": "Оговорки к цифрам: что не попало и почему"
+                    }
+                  },
+                  "required": [
+                    "totals",
+                    "rows",
+                    "byMonth",
+                    "note"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Себестоимость закрыта для роли"
+          }
+        }
+      }
+    },
+    "/reports/stuck": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Строки, стоящие на месте дольше срока",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 3
+            },
+            "required": false,
+            "name": "days",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Зависшие строки, старые первыми",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "days": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "customer": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "nomenclature": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "orderDate": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "daysStuck": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "order",
+                          "status",
+                          "customer",
+                          "nomenclature",
+                          "orderDate",
+                          "daysStuck"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "days",
+                    "total",
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lines/step": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Сдвинуть отмеченные строки на соседний шаг их процесса",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dir": {
+                    "type": "string",
+                    "enum": [
+                      "next",
+                      "prev"
+                    ],
+                    "description": "next — на следующий шаг, prev — на предыдущий"
+                  }
+                },
+                "required": [
+                  "dir"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Итог сдвига",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "processed": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "step": {
+                      "type": "number"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "processed",
+                    "total",
+                    "step",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Сдвинуть нельзя: нет отметок, разные шаги или граница процесса"
+          }
+        }
+      }
+    },
+    "/lines/{id}/process": {
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Назначить строке процесс (сценарий модели)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "processId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Идентификатор процесса из карты"
+                  }
+                },
+                "required": [
+                  "processId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Процесс назначен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+                    },
+                    "processId": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "processId",
+                    "step",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Процесса нет в карте"
+          },
+          "403": {
+            "description": "Нет права назначать процесс"
+          },
+          "404": {
+            "description": "Строка не найдена"
+          },
+          "409": {
+            "description": "Строка уже в процессе или её состояние не равно первому шагу"
           }
         }
       }

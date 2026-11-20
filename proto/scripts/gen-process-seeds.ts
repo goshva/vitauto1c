@@ -75,6 +75,11 @@ const PROCESSES: ProcessSeed[] = [
     factName: 'Замена масла (работа)', article: 'SRV-OIL-001',
     car: true,
     note: 'вход в ремонт (G1): к заказу привязан автомобиль, заказ-наряд открывается первым шагом' },
+  { id: 'repair_stock', index: 12, title: 'Ремонт со склада (без закупки)', status: 'new', lines: 1, stock: 5,
+    factName: 'Фильтр салонный', article: 'FLT-CAB-001',
+    nomenclatureId: '77777777-7777-7777-7777-777777777707',
+    car: true,
+    note: 'запчасть есть на складе: путь идёт через резерв (M3), закупка не нужна' },
 ];
 
 const hex = (n: number): string => n.toString(16).padStart(2, '0');

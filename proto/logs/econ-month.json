@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-11-20T07:27:30.930Z",
+  "params": {
+    "happyLines": 60,
+    "stockLines": 40,
+    "workOrders": 50,
+    "laborPerOrder": 2,
+    "partsPerOrder": 1,
+    "seed": 20261118
+  },
+  "planned": {
+    "lines": 250,
+    "units": 294,
+    "partsRevenue": 502582.8,
+    "partsCost": 338735,
+    "partsMargin": 163847.8,
+    "servicesRevenue": 500505,
+    "normHours": 333.67,
+    "grossProfit": 664352.8
+  },
+  "actual": {
+    "lines": 250,
+    "units": 294,
+    "partsRevenue": 502582.8,
+    "partsCost": 338735,
+    "partsMargin": 163847.8,
+    "servicesRevenue": 500505,
+    "normHours": 333.67,
+    "grossProfit": 664352.8
+  },
+  "facts": {
+    "shippedLines": 100,
+    "closedOrders": 50,
+    "works": 100,
+    "postedReceipts": 110,
+    "stockMoves": 160,
+    "repairRevenue": 670214.5,
+    "journalByRole": {
+      "manager": 890,
+      "mechanic": 200,
+      "storekeeper": 220
+    }
+  },
+  "plannedPayroll": {
+    "salaryBase": 500000,
+    "piece": 125126.25,
+    "total": 625126.25,
+    "net": 39226.55,
+    "coveragePct": 106.3
+  },
+  "actualPayroll": {
+    "salaryBase": 500000,
+    "piece": 125126.25,
+    "total": 625126.25,
+    "net": 39226.55,
+    "coveragePct": 106.3
+  },
+  "actions": {
+    "total": 2410,
+    "called": 1640,
+    "requests": 3380,
+    "failures": 0
+  },
+  "actors": {
+    "manager": {
+      "actions": 1740,
+      "called": 1170
+    },
+    "storekeeper": {
+      "actions": 470,
+      "called": 320
+    },
+    "mechanic": {
+      "actions": 200,
+      "called": 150
+    }
+  },
+  "byRole": [
+    {
+      "role": "manager",
+      "actions": 1170,
+      "marginShare": 80708.75,
+      "servicesShare": 206090.29,
+      "piece": 0,
+      "total": 286799.04
+    },
+    {
+      "role": "mechanic",
+      "actions": 200,
+      "marginShare": 13194,
+      "servicesShare": 117765.88,
+      "piece": 125126.25,
+      "total": 256086.13
+    },
+    {
+      "role": "storekeeper",
+      "actions": 570,
+      "marginShare": 36886.78,
+      "servicesShare": 88324.41,
+      "piece": 0,
+      "total": 125211.19
+    },
+    {
+      "role": "supplier",
+      "actions": 220,
+      "marginShare": 14445.79,
+      "servicesShare": 58882.94,
+      "piece": 0,
+      "total": 73328.73
+    },
+    {
+      "role": "client",
+      "actions": 250,
+      "marginShare": 18612.49,
+      "servicesShare": 29441.47,
+      "piece": 0,
+      "total": 48053.96
+    }
+  ],
+  "breakEven": {
+    "objects": 150,
+    "needed": 142,
+    "perObject": 4429.018666666667
+  }
+}

@@ -20,10 +20,23 @@ export interface SaleRow {
   customer: string | null;
   /** Наименование позиции — для разреза по номенклатуре. */
   nomenclature: string | null;
-  /** Дата отгрузки. Пусто — не отгружено, в выручку не идёт. */
+  /** Дата, по которой строка входит в период: отгрузка или закрытие наряда. */
   shippedAt: Date | null;
   /** Состояние строки. */
   status: string;
+  /**
+   * Вид строки. ПРОДАЖА И РЕМОНТ СЧИТАЮТСЯ РАЗНЫМИ ПРАВИЛАМИ, и признак нужен,
+   * чтобы правило не угадывалось по пустым полям.
+   *
+   * `sale` — отгруженная продажа: количество × цена.
+   * `repair-part` — запчасть закрытого наряда: считается как продажа.
+   * `repair-labor` — работа: количество всегда 1, а деньги в нормо-часах
+   * (`src/work-orders-flow.ts:138-147`), поэтому её выручка — `hours × salePrice`,
+   * и в «штуках» она не участвует.
+   */
+  kind: 'sale' | 'repair-part' | 'repair-labor';
+  /** Нормо-часы работы. У продажи и запчасти — пусто. */
+  hours: number | null;
 }
 
 /** Итоги по набору строк: выручка, себестоимость, прибыль, наценка. */
@@ -57,20 +70,23 @@ export function totals(rows: SaleRow[]): Totals {
   let revenue = 0;
   let cost = 0;
   let units = 0;
-  let costed = 0;
   let lossLines = 0;
 
   for (const r of rows) {
-    const qty = r.quantity;
-    units += qty;
+    // РАБОТА ИЗМЕРЯЕТСЯ НОРМО-ЧАСАМИ, А НЕ ШТУКАМИ. У работы количество всегда 1,
+    // а деньги лежат в часах. Поэтому выручка работы — `часы × цена`, и в «штуках»
+    // она не участвует: иначе часы складывались бы с запчастями.
+    const isLabor = r.kind === 'repair-labor';
+    const qty = isLabor ? (r.hours ?? 0) : r.quantity;
+    if (!isLabor) units += r.quantity;
     if (r.salePrice !== null) revenue += qty * r.salePrice;
 
     // Прибыль считаем ТОЛЬКО при полной паре цена+себестоимость: иначе получилась бы
-    // либо выдуманная прибыль, либо выдуманный убыток.
-    if (r.costPrice !== null && r.salePrice !== null) {
-      costed += qty;
-      const lineCost = qty * r.costPrice;
-      const lineRevenue = qty * r.salePrice;
+    // либо выдуманная прибыль, либо выдуманный убыток. У работы себестоимости нет —
+    // материал в неё не входит, и ноль здесь был бы выдумкой, а не расчётом.
+    if (!isLabor && r.costPrice !== null && r.salePrice !== null) {
+      const lineCost = r.quantity * r.costPrice;
+      const lineRevenue = r.quantity * r.salePrice;
       cost += lineCost;
       if (lineRevenue < lineCost) lossLines++;
     }

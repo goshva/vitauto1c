@@ -4,7 +4,7 @@ import { processIds, resetTo, seedRefs } from '../../db/seed.ts';
 import { allowedFrom } from '../../src/domain/transition.ts';
 import { STATUSES } from '../../src/domain/status.ts';
 
-// Гейт этапа 4: у КАЖДОГО из 11 процессов есть воспроизводимое начальное состояние,
+// Гейт этапа 4: у КАЖДОГО из 12 процессов есть воспроизводимое начальное состояние,
 // и из него есть хотя бы один допустимый переход.
 //
 // Смысл проверки: процесс, который нельзя начать, — это не «недоделанный процесс»,
@@ -27,6 +27,8 @@ const EXPECTED: Record<string, string> = {
   return_mgr: 'return',
   return_internal: 'ready_to_ship',
   car_repair_in: 'new',
+  // Ремонт со склада: запчасть есть, закупка не нужна (решение заказчика 20.11.2026).
+  repair_stock: 'new',
 };
 
 /** Сколько строк должно быть у процесса. */
@@ -46,10 +48,10 @@ beforeEach(async () => {
 });
 
 describe('сиды процессов', () => {
-  test('сид есть у всех 11 процессов из модели', async () => {
+  test('сид есть у всех 12 процессов из модели', async () => {
     const expected = Object.keys(EXPECTED).sort();
     expect(processIds()).toEqual(expected);
-    expect(processIds().length).toBe(11);
+    expect(processIds().length).toBe(12);
   });
 
   test('каждый процесс начинается в объявленном статусе и переход из него возможен', async () => {

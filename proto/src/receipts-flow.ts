@@ -7,7 +7,7 @@ import { uuid } from './domain/uuid.ts';
 import { checkDocAuthor } from './doc-author.ts';
 import { record } from './audit.ts';
 
-// Проведение приёмки (M12) и её отмена. Вынесено из `receipts.ts` (лимит 200 строк).
+// Проведение приёмки (K1) и её отмена. Вынесено из `receipts.ts` (лимит 200 строк).
 //
 // Проведение — это момент, когда товар появляется на складе: создаются движения
 // `stock_move`, из которых считается остаток. До проведения приёмка — бумага.
@@ -30,13 +30,13 @@ async function loadReceipt(id: string): Promise<ReceiptHead> {
   return r.rows[0]!;
 }
 
-// --- POST /receipts/{id}/post — провести: товар на склад (M12) -----------------------
+// --- POST /receipts/{id}/post — провести: товар на склад (K1) -----------------------
 
 receiptsFlow.openapi(createRoute({
   method: 'post',
   path: '/receipts/{id}/post',
   tags: ['warehouse'],
-  summary: 'Провести приёмку: товар поступает на склад (M12)',
+  summary: 'Провести приёмку: товар поступает на склад (K1)',
   request: { params: z.object({ id: uuid }) },
   responses: {
     200: { description: 'Приёмка проведена', content: { 'application/json': { schema: z.object({

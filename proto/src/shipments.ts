@@ -9,7 +9,7 @@ import { record } from './audit.ts';
 
 // Отгрузка: список, карточка и создание (3 операции).
 //
-// Путь K5 → M12 → M15: создать отгрузку по отмеченным строкам, отгрузить, закрыть
+// Путь M12 → K5 → M15: сформировать ведомость по отмеченным строкам, отгрузить, закрыть
 // после проверки документов. Движение — в `shipments-flow.ts` (лимит 200 строк на файл).
 //
 // Связь со строками уже есть: `line.shipment_doc_id` — столбец из карты §4.2 (метка L).
@@ -93,7 +93,7 @@ shipments.openapi(createRoute({
   return c.json({ header: head.rows[0] as never, lines: lines.rows as never[] }, 200);
 });
 
-// --- POST /shipments — создание по отмеченным строкам (K5) ---------------------------
+// --- POST /shipments — создание по отмеченным строкам (M12) ---------------------------
 
 /**
  * Статусы, из которых строку можно отгрузить.
@@ -107,7 +107,7 @@ shipments.openapi(createRoute({
   method: 'post',
   path: '/shipments',
   tags: ['shipments'],
-  summary: 'Создать отгрузку по отмеченным строкам (K5)',
+  summary: 'Создать отгрузку по отмеченным строкам (M12)',
   request: { body: { content: { 'application/json': { schema: z.object({
     carId: uuid.optional().describe('Автомобиль отгрузки'),
     zoneId: uuid.optional().describe('Зона склада'),
@@ -163,7 +163,7 @@ shipments.openapi(createRoute({
 
     for (const line of ready) {
       // Строка только ПРИВЯЗЫВАЕТСЯ к отгрузке: товар в этот момент ещё на складе.
-      // Статус меняет переход `POST /shipments/{id}/ship` (M12) — иначе «отгружено»
+      // Статус меняет переход `POST /shipments/{id}/ship` (K5) — иначе «отгружено»
       // появлялось бы в момент оформления бумаги.
       await client.query(
         `update line set shipment_doc_id = $2, version = version + 1, updated_at = now()

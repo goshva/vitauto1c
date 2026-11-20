@@ -24,7 +24,7 @@ async function markedIds(): Promise<{ id: string; status: string }[]> {
   return r.rows;
 }
 
-// --- M4, K5: задание «В работе» -------------------------------------------------------
+// --- M4: задание «В работе» -------------------------------------------------------
 
 linesUiActions.post('/ui/lines/job', async (c) => {
   const form = await c.req.parseBody();

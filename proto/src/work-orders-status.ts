@@ -6,6 +6,7 @@ import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
 import { WORK_ORDER_STATES, checkWorkOrderTransition } from './domain/work-order-state.ts';
 import { loadOrProblem } from './work-orders-flow.ts';
+import { record } from './audit.ts';
 
 // Перевод состояния заказ-наряда: в работу и закрытие (G9).
 //
@@ -50,8 +51,13 @@ workOrdersStatus.openapi(createRoute({
   const client = await pool.connect();
   try {
     await client.query('begin');
+    // `closed_at` — ДАТА ПРИЗНАНИЯ выручки ремонта: у наряда нет отгрузки, и без этой
+    // отметки его работы и запчасти не попадают в отчёт о прибыли (docs/fix-plan.md §1).
     await client.query(
-      `update work_order set status = $2, version = version + 1, updated_at = now() where id = $1`,
+      `update work_order
+          set status = $2, version = version + 1, updated_at = now(),
+              closed_at = case when $2 = 'closed' then now() else null end
+        where id = $1`,
       [id, to],
     );
 
@@ -70,6 +76,14 @@ workOrdersStatus.openapi(createRoute({
     const written = to === 'closed' ? await writeOffParts(client, id) : 0;
 
     await client.query('commit');
+
+    // Журнал: переход наряда — отдельный вид действия, как `transition` у строки.
+    // Без него на вопрос «кто закрыл наряд» журнал не отвечает.
+    await record(c, {
+      entity: 'work_order', entityId: id, action: 'transition', field: 'status',
+      oldValue: loaded.head!.status, newValue: to,
+      details: { lines: lines.rowCount ?? 0, writtenOff: written },
+    });
     return c.json({ id, status: to, lines: lines.rowCount ?? 0, writtenOff: written }, 200);
   } catch (e) {
     await client.query('rollback');

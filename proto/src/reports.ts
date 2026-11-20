@@ -3,7 +3,7 @@ import { guard } from './auth.ts';
 import { problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { byMonth, totals, totalsBy, type SaleRow } from './domain/reports.ts';
-import { loadSales, loadStuck } from './reports-data.ts';
+import { loadRepair, loadSales, loadStuck } from './reports-data.ts';
 
 // Отчёты: маршруты (п. 8 плана волны 2).
 //
@@ -35,6 +35,36 @@ const PeriodQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
 });
 
+/**
+ * Итоги и разрезы по набору строк — ОДИН ответ на два отчёта.
+ *
+ * Продажи и ремонт считаются разными выборками (`loadSales` и `loadRepair`), но
+ * показываются одинаково: расчёт (`totals`) и разрезы у них общие, и разводить их
+ * значило бы завести две правды об одном и том же числе.
+ */
+function reportOf(
+  rows: SaleRow[], groupBy: 'nomenclature' | 'customer' | 'month', limit: number,
+) {
+  const keyOf = groupBy === 'customer'
+    ? (r: SaleRow): string | null => r.customer
+    : (r: SaleRow): string | null => r.nomenclature;
+  const groups = groupBy === 'month' ? byMonth(rows) : totalsBy(rows, keyOf, { limit });
+
+  return {
+    totals: totals(rows),
+    rows: groups.map((g) => ({ label: g.key, totals: g.totals })),
+    byMonth: byMonth(rows).map((g) => ({ label: g.key, totals: g.totals })),
+  };
+}
+
+/** Оговорка к цифрам продаж: что не вошло и почему. */
+const salesNote = (withoutCost: number): string =>
+  'В расчёт вошли состоявшиеся продажи: отгруженные и не отменённые. '
+  + 'Ремонт считается отдельным отчётом: у наряда своя дата признания.'
+  + (withoutCost > 0
+    ? ` Строк без себестоимости: ${withoutCost} — их выручка учтена, прибыль нет.`
+    : '');
+
 
 // --- GET /reports/profitability — рентабельность продаж -------------------------------
 reports.openapi(createRoute({
@@ -64,26 +94,56 @@ reports.openapi(createRoute({
   const q = c.req.valid('query');
   const rows = await loadSales(q);
 
-  const keyOf = q.groupBy === 'customer'
-    ? (r: SaleRow): string | null => r.customer
-    : (r: SaleRow): string | null => r.nomenclature;
-
-  const groups = q.groupBy === 'month'
-    ? byMonth(rows)
-    : totalsBy(rows, keyOf, { limit: q.limit });
-
   // Оговорка обязательна: без неё цифру принимают за полную, хотя часть строк в неё
   // не вошла — и решение примут по неполным данным.
   const withoutCost = rows.filter((r) => r.costPrice === null).length;
 
   return c.json({
-    totals: totals(rows),
-    rows: groups.map((g) => ({ label: g.key, totals: g.totals })),
-    byMonth: byMonth(rows).map((g) => ({ label: g.key, totals: g.totals })),
-    note: `В расчёт вошли только состоявшиеся продажи: отгруженные и не отменённые.`
-      + (withoutCost > 0
-        ? ` Строк без себестоимости: ${withoutCost} — их выручка учтена, прибыль нет.`
-        : ''),
+    ...reportOf(rows, q.groupBy, q.limit),
+    note: salesNote(withoutCost),
+  }, 200);
+});
+
+// --- GET /reports/repair — рентабельность ремонта -------------------------------------
+//
+// ОТДЕЛЬНЫЙ ОТЧЁТ, А НЕ РАЗРЕЗ ПРОДАЖ (решение заказчика 20.11.2026). Наряд не
+// отгружается — он выполняется: дата признания у него `work_order.closed_at`, а работа
+// считается по нормо-часам. Смешав ремонт с торговлей, нельзя было бы ответить
+// «сколько дала торговля» отдельно от «сколько дал ремонт».
+reports.openapi(createRoute({
+  method: 'get',
+  path: '/reports/repair',
+  tags: ['reports'],
+  summary: 'Рентабельность ремонта: работы по нормо-часам и запчасти закрытых нарядов',
+  request: {
+    query: PeriodQuery.extend({
+      groupBy: z.enum(['nomenclature', 'customer', 'month']).optional().default('nomenclature'),
+    }),
+  },
+  responses: {
+    200: { description: 'Итоги с разрезом', content: { 'application/json': { schema: z.object({
+      totals: TotalsSchema,
+      rows: z.array(z.object({ label: z.string(), totals: TotalsSchema })),
+      byMonth: z.array(z.object({ label: z.string(), totals: TotalsSchema })),
+      note: z.string().describe('Оговорки к цифрам: что не попало и почему'),
+    }) } } },
+    403: { description: 'Себестоимость закрыта для роли' },
+  },
+}), async (c) => {
+  const denial = guard(c, 'report.cost');
+  if (denial) return problemResponse(c, denial);
+
+  const q = c.req.valid('query');
+  const rows = await loadRepair(q);
+
+  const works = rows.filter((r) => r.kind === 'repair-labor').length;
+  const parts = rows.filter((r) => r.kind === 'repair-part').length;
+
+  return c.json({
+    ...reportOf(rows, q.groupBy, q.limit),
+    note: `В расчёт вошли закрытые заказ-наряды: работы ${works} — по нормо-часам, `
+      + `запчасти ${parts} — как продажа. Дата признания — дата закрытия наряда. `
+      + 'Открытые наряды в отчёт не входят.',
   }, 200);
 });
 

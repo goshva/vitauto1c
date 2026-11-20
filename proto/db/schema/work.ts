@@ -38,11 +38,23 @@ export const workOrder = pgTable(
     comment: text('comment'),
     /** Автор документа (ФТ v2 п. 20) — см. комментарий в `doc.ts`. */
     authorId: uuid('author_id'),
+    /**
+     * Когда наряд ЗАКРЫТ — дата признания выручки ремонта.
+     *
+     * Отчёту о прибыли нужна дата, по которой строка входит в период. У продажи это
+     * дата отгрузки, а у ремонта отгрузки нет: наряд выполняется, а не отгружается.
+     * Без этой колонки выручка ремонта не попадала в отчёт вовсе — 670 214,50 ₽
+     * из 1 003 087,80 ₽ за месяц (`docs/econ-month.md` §7.1).
+     */
+    closedAt: timestamp('closed_at', { withTimezone: true }),
     ...stamp(),
   },
   (t) => [
     index('work_order_number_idx').on(t.number),
     index('work_order_status_idx').on(t.status),
+    // Период отчёта фильтрует ремонт по этой колонке — без индекса отбор пойдёт
+    // сканом, а отчёт открывают на каждый разбор.
+    index('work_order_closed_idx').on(t.closedAt),
   ],
 );
 

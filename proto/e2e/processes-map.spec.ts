@@ -7,7 +7,8 @@ import { expect, test } from '@playwright/test';
 // можно скопировать и открыть заново.
 
 const PROCESSES = ['happy', 'stock', 'mixed_order', 'delivery_split', 'virtual_buy',
-  'defect', 'cancel_supplier', 'return', 'return_mgr', 'return_internal', 'car_repair_in'];
+  'defect', 'cancel_supplier', 'return', 'return_mgr', 'return_internal', 'car_repair_in',
+  'repair_stock'];
 
 test.describe('карта процессов', () => {
   test('ссылка в шапке открывает карту процессов, а не 404', async ({ page }) => {
@@ -19,14 +20,17 @@ test.describe('карта процессов', () => {
     await expect(page).toHaveURL(/\/processes$/);
   });
 
-  test('видны все 11 процессов и общая статистика', async ({ page }) => {
+  test('видны все 12 процессов и общая статистика', async ({ page }) => {
     await page.goto('/processes');
 
     for (const id of PROCESSES) {
       await expect(page.getByTestId(`process-${id}`)).toBeVisible();
     }
     await expect(page.getByTestId('stats-by-status')).toBeVisible();
-    await expect(page.getByTestId('map-summary')).toContainText('121');
+    // 131 шаг: 121 был в исходной модели, 120 — пока шаг M3 у ремонта был убран,
+    // 131 — после возврата M3 («зарезервировали, не хватило — заказали») и добавления
+    // сценария «ремонт со склада» (docs/fix-plan.md §3.1).
+    await expect(page.getByTestId('map-summary')).toContainText('131');
   });
 
   test('первый процесс показан схемой шагов сразу', async ({ page }) => {
@@ -53,7 +57,7 @@ test.describe('карта процессов', () => {
     await expect(page.getByTestId('process-title')).toContainText('ремонт');
   });
 
-  test('все 11 процессов открываются карточкой', async ({ page }) => {
+  test('все 12 процессов открываются карточкой', async ({ page }) => {
     for (const id of PROCESSES) {
       const r = await page.goto(`/processes/${id}`);
       expect(r?.status(), `${id}: карточка не открылась`).toBe(200);

@@ -3,6 +3,7 @@ import { pool } from './db.ts';
 import { Problem, problemResponse } from './problem.ts';
 import { createApi } from './api.ts';
 import { uuid } from './domain/uuid.ts';
+import { record } from './audit.ts';
 
 // Запчасть в заказ-наряде (1 операция).
 //
@@ -71,8 +72,10 @@ workOrdersParts.openapi(createRoute({
     // запчасть от работы.
     const line = await client.query<{ id: string }>(
       `insert into line (work_order_id, operation, status, quantity, nomenclature_id,
-                         sale_price, cost_price, order_date, comment)
-       values ($1, 'sale', 'new', $2, $3, $4, $5, current_date, $6)
+                         sale_price, cost_price, order_date, comment,
+                         process_id, process_step)
+       values ($1, 'sale', 'new', $2, $3, $4, $5, current_date, $6,
+               'car_repair_in', 1)
        returning id`,
       [id, body.quantity, body.nomenclatureId, body.salePrice ?? null,
         body.costPrice ?? null, body.comment ?? null],
@@ -86,6 +89,17 @@ workOrdersParts.openapi(createRoute({
 
     const total = await recalcTotal(client, id);
     await client.query('commit');
+
+    // Журнал: запчасть в наряде — такое же действие, как работа. Без записи история
+    // наряда начиналась бы с его закрытия.
+    await record(c, {
+      entity: 'work_order', entityId: id, action: 'update', field: 'part',
+      newValue: nom.rows[0]!.name,
+      details: {
+        lineId, quantity: body.quantity, salePrice: body.salePrice ?? null,
+        costPrice: body.costPrice ?? null,
+      },
+    });
     return c.json({ lineId, total }, 201);
   } catch (e) {
     await client.query('rollback');
